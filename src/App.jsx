@@ -314,7 +314,7 @@ function ToastContainer(){
 // ─────────────────────────────────────────────────────────────────────────────
 function OrbBg(){
   return(
-    <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:0}}>
+    <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:-1}}>
       <div style={{position:"absolute",width:640,height:640,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.10) 0%,transparent 68%)",top:"-8%",left:"-4%",animation:"orb1 20s ease-in-out infinite"}}/>
       <div style={{position:"absolute",width:520,height:520,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.07) 0%,transparent 68%)",bottom:"4%",right:"-4%",animation:"orb2 24s ease-in-out infinite"}}/>
       <div style={{position:"absolute",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.05) 0%,transparent 68%)",top:"36%",left:"46%",animation:"orb3 17s ease-in-out infinite"}}/>
@@ -1395,7 +1395,7 @@ function AffiliatePanel({ user, planKey }){
           })}
         </div>
         {nextTier&&(
-          <div style={{marginTop:14,padding:"9px 13px",background:`rgba(${nextTier.color==="#f59e0b"?"245,158,11":nextTier.color==="rgba(56,189,248,1)"?"56,189,248":"99,102,241"},.06)`,border:`1px solid ${nextTier.color}22`,borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
+          <div style={{marginTop:14,padding:"9px 13px",background:"rgba(99,102,241,.06)",border:`1px solid ${nextTier.color}44`,borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
             <strong style={{color:nextTier.color}}>{nextTier.min - stats.activeRefs} more active referrals</strong> to unlock {nextTier.name} at {nextTier.pct}% commission — that's an extra <strong style={{color:C.text}}>${((nextTier.pct-currentTier.pct)/100*stats.activeRefs*49).toFixed(0)}/mo</strong> on your current base.
           </div>
         )}
@@ -1777,10 +1777,10 @@ function AuthPage({mode,onAuth,onSwitch}){
   }
 
   return(
-    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F,position:"relative"}}>
+    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F}}>
       <OrbBg/>
       <ToastContainer/>
-      <div style={{width:"100%",maxWidth:420,padding:20,position:"relative",zIndex:1,animation:"scaleIn .28s ease"}}>
+      <div style={{width:"100%",maxWidth:420,padding:20,position:"relative",zIndex:2,animation:"scaleIn .28s ease"}}>
         <div style={{textAlign:"center",marginBottom:28}}>
           <Logo/>
           <p style={{color:C.textMd,fontSize:13,marginTop:10,fontFamily:C.F}}>{mode==="login"?"Welcome back, agent":"Upload photos. Get a viral listing video."}</p>
