@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // CONSTANTS & DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 const FONTS_URL = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
-
 const C = {
   bg:"#08090e", surface:"#0d0f17", surfaceUp:"#12141f", surfaceHigh:"#181a28",
   border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.11)", borderHi:"rgba(255,255,255,0.16)",
@@ -18,7 +17,7 @@ const C = {
 
 const GLOBAL_CSS = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%}
+  html,body{height:100%;background:#08090e}
   ::-webkit-scrollbar{width:3px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.07);border-radius:2px}
@@ -33,8 +32,11 @@ const GLOBAL_CSS = `
   @keyframes orb3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,36px) scale(0.92)}}
   @keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
   @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-  @keyframes toastOut{from{opacity:1}to{opacity:0;transform:translateY(4px)}}
   @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes vidPulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.4)}70%{box-shadow:0 0 0 10px rgba(99,102,241,0)}}
+  @keyframes carouselSlide{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes carouselSlideL{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes photoIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
   .nav-item{transition:all .15s}
   .nav-item:hover{background:rgba(255,255,255,0.055)!important;color:rgba(255,255,255,.88)!important}
   .nav-item.active{background:rgba(99,102,241,.11)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.24)!important}
@@ -59,49 +61,50 @@ const GLOBAL_CSS = `
   .up-tease:hover{border-color:rgba(245,158,11,.44)!important;background:rgba(245,158,11,.07)!important}
   .plat-b{transition:all .16s}
   .plat-b:hover:not([data-locked="true"]){transform:translateY(-1px)}
-  @keyframes carouselSlide{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
-  @keyframes carouselSlideL{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+  .photo-thumb{transition:all .2s;cursor:pointer}
+  .photo-thumb:hover{transform:scale(1.04);border-color:rgba(99,102,241,.5)!important}
+  .drop-zone{transition:all .22s}
+  .drop-zone.drag-over{border-color:rgba(99,102,241,.6)!important;background:rgba(99,102,241,.08)!important}
   .carousel-arrow{transition:all .18s;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;width:36px;height:36px;flex-shrink:0}
   .carousel-arrow:hover{background:rgba(99,102,241,.18)!important;border-color:rgba(99,102,241,.4)!important;color:#a5b4fc!important;transform:scale(1.08)}
-  .carousel-dot{transition:all .22s;cursor:pointer;border-radius:50%;flex-shrink:0}
-  .carousel-dot:hover{opacity:.8}
+  .carousel-dot{transition:all .22s;cursor:pointer;border-radius:4px;flex-shrink:0}
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PLAN DEFINITIONS — single source of truth
+// PLAN DEFINITIONS
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = {
   agent:{
     name:"Agent", price:29, credits:20, accent:C.emerald, badge:null,
     contentTypes:["listing","education"],
     platforms:["TikTok","Reels"],
-    hooks:3, voiceMemory:false, videoQuality:"720p", teamSeats:1, apiAccess:false,
-    perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","MLS-safe captions","Email support"],
-    stripeLink:"https://buy.stripe.com/your-agent-link", // replace with real Stripe link
+    hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
+    perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","Up to 3 listing photos","MLS-safe captions","Email support"],
+    stripeLink:"https://buy.stripe.com/your-agent-link",
   },
   pro:{
     name:"Pro", price:49, credits:60, accent:C.indigo, badge:"Most Popular",
     contentTypes:["listing","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
-    hooks:7, voiceMemory:true, videoQuality:"1080p", teamSeats:1, apiAccess:false,
-    perks:["60 credits / month","All 4 content types","All 5 platforms","7 hook variants","Agent voice memory","Neighborhood stories","Priority support"],
+    hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
+    perks:["60 credits / month","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","Priority support"],
     stripeLink:"https://buy.stripe.com/your-pro-link",
   },
   team:{
     name:"Team", price:99, credits:180, accent:C.violet, badge:null,
     contentTypes:["listing","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
-    hooks:10, voiceMemory:true, videoQuality:"4K", teamSeats:5, apiAccess:true,
-    perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","5-seat workspace","Brokerage branding","API access","Dedicated support"],
+    hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:5, apiAccess:true,
+    perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","Dedicated support"],
     stripeLink:"https://buy.stripe.com/your-team-link",
   },
 };
 
 const CONTENT_TYPES = {
-  listing:  {label:"Listing Video",      icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough scripts",   minPlan:"agent"},
-  education:{label:"Agent Tip",          icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",    minPlan:"agent"},
-  market:   {label:"Market Update",      icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",    minPlan:"pro"},
-  lifestyle:{label:"Neighborhood Story", icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators", minPlan:"pro"},
+  listing:  {label:"Listing Video",      icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video", minPlan:"agent"},
+  education:{label:"Agent Tip",          icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",      minPlan:"agent"},
+  market:   {label:"Market Update",      icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",      minPlan:"pro"},
+  lifestyle:{label:"Neighborhood Story", icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",   minPlan:"pro"},
 };
 
 const PLATFORMS = {
@@ -120,9 +123,9 @@ const CREDIT_PACKS = [
 ];
 
 const INPUT_META = {
-  address:      ["Address",             "123 Ocean Drive, Miami Beach, FL 33139"],
-  price:        ["List Price",          "$875,000"],
-  beds:         ["Beds",                "4"],
+  address:      ["Address",              "123 Ocean Drive, Miami Beach, FL 33139"],
+  price:        ["List Price",           "$875,000"],
+  beds:         ["Beds",                 "4"],
   baths:        ["Baths",               "3"],
   sqft:         ["Sq Ft",               "2,400"],
   keyFeatures:  ["Key Features",        "Pool, chef's kitchen, water views, renovated 2024"],
@@ -147,119 +150,159 @@ const TYPE_INPUTS = {
 };
 
 const PLAN_ORDER = ["agent","pro","team"];
-const planRank   = p => PLAN_ORDER.indexOf(p);
+const planRank = p => PLAN_ORDER.indexOf(p);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// LOCALSTORAGE HELPERS
+// LOCALSTORAGE
 // ─────────────────────────────────────────────────────────────────────────────
 const LS = {
-  get:(k,def)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; } },
-  set:(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} },
-  del:(k)=>{ try{ localStorage.removeItem(k); }catch{} },
+  get:(k,def)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; }},
+  set:(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{}},
+  del:(k)=>{ try{ localStorage.removeItem(k); }catch{}},
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CLAUDE & HIGGSFIELD API
+// API — CLAUDE
 // ─────────────────────────────────────────────────────────────────────────────
-async function callClaude({ type, inputs, platform, voice, planKey, apiKey }) {
-  const plan    = PLANS[planKey];
-  const hooks   = plan.hooks;
-  const useVoice= plan.voiceMemory && voice?.saved;
+async function callClaude({ type, inputs, platform, voice, planKey, apiKey, photoBase64s }) {
+  const plan  = PLANS[planKey];
+  const hooks = plan.hooks;
+  const useVoice = plan.voiceMemory && voice?.saved;
 
   const voiceCtx = useVoice
     ? `Agent: ${voice.name||""}, ${voice.brokerage||""}, ${voice.market||""}. Specialty: ${voice.specialty||""}. Tone: ${voice.tone||"warm, professional"}. Target client: ${voice.targetClient||""}. Preferred CTA: ${voice.cta||""}.`
     : "Write as a warm, professional, knowledgeable real estate agent.";
 
   const typeCtx = {
-    listing:  `Listing at ${inputs.address||"the property"}, ${inputs.price||""}, ${inputs.beds||"?"}bd/${inputs.baths||"?"}ba, ${inputs.sqft||"?"}sqft. Features: ${inputs.keyFeatures||"see details"}. Neighborhood: ${inputs.neighborhood||"local area"}. Sell the LIFESTYLE not just specs. Emotional storytelling.`,
-    market:   `Market update: ${inputs.city||"local market"}. Avg price ${inputs.avgPrice||""}, ${inputs.daysOnMarket||""} DOM, inventory: ${inputs.inventory||""}, trend: ${inputs.trend||""}. Position agent as the go-to local authority.`,
-    lifestyle:`Neighborhood story: ${inputs.neighborhood||""}, ${inputs.city||""}. Highlights: ${inputs.highlights||""}. Target buyer: ${inputs.targetBuyer||""}. Feel like an insider local tour for relocators searching on TikTok.`,
-    education:`Agent tip about: "${inputs.topic||""}" for ${inputs.audience||"buyers and sellers"}. Key point: ${inputs.keyPoint||""}. Genuinely useful, specific, authoritative — not generic.`,
+    listing:  `Listing at ${inputs.address||"the property"}, ${inputs.price||""}, ${inputs.beds||"?"}bd/${inputs.baths||"?"}ba, ${inputs.sqft||"?"}sqft. Features: ${inputs.keyFeatures||""}. Neighborhood: ${inputs.neighborhood||""}. ${photoBase64s?.length?"Photos of the actual property have been provided — reference their visual details in the script.":""}`,
+    market:   `Market update: ${inputs.city||"local market"}. Avg price ${inputs.avgPrice||""}, ${inputs.daysOnMarket||""} DOM, inventory: ${inputs.inventory||""}, trend: ${inputs.trend||""}.`,
+    lifestyle:`Neighborhood story: ${inputs.neighborhood||""}, ${inputs.city||""}. Highlights: ${inputs.highlights||""}. Target buyer: ${inputs.targetBuyer||""}.`,
+    education:`Agent tip about: "${inputs.topic||""}" for ${inputs.audience||"buyers and sellers"}. Key point: ${inputs.keyPoint||""}.`,
   };
+
+  // Build message content — include photos for listing type if provided
+  const userContent = [];
+  if(type==="listing" && photoBase64s?.length){
+    photoBase64s.slice(0,4).forEach((b64,i)=>{
+      userContent.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 }});
+    });
+  }
+  userContent.push({ type:"text", text:
+    `${voiceCtx}\n\n${typeCtx[type]}\n\nPlatform: ${platform} (${PLATFORMS[platform]?.spec||""}). Generate exactly ${hooks} hook variants.\n\n`+
+    `Return ONLY valid JSON (no markdown fences):\n`+
+    `{"headline":"best single hook","hooks":["exactly ${hooks} distinct hook variants"],"script":"full timed script [0:00] with (camera cues)","higgsfield_prompt":"detailed Higgsfield AI image-to-video prompt: cinematic camera moves (slow dolly in, aerial reveal, orbit), lighting mood, color grade, focus on hero shots from the uploaded photos — specific enough to render immediately","caption":"MLS-safe caption under 220 chars","hashtags":["15 hashtags"],"cta":"platform-native CTA","shot_list":["5 specific shot/scene descriptions"],"thumbnail":"thumbnail concept: composition + text overlay + color","posting_tip":"one specific ${platform} optimization tip"}`
+  });
 
   const r = await fetch("https://api.anthropic.com/v1/messages",{
     method:"POST",
     headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-    body:JSON.stringify({
-      model:"claude-sonnet-4-20250514", max_tokens:2000,
-      system:`You are SPARK, an elite real estate content strategist specializing in short-form video for ${platform} (${PLATFORMS[platform]?.spec||""}). Always write MLS-compliant content — no discriminatory language, no unsubstantiated absolute superlatives. Return ONLY valid JSON with no markdown fences, no explanation.`,
-      messages:[{role:"user",content:
-        `${voiceCtx}\n\n${typeCtx[type]}\n\nPlatform: ${platform}. Generate exactly ${hooks} hook variants.\n\n`+
-        `Return ONLY this JSON (no markdown):\n{"headline":"single best hook line","hooks":["exactly ${hooks} distinct variants — test curiosity/pain/transformation/local-authority/social-proof angles"],"script":"full timed script [0:00] with (camera cues)","higgsfield_prompt":"detailed cinematic Higgsfield AI prompt: specific camera moves like slow dolly/orbit/aerial reveal, lighting mood, color grade, property hero shots, lifestyle b-roll — specific enough to render immediately","caption":"MLS-safe caption under 220 chars","hashtags":["15 hashtags: hyperlocal + niche + trending"],"cta":"platform-native CTA","shot_list":["5 specific shots or Higgsfield scene prompts"],"thumbnail":"exact thumbnail concept: composition + text overlay + color strategy","posting_tip":"one specific ${platform} posting optimization tip"}`
-      }],
+    body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
+      system:`You are SPARK, an elite real estate content strategist for ${platform}. Always write MLS-compliant content. Return ONLY valid JSON, no markdown.`,
+      messages:[{role:"user", content:userContent}],
     }),
   });
-
-  if(!r.ok){
-    const e=await r.json().catch(()=>({}));
-    throw new Error(e?.error?.message||`Anthropic API error ${r.status}`);
-  }
+  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e?.error?.message||`API error ${r.status}`); }
   const d=await r.json();
   const raw=(d.content?.[0]?.text||"{}").replace(/```json\n?|```\n?/g,"").trim();
-  try{ return JSON.parse(raw); }
-  catch{ throw new Error("Failed to parse response — try again"); }
+  try{ return JSON.parse(raw); }catch{ throw new Error("Failed to parse AI response — try again"); }
 }
 
-async function callHiggsfield(prompt, key){
-  const r=await fetch("https://cloud.higgsfield.ai/api/v1/generate",{
+// ─────────────────────────────────────────────────────────────────────────────
+// API — HIGGSFIELD IMAGE-TO-VIDEO
+// ─────────────────────────────────────────────────────────────────────────────
+async function callHiggsfieldImg(imageBase64, prompt, key){
+  // Convert base64 to blob for multipart upload
+  const byteStr = atob(imageBase64);
+  const arr = new Uint8Array(byteStr.length);
+  for(let i=0;i<byteStr.length;i++) arr[i]=byteStr.charCodeAt(i);
+  const blob = new Blob([arr], {type:"image/jpeg"});
+
+  const fd = new FormData();
+  fd.append("image", blob, "listing.jpg");
+  fd.append("prompt", prompt);
+  fd.append("model", "soul-v2");
+  fd.append("aspect_ratio", "9:16");
+  fd.append("duration", "5");
+
+  const r = await fetch("https://cloud.higgsfield.ai/api/v1/image-to-video",{
     method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
-    body:JSON.stringify({prompt,model:"soul-v2",aspect_ratio:"9:16",duration:5}),
+    headers:{"Authorization":`Bearer ${key}`},
+    body:fd,
   });
   if(!r.ok) throw new Error(`Video generation error ${r.status}`);
   return r.json();
 }
 
+async function callHiggsfieldTxt(prompt, key){
+  const r = await fetch("https://cloud.higgsfield.ai/api/v1/generate",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+    body:JSON.stringify({prompt, model:"soul-v2", aspect_ratio:"9:16", duration:5}),
+  });
+  if(!r.ok) throw new Error(`Video generation error ${r.status}`);
+  return r.json();
+}
+
+async function pollHiggsfield(jobId, key, onProgress){
+  const MAX=60, INTERVAL=4000;
+  for(let i=0;i<MAX;i++){
+    await new Promise(r=>setTimeout(r,INTERVAL));
+    const pct = Math.min(92, 20+(i/MAX)*72);
+    onProgress(Math.round(pct));
+    try{
+      const r = await fetch(`https://cloud.higgsfield.ai/api/v1/jobs/${jobId}`,{
+        headers:{"Authorization":`Bearer ${key}`},
+      });
+      if(!r.ok) continue;
+      const d = await r.json();
+      const status = d?.status||d?.state;
+      if(status==="completed"||status==="succeeded"){
+        const url = d?.output?.media_url?.[0] || d?.output?.url || d?.result?.url || null;
+        return {done:true, url};
+      }
+      if(status==="failed"||status==="error") return {done:true, url:null, failed:true};
+    }catch{}
+  }
+  return {done:true, url:null, failed:true};
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// STYLE INJECTION (runs once, no duplicate font links)
+// STYLE INJECTION
 // ─────────────────────────────────────────────────────────────────────────────
 function useStyles(){
   useEffect(()=>{
     if(!document.getElementById("spark-css")){
-      const s=document.createElement("style");
-      s.id="spark-css"; s.textContent=GLOBAL_CSS;
+      const s=document.createElement("style"); s.id="spark-css"; s.textContent=GLOBAL_CSS;
       document.head.appendChild(s);
     }
     if(!document.getElementById("spark-font")){
-      const l=document.createElement("link");
-      l.id="spark-font"; l.rel="stylesheet"; l.href=FONTS_URL;
+      const l=document.createElement("link"); l.id="spark-font"; l.rel="stylesheet"; l.href=FONTS_URL;
       document.head.appendChild(l);
     }
   },[]);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TOAST SYSTEM
+// TOAST
 // ─────────────────────────────────────────────────────────────────────────────
-const ToastCtx = { listeners:[] };
-function useToast(){
-  return useCallback((msg,type="success")=>{
-    ToastCtx.listeners.forEach(fn=>fn({msg,type,id:Date.now()}));
-  },[]);
-}
-
+const ToastCtx={listeners:[]};
+function useToast(){ return useCallback((msg,type="success")=>{ ToastCtx.listeners.forEach(fn=>fn({msg,type,id:Date.now()})); },[]); }
 function ToastContainer(){
   const [toasts,setToasts]=useState([]);
   useEffect(()=>{
-    const fn=(t)=>{
-      setToasts(p=>[...p,t]);
-      setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==t.id)),3200);
-    };
+    const fn=(t)=>{ setToasts(p=>[...p,t]); setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==t.id)),3400); };
     ToastCtx.listeners.push(fn);
     return ()=>{ ToastCtx.listeners=ToastCtx.listeners.filter(f=>f!==fn); };
   },[]);
-  return (
-    <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,display:"flex",flexDirection:"column",gap:8}}>
+  return(
+    <div style={{position:"fixed",bottom:24,right:20,zIndex:9999,display:"flex",flexDirection:"column",gap:8,maxWidth:320}}>
       {toasts.map(t=>(
         <div key={t.id} style={{
-          background:t.type==="error"?"rgba(244,63,94,0.12)":t.type==="info"?"rgba(99,102,241,0.12)":"rgba(16,185,129,0.12)",
+          background:t.type==="error"?"rgba(244,63,94,.12)":t.type==="info"?"rgba(99,102,241,.12)":"rgba(16,185,129,.12)",
           border:`1px solid ${t.type==="error"?C.rose:t.type==="info"?C.indigo:C.emerald}44`,
           color:t.type==="error"?C.rose:t.type==="info"?C.indigoLt:C.emerald,
           padding:"11px 16px",borderRadius:10,fontSize:13,fontFamily:C.F,fontWeight:600,
-          boxShadow:"0 8px 24px rgba(0,0,0,0.4)",
-          animation:"toastIn .25s ease both",
-          backdropFilter:"blur(12px)",
-          maxWidth:320,
+          boxShadow:"0 8px 24px rgba(0,0,0,.4)",animation:"toastIn .25s ease both",backdropFilter:"blur(12px)",
         }}>{t.type==="error"?"✕ ":t.type==="info"?"ℹ ":"✓ "}{t.msg}</div>
       ))}
     </div>
@@ -275,14 +318,9 @@ function OrbBg(){
       <div style={{position:"absolute",width:640,height:640,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.10) 0%,transparent 68%)",top:"-8%",left:"-4%",animation:"orb1 20s ease-in-out infinite"}}/>
       <div style={{position:"absolute",width:520,height:520,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.07) 0%,transparent 68%)",bottom:"4%",right:"-4%",animation:"orb2 24s ease-in-out infinite"}}/>
       <div style={{position:"absolute",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.05) 0%,transparent 68%)",top:"36%",left:"46%",animation:"orb3 17s ease-in-out infinite"}}/>
-      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:.02}}>
-        <filter id="sfn"><feTurbulence type="fractalNoise" baseFrequency=".65" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
-        <rect width="100%" height="100%" filter="url(#sfn)"/>
-      </svg>
     </div>
   );
 }
-
 function Logo({small}){
   return(
     <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -294,32 +332,23 @@ function Logo({small}){
     </div>
   );
 }
-
 function Shimmer({children,style={}}){
   return <span style={{background:"linear-gradient(90deg,#6366f1,#a5b4fc,#8b5cf6,#6366f1)",backgroundSize:"200% auto",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite",...style}}>{children}</span>;
 }
-
 function Badge({color=C.indigo,children}){
   return <span style={{background:color+"18",border:`1px solid ${color}40`,color,fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,fontFamily:C.F,letterSpacing:1.5,whiteSpace:"nowrap"}}>{children}</span>;
 }
-
 function CopyBtn({text,label}){
-  const [ok,setOk]=useState(false);
-  const toast=useToast();
+  const [ok,setOk]=useState(false); const toast=useToast();
   return(
-    <button className="copy-b" onClick={()=>{
-      navigator.clipboard.writeText(text).then(()=>{
-        setOk(true); toast(label||"Copied to clipboard");
-        setTimeout(()=>setOk(false),2000);
-      }).catch(()=>toast("Copy failed — try selecting text manually","error"));
-    }} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,fontSize:10,padding:"4px 10px",borderRadius:6,cursor:"pointer",fontFamily:C.F,fontWeight:600,letterSpacing:1}}>
+    <button className="copy-b" onClick={()=>{ navigator.clipboard.writeText(text).then(()=>{ setOk(true); toast(label||"Copied"); setTimeout(()=>setOk(false),2000); }).catch(()=>toast("Copy failed","error")); }}
+      style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,fontSize:10,padding:"4px 10px",borderRadius:6,cursor:"pointer",fontFamily:C.F,fontWeight:600,letterSpacing:1}}>
       {ok?"✓ COPIED":"COPY"}
     </button>
   );
 }
-
 function Field({label,value,onChange,placeholder,area,rows=2,type="text"}){
-  const s={width:"100%",background:"rgba(255,255,255,0.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"border-color .18s, box-shadow .18s",resize:"none",type};
+  const s={width:"100%",background:"rgba(255,255,255,0.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"border-color .18s, box-shadow .18s",resize:"none"};
   return(
     <div>
       <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>{label}</div>
@@ -328,35 +357,30 @@ function Field({label,value,onChange,placeholder,area,rows=2,type="text"}){
     </div>
   );
 }
-
 function Spinner({size=18,color=C.indigo}){
   return <div style={{width:size,height:size,borderRadius:"50%",border:`2px solid ${color}33`,borderTopColor:color,animation:"spin .7s linear infinite",flexShrink:0}}/>;
 }
-
 function ProgressRing({pct,size=56}){
   const r=(size-6)/2,circ=2*Math.PI*r,off=circ-(pct/100)*circ;
   return(
     <svg width={size} height={size} style={{transform:"rotate(-90deg)"}}>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth={3}/>
       <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={C.indigo} strokeWidth={3}
-        strokeDasharray={circ} strokeDashoffset={off}
-        style={{transition:"stroke-dashoffset .35s ease",strokeLinecap:"round"}}/>
+        strokeDasharray={circ} strokeDashoffset={off} style={{transition:"stroke-dashoffset .35s ease",strokeLinecap:"round"}}/>
     </svg>
   );
 }
-
 function UpgradePrompt({feature,requiredPlan,onUpgrade}){
   const p=PLANS[requiredPlan];
   return(
     <div className="up-tease" onClick={onUpgrade} style={{background:"rgba(245,158,11,.05)",border:"1px solid rgba(245,158,11,.2)",borderRadius:12,padding:"22px 20px",textAlign:"center",animation:"scaleIn .25s ease"}}>
       <div style={{fontSize:22,marginBottom:8}}>🔒</div>
       <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.amber,marginBottom:6}}>{feature} requires {p.name} plan</div>
-      <div style={{fontFamily:C.F,fontSize:12,color:C.textMd,marginBottom:14,lineHeight:1.55}}>Upgrade to {p.name} (${p.price}/mo) to unlock this feature.</div>
+      <div style={{fontFamily:C.F,fontSize:12,color:C.textMd,marginBottom:14,lineHeight:1.55}}>Upgrade to {p.name} (${p.price}/mo) to unlock.</div>
       <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:C.F}}>Upgrade to {p.name} →</div>
     </div>
   );
 }
-
 function RBlock({accent,label,children,action,delay=0}){
   return(
     <div style={{background:C.surfaceUp,border:`1px solid ${C.border}`,borderRadius:12,padding:20,marginBottom:10,animation:`scaleIn .28s ease ${delay}s both`}}>
@@ -373,31 +397,205 @@ function RBlock({accent,label,children,action,delay=0}){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ONBOARDING MODAL (shown once after signup)
+// PHOTO UPLOADER COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
+  const inputRef = useRef(null);
+  const toast = useToast();
+  const [dragging, setDragging] = useState(false);
+
+  async function processFiles(files){
+    const remaining = maxPhotos - photos.length;
+    if(remaining <= 0){ toast(`Plan limit is ${maxPhotos} photos. Upgrade for more.`,"error"); return; }
+    const toAdd = Array.from(files).slice(0, remaining);
+    const results = [];
+    for(const file of toAdd){
+      if(!file.type.startsWith("image/")){ toast("Only image files allowed","error"); continue; }
+      if(file.size > 12*1024*1024){ toast(`${file.name} is too large — max 12MB`,"error"); continue; }
+      const b64 = await new Promise((res,rej)=>{
+        const fr=new FileReader();
+        fr.onload=()=>res(fr.result.split(",")[1]);
+        fr.onerror=rej;
+        fr.readAsDataURL(file);
+      });
+      const preview = URL.createObjectURL(file);
+      results.push({ id:Date.now()+Math.random(), b64, preview, name:file.name });
+    }
+    setPhotos(p=>[...p,...results]);
+    if(results.length) toast(`${results.length} photo${results.length>1?"s":""} added ✓`);
+  }
+
+  function handleDrop(e){
+    e.preventDefault(); setDragging(false);
+    processFiles(e.dataTransfer.files);
+  }
+  function handleDrag(e){ e.preventDefault(); setDragging(true); }
+  function handleDragLeave(){ setDragging(false); }
+  function removePhoto(id){ setPhotos(p=>p.filter(x=>x.id!==id)); }
+  function moveHero(id){ setPhotos(p=>{ const i=p.findIndex(x=>x.id===id); if(i<=0) return p; const a=[...p]; const [item]=a.splice(i,1); return [item,...a]; }); }
+
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
+        <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700}}>
+          LISTING PHOTOS <span style={{color:C.indigo,fontWeight:400}}>({photos.length}/{maxPhotos})</span>
+        </div>
+        {photos.length>0&&<span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Tap ⭐ to set hero frame</span>}
+      </div>
+
+      {/* Photo thumbnails */}
+      {photos.length>0&&(
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+          {photos.map((ph,i)=>(
+            <div key={ph.id} className="photo-thumb" style={{position:"relative",width:72,height:72,borderRadius:8,overflow:"hidden",border:`2px solid ${i===0?C.indigo:C.border}`,animation:"photoIn .22s ease both",flexShrink:0}}>
+              <img src={ph.preview} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+              {i===0&&<div style={{position:"absolute",top:2,left:2,background:"rgba(99,102,241,.88)",borderRadius:4,padding:"1px 4px",fontSize:8,color:"#fff",fontWeight:700,fontFamily:C.F}}>HERO</div>}
+              <div style={{position:"absolute",top:2,right:2,display:"flex",gap:3}}>
+                {i>0&&(
+                  <button onClick={()=>moveHero(ph.id)} title="Set as hero" style={{width:18,height:18,borderRadius:3,background:"rgba(0,0,0,.7)",border:"none",cursor:"pointer",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24"}}>⭐</button>
+                )}
+                <button onClick={()=>removePhoto(ph.id)} title="Remove" style={{width:18,height:18,borderRadius:3,background:"rgba(0,0,0,.7)",border:"none",cursor:"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",color:C.rose}}>✕</button>
+              </div>
+            </div>
+          ))}
+          {photos.length<maxPhotos&&(
+            <button onClick={()=>inputRef.current?.click()} style={{width:72,height:72,borderRadius:8,border:`2px dashed ${C.border}`,background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,color:C.textDim,flexShrink:0,transition:"all .18s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.indigo+"88";e.currentTarget.style.color=C.indigoLt;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.textDim;}}>
+              <span style={{fontSize:18}}>+</span>
+              <span style={{fontSize:8,fontFamily:C.F,fontWeight:600}}>ADD</span>
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Drop zone — shown when no photos yet */}
+      {photos.length===0&&(
+        <div className={`drop-zone${dragging?" drag-over":""}`}
+          onDrop={handleDrop} onDragOver={handleDrag} onDragLeave={handleDragLeave}
+          onClick={()=>inputRef.current?.click()}
+          style={{border:`2px dashed ${dragging?C.indigo:C.border}`,borderRadius:10,padding:"28px 16px",textAlign:"center",cursor:"pointer",background:dragging?"rgba(99,102,241,.06)":"rgba(255,255,255,.01)",transition:"all .22s"}}>
+          <div style={{fontSize:28,marginBottom:8}}>📸</div>
+          <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.textMd,marginBottom:4}}>Drop listing photos here</div>
+          <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:8}}>or tap to browse · up to {maxPhotos} photos · JPG/PNG/WEBP</div>
+          <div style={{display:"inline-flex",gap:6,alignItems:"center",background:"rgba(99,102,241,.08)",border:"1px solid rgba(99,102,241,.2)",borderRadius:6,padding:"4px 10px"}}>
+            <span style={{fontSize:10,color:C.indigoLt,fontFamily:C.F,fontWeight:600}}>Hero photo → animates into cinematic video ✨</span>
+          </div>
+        </div>
+      )}
+
+      <input ref={inputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>processFiles(e.target.files)}/>
+
+      {photos.length===0&&planKey==="agent"&&(
+        <div style={{marginTop:8,fontSize:10,color:C.textDim,fontFamily:C.F}}>
+          Agent plan: up to 3 photos. <span className="up-tease" onClick={onGoUpgrade} style={{color:C.amber,textDecoration:"underline",cursor:"pointer"}}>Upgrade to Pro for 8 photos →</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VIDEO RESULT PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfieldKey, onGoSettings }){
+  // vidState: null | {status:"generating",pct:N} | {status:"ready",url:string} | {status:"failed"} | {status:"prompt"}
+
+  if(!vidState){
+    return(
+      <div style={{background:"rgba(34,211,238,.03)",border:`1px solid ${C.border}`,borderRadius:10,padding:18,textAlign:"center"}}>
+        <div style={{fontSize:32,marginBottom:10}}>🎬</div>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.textMd,marginBottom:6}}>Video generates automatically with your content</div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>Upload listing photos + add your Video Engine key in Settings to enable auto-generation.</div>
+      </div>
+    );
+  }
+
+  if(vidState.status==="generating"){
+    return(
+      <div style={{background:"rgba(99,102,241,.05)",border:"1px solid rgba(99,102,241,.15)",borderRadius:12,padding:"28px 22px",textAlign:"center",animation:"fadeIn .2s ease"}}>
+        <div style={{position:"relative",width:64,height:64,margin:"0 auto 16px"}}>
+          <ProgressRing pct={vidState.pct} size={64}/>
+          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.indigoLt,fontFamily:C.F,fontWeight:700}}>{vidState.pct}%</div>
+        </div>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginBottom:6}}>Generating your cinematic listing video…</div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:14}}>This takes 30–90 seconds. Your content is ready now while you wait.</div>
+        <div style={{display:"flex",justifyContent:"center",gap:5}}>
+          {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.indigoLt,animation:`pulse 1.2s ease ${i*.2}s infinite`}}/>)}
+        </div>
+      </div>
+    );
+  }
+
+  if(vidState.status==="ready"&&vidState.url){
+    return(
+      <div style={{animation:"scaleIn .28s ease"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+          <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 8px ${C.emerald}`}}/>
+          <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700}}>LISTING VIDEO READY · {videoQuality}</span>
+        </div>
+        <div style={{borderRadius:12,overflow:"hidden",background:"#000",marginBottom:12,boxShadow:"0 12px 40px rgba(0,0,0,.5)"}}>
+          <video src={vidState.url} controls playsInline style={{width:"100%",maxHeight:420,display:"block"}}/>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <a href={vidState.url} download="spark-listing-video.mp4" style={{flex:1,display:"block"}}>
+            <button className="btn-g" style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F}}>⬇ Download Video</button>
+          </a>
+          <CopyBtn text={vidState.url} label="Video URL copied"/>
+        </div>
+      </div>
+    );
+  }
+
+  if(vidState.status==="failed"||vidState.status==="prompt"){
+    return(
+      <div style={{animation:"scaleIn .28s ease"}}>
+        {vidState.status==="failed"&&(
+          <div style={{background:"rgba(244,63,94,.06)",border:"1px solid rgba(244,63,94,.15)",borderRadius:8,padding:"9px 13px",marginBottom:12,fontSize:12,color:C.rose,fontFamily:C.F}}>
+            ⚠ Video generation timed out or failed. Use the prompt below to render manually.
+          </div>
+        )}
+        <div style={{background:"rgba(34,211,238,.04)",border:"1px solid rgba(34,211,238,.12)",borderRadius:8,padding:14,marginBottom:10}}>
+          <div style={{fontSize:9,color:C.cyan,fontFamily:C.F,fontWeight:700,letterSpacing:2,marginBottom:8}}>CINEMATIC VIDEO PROMPT</div>
+          <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,whiteSpace:"pre-wrap",lineHeight:1.75}}>{higgsfieldPrompt}</p>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:9,flexWrap:"wrap"}}>
+          <CopyBtn text={higgsfieldPrompt||""} label="Video prompt copied"/>
+          {!hasHiggsfieldKey&&(
+            <button className="btn-o" onClick={onGoSettings} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,padding:"5px 12px",borderRadius:7,cursor:"pointer",fontSize:11,fontFamily:C.F,fontWeight:600}}>Add Video Key in Settings →</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ONBOARDING MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function OnboardingModal({planKey,onClose}){
   const [step,setStep]=useState(0);
   const steps=[
-    {icon:"⚡",title:"Welcome to SPARK",body:"You're set up on the "+PLANS[planKey].name+" plan with "+PLANS[planKey].credits+" credits. Let's get your first listing video done in under 60 seconds."},
-    {icon:"🔑",title:"Add Your API Keys",body:"Go to Settings → add your Anthropic API key (console.anthropic.com) to unlock content generation. Optionally add Higgsfield for auto-video."},
-    {icon:"🏠",title:"Generate Your First Listing",body:'Head to Generate → select "Listing Video" → fill in your property details → hit Generate. Your full script, hooks, captions, and video prompt will appear instantly.'},
-    {icon:"📤",title:"Post & Go Viral",body:"Copy your caption + hashtags, use SPARK's video prompt to render your cinematic clip, and post. Most agents see their first lead inquiry within 48 hours of posting."},
+    {icon:"⚡",title:"Welcome to SPARK",body:`You're on the ${PLANS[planKey].name} plan with ${PLANS[planKey].credits} credits. Turn any listing into a viral video in under 60 seconds.`},
+    {icon:"🔑",title:"Add Your Keys",body:"Go to Settings → add your AI Content Key (console.anthropic.com). Optionally add your Video Engine Key for auto-generated listing videos."},
+    {icon:"📸",title:"Upload Listing Photos",body:"On the Generate page, upload your property photos. The first photo becomes the hero frame for your cinematic listing video."},
+    {icon:"⚡",title:"Generate Everything",body:"Hit Generate — SPARK writes your script, hooks, captions, and automatically renders your animated listing video. One click, everything done."},
+    {icon:"📤",title:"Post & Get Leads",body:"Copy your caption + hashtags, download your video, and post. Most agents see their first inquiry within 48 hours of posting."},
   ];
   const s=steps[step];
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}}>
-      <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:18,padding:"36px 32px",maxWidth:440,width:"90%",boxShadow:"0 48px 96px rgba(0,0,0,.55)",animation:"scaleIn .25s ease"}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}}>
+      <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:18,padding:"36px 30px",maxWidth:440,width:"90%",boxShadow:"0 48px 96px rgba(0,0,0,.55)",animation:"scaleIn .25s ease"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}}>
           <Logo/>
-          <div style={{display:"flex",gap:6}}>
-            {steps.map((_,i)=><div key={i} style={{width:i===step?20:6,height:6,borderRadius:3,background:i===step?C.indigo:"rgba(255,255,255,.1)",transition:"all .2s"}}/>)}
+          <div style={{display:"flex",gap:5}}>
+            {steps.map((_,i)=><div key={i} style={{width:i===step?18:6,height:6,borderRadius:3,background:i===step?C.indigo:"rgba(255,255,255,.1)",transition:"all .2s"}}/>)}
           </div>
         </div>
         <div style={{fontSize:36,marginBottom:12}}>{s.icon}</div>
         <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:10,color:C.text}}>{s.title}</div>
         <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,lineHeight:1.7,marginBottom:28}}>{s.body}</p>
         <div style={{display:"flex",gap:10}}>
-          {step>0&&<button className="btn-o" onClick={()=>setStep(s=>s-1)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"11px 20px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>← Back</button>}
+          {step>0&&<button className="btn-o" onClick={()=>setStep(s=>s-1)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"11px 18px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>← Back</button>}
           <button className="btn-g" onClick={()=>step<steps.length-1?setStep(s=>s+1):onClose()} style={{flex:1,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 18px rgba(99,102,241,.25)"}}>
             {step<steps.length-1?"Next →":"Start Generating ⚡"}
           </button>
@@ -410,94 +608,104 @@ function OnboardingModal({planKey,onClose}){
 // ─────────────────────────────────────────────────────────────────────────────
 // GENERATE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoUpgrade}){
+function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoUpgrade,onGoSettings}){
   const plan=PLANS[planKey];
   const toast=useToast();
 
-  // Persist last-used type/platform/inputs
-  const [type,setType]     =useState(()=>LS.get("sp_type","listing"));
-  const [platform,setPlatform]=useState(()=>{
-    const saved=LS.get("sp_plat","TikTok");
-    return plan.platforms.includes(saved)?saved:"TikTok";
-  });
-  const [inputs,setInputs] =useState(()=>LS.get("sp_inputs",{}));
-  const [gen,setGen]       =useState(false);
-  const [stage,setStage]   =useState("");
-  const [pct,setPct]       =useState(0);
-  const [result,setResult] =useState(null);
-  const [vidStatus,setVid] =useState(null);
-  const [tab,setTab]       =useState("script");
-  const genRef             =useRef(false);
+  const [type,setType]      =useState(()=>LS.get("sp_type","listing"));
+  const [platform,setPlatform]=useState(()=>{ const s=LS.get("sp_plat","TikTok"); return plan.platforms.includes(s)?s:"TikTok"; });
+  const [inputs,setInputs]  =useState(()=>LS.get("sp_inputs",{}));
+  const [photos,setPhotos]  =useState([]);
+  const [gen,setGen]        =useState(false);
+  const [stage,setStage]    =useState("");
+  const [pct,setPct]        =useState(0);
+  const [result,setResult]  =useState(null);
+  const [vidState,setVid]   =useState(null);
+  const [tab,setTab]        =useState("script");
+  const genRef              =useRef(false);
 
-  // Persist selections
   useEffect(()=>LS.set("sp_type",type),[type]);
   useEffect(()=>LS.set("sp_plat",platform),[platform]);
   useEffect(()=>LS.set("sp_inputs",inputs),[inputs]);
+  useEffect(()=>{ if(!plan.contentTypes.includes(type)) setType("listing"); if(!plan.platforms.includes(platform)) setPlatform("TikTok"); },[planKey]);
+  useEffect(()=>{ setResult(null); setVid(null); },[type,platform]);
 
-  // Reset type/platform if plan no longer covers them
-  useEffect(()=>{
-    if(!plan.contentTypes.includes(type)) setType("listing");
-    if(!plan.platforms.includes(platform)) setPlatform("TikTok");
-  },[planKey]);
-
-  // Clear results when type or platform changes
-  useEffect(()=>{setResult(null);setVid(null);},[type,platform]);
-
-  const typeLocked    = !plan.contentTypes.includes(type);
-  const platformLocked= !plan.platforms.includes(platform);
-  const cost          = CONTENT_TYPES[type]?.cost||2;
-  const hasKey        = !!apiKeys.anthropic;
-  const canGen        = hasKey && credits>=cost && !typeLocked && !platformLocked;
+  const typeLocked     = !plan.contentTypes.includes(type);
+  const platformLocked = !plan.platforms.includes(platform);
+  const cost           = CONTENT_TYPES[type]?.cost||2;
+  const hasKey         = !!apiKeys.anthropic;
+  const hasVidKey      = !!apiKeys.higgsfield;
+  const canGen         = hasKey && credits>=cost && !typeLocked && !platformLocked;
+  const showPhotoUpload= type==="listing";
 
   const STAGES=[
-    [8, "Analyzing your agent profile..."],
-    [22,"SPARK is crafting your script..."],
-    [44,"Writing hooks & captions..."],
-    [62,`Optimizing for ${platform}...`],
-    [78,"Rendering cinematic video sequence..."],
-    [90,"Finalizing your package..."],
+    [10,"Analyzing your listing..."],
+    [24,"SPARK is crafting your script..."],
+    [42,"Writing hooks & captions..."],
+    [58,`Optimizing for ${platform}...`],
+    [72,"Building shot list & thumbnail..."],
+    [86,"Finalizing your package..."],
   ];
 
   async function generate(){
     if(genRef.current) return;
     if(!hasKey){ onNeedKey(); return; }
     if(credits<cost){ toast(`Need ${cost} credits — top up in Billing`,"error"); return; }
-    if(typeLocked){ toast("Upgrade your plan to use this content type","error"); return; }
-    if(platformLocked){ toast("Upgrade your plan to post to this platform","error"); return; }
+    if(typeLocked||platformLocked){ toast("Upgrade your plan to unlock this","error"); return; }
 
     genRef.current=true;
-    setGen(true); setResult(null); setVid(null);
+    setGen(true); setResult(null); setVid(null); setTab("script");
 
     for(const [p,s] of STAGES){
       if(!genRef.current) break;
       setStage(s); setPct(p);
-      await new Promise(r=>setTimeout(r,p<44?400:280));
+      await new Promise(r=>setTimeout(r,p<42?420:300));
     }
 
     try{
-      const content=await callClaude({type,inputs,platform,voice,planKey,apiKey:apiKeys.anthropic});
-      setPct(94);
+      const photoBase64s = photos.map(ph=>ph.b64);
+      const content = await callClaude({type,inputs,platform,voice,planKey,apiKey:apiKeys.anthropic,photoBase64s});
+      setPct(94); setStage("Content ready ✓");
+      await new Promise(r=>setTimeout(r,200));
+      setResult(content);
+      setCredits(c=>{ const n=c-cost; LS.set("sp_credits",n); return n; });
+      toast("Content package ready ✓");
 
-      if(apiKeys.higgsfield){
-        setStage("Generating your video...");
+      // Trigger Higgsfield video generation in background
+      if(hasVidKey && type==="listing"){
+        setVid({status:"generating",pct:5});
+        const heroB64 = photos[0]?.b64 || null;
+        const prompt  = content.higgsfield_prompt || `Cinematic listing video for ${inputs.address||"the property"}. Slow dolly-in reveal, warm golden hour lighting, luxury real estate aesthetic.`;
         try{
-          const job=await callHiggsfield(content.higgsfield_prompt,apiKeys.higgsfield);
-          setVid({status:"ready",url:job?.output?.media_url?.[0]||null});
-        }catch{ setVid({status:"prompt"}); }
-      }else{
+          let job;
+          if(heroB64){
+            setStage("Rendering cinematic video...");
+            job = await callHiggsfieldImg(heroB64, prompt, apiKeys.higgsfield);
+          } else {
+            job = await callHiggsfieldTxt(prompt, apiKeys.higgsfield);
+          }
+          const jobId = job?.id || job?.job_id || job?.data?.id;
+          if(jobId){
+            // Poll in background without blocking UI
+            pollHiggsfield(jobId, apiKeys.higgsfield, (pct)=>{
+              setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
+            }).then(res=>{
+              if(res.url) setVid({status:"ready",url:res.url});
+              else setVid({status:"failed"});
+            });
+          } else if(job?.output?.media_url?.[0]||job?.result?.url){
+            setVid({status:"ready",url:job.output?.media_url?.[0]||job.result?.url});
+          } else {
+            setVid({status:"prompt"});
+          }
+        }catch(e){
+          console.warn("Video gen error:",e);
+          setVid({status:"prompt"});
+        }
+      } else if(type==="listing"){
         setVid({status:"prompt"});
       }
 
-      setPct(100); setStage("Done!");
-      await new Promise(r=>setTimeout(r,180));
-      setResult(content);
-      setCredits(c=>{
-        const next=c-cost;
-        LS.set("sp_credits",next);
-        return next;
-      });
-      setTab("script");
-      toast("Content package ready ✓");
     }catch(e){
       toast(e.message||"Generation failed — check your API key","error");
     }finally{
@@ -516,20 +724,19 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
         <div className="up-tease" onClick={onNeedKey} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"rgba(99,102,241,.07)",border:"1px solid rgba(99,102,241,.2)",borderRadius:10,marginBottom:16,gap:12}}>
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <span style={{fontSize:18}}>🔑</span>
-            <span style={{fontFamily:C.F,fontSize:13,color:C.indigoLt,fontWeight:600}}>Add your Anthropic API key to start generating content</span>
+            <span style={{fontFamily:C.F,fontSize:13,color:C.indigoLt,fontWeight:600}}>Add your AI Content Key to start generating</span>
           </div>
           <div style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",padding:"6px 14px",borderRadius:7,fontSize:11,fontWeight:700,fontFamily:C.F,whiteSpace:"nowrap"}}>Add Key →</div>
         </div>
       )}
 
-      {/* Content type cards */}
+      {/* Content type selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
         {Object.entries(CONTENT_TYPES).map(([k,ct],i)=>{
           const locked=!plan.contentTypes.includes(k);
           const active=type===k;
           return(
-            <div key={k} className="card-h"
-              onClick={()=>locked?onGoUpgrade():setType(k)}
+            <div key={k} className="card-h" onClick={()=>locked?onGoUpgrade():setType(k)}
               style={{padding:"15px 11px",borderRadius:12,textAlign:"left",position:"relative",border:`1px solid ${active?ct.color+"44":C.border}`,background:active?ct.color+"0c":locked?"rgba(255,255,255,.01)":C.surface,opacity:locked?.58:1,cursor:"pointer",animation:`fadeUp .32s ease ${i*.06}s both`}}>
               {locked&&<div style={{position:"absolute",top:7,right:7,background:"rgba(245,158,11,.14)",border:"1px solid rgba(245,158,11,.28)",borderRadius:4,padding:"1px 5px",fontSize:7,color:C.amber,fontWeight:700,fontFamily:C.F}}>{PLANS[ct.minPlan].name.toUpperCase()}+</div>}
               <div style={{fontSize:19,marginBottom:7}}>{ct.icon}</div>
@@ -545,21 +752,19 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
         <UpgradePrompt feature={CONTENT_TYPES[type]?.label||"This content type"} requiredPlan={CONTENT_TYPES[type]?.minPlan||"pro"} onUpgrade={onGoUpgrade}/>
       ):(
         <>
-          {/* Input card */}
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20,marginBottom:13}}>
 
-            {/* Voice status row */}
+            {/* Voice status */}
             <div style={{marginBottom:16}}>
               {plan.voiceMemory?(
                 voice?.saved?(
                   <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7}}>
                     <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 7px ${C.emerald}`}}/>
-                    <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:600}}>Agent voice active — {voice.name||"your profile"} · {voice.market||""}</span>
+                    <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:600}}>Agent voice active — {voice.name||""} · {voice.market||""}</span>
                   </div>
                 ):(
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 11px",background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:7}}>
-                    <span style={{fontSize:11,color:C.indigoLt,fontFamily:C.F}}>Set up Agent Voice for personalised scripts</span>
-                    <Badge color={C.indigo}>Available on your plan</Badge>
+                  <div style={{padding:"7px 11px",background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:7}}>
+                    <span style={{fontSize:11,color:C.indigoLt,fontFamily:C.F}}>Set up Agent Voice in the sidebar for personalised scripts</span>
                   </div>
                 )
               ):(
@@ -570,7 +775,26 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
               )}
             </div>
 
-            {/* Dynamic inputs */}
+            {/* Photo uploader — listing type only */}
+            {showPhotoUpload&&(
+              <PhotoUploader photos={photos} setPhotos={setPhotos} maxPhotos={plan.maxPhotos} planKey={planKey} onGoUpgrade={onGoUpgrade}/>
+            )}
+
+            {/* Video key hint for listing */}
+            {showPhotoUpload&&!hasVidKey&&(
+              <div className="up-tease" onClick={onGoSettings} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 11px",background:"rgba(34,211,238,.04)",border:"1px solid rgba(34,211,238,.13)",borderRadius:7,marginBottom:13}}>
+                <span style={{fontSize:11,color:C.cyan,fontFamily:C.F}}>🎬 Add your Video Engine key in Settings to auto-generate listing videos</span>
+                <Badge color={C.cyan}>Settings →</Badge>
+              </div>
+            )}
+            {showPhotoUpload&&hasVidKey&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 11px",background:"rgba(34,211,238,.05)",border:"1px solid rgba(34,211,238,.14)",borderRadius:7,marginBottom:13}}>
+                <div style={{width:5,height:5,borderRadius:"50%",background:C.cyan,boxShadow:`0 0 7px ${C.cyan}`}}/>
+                <span style={{fontSize:11,color:C.cyan,fontFamily:C.F,fontWeight:600}}>Video engine connected — listing video will auto-render after generation</span>
+              </div>
+            )}
+
+            {/* Inputs */}
             <div style={{display:"grid",gridTemplateColumns:type==="listing"?"1fr 1fr":"1fr",gap:11}}>
               {TYPE_INPUTS[type].map(k=>{
                 const [lbl,ph]=INPUT_META[k]||[k,""];
@@ -583,7 +807,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
               })}
             </div>
 
-            {/* Platform selector */}
+            {/* Platform */}
             <div style={{marginTop:16}}>
               <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:9}}>PLATFORM</div>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
@@ -598,17 +822,13 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
                   );
                 })}
               </div>
-              {platformLocked&&(
-                <div style={{marginTop:8,fontSize:11,color:C.amber,fontFamily:C.F}}>
-                  <span className="up-tease" onClick={onGoUpgrade} style={{textDecoration:"underline",cursor:"pointer"}}>Upgrade to Pro</span> to unlock YouTube, Facebook & LinkedIn.
-                </div>
-              )}
             </div>
 
-            {/* Plan info row */}
+            {/* Plan stats row */}
             <div style={{marginTop:14,padding:"7px 11px",background:"rgba(255,255,255,.02)",borderRadius:7,display:"flex",gap:16,flexWrap:"wrap"}}>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Hooks: <strong style={{color:C.text}}>{plan.hooks}</strong></span>
-              <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Quality: <strong style={{color:C.text}}>{plan.videoQuality}</strong></span>
+              <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Video: <strong style={{color:C.text}}>{plan.videoQuality}</strong></span>
+              <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Photos: <strong style={{color:C.text}}>{plan.maxPhotos} max</strong></span>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Credits: <strong style={{color:credits<5?C.rose:C.text}}>{credits} left</strong></span>
               {planKey!=="team"&&<span className="up-tease" onClick={onGoUpgrade} style={{fontSize:10,color:C.indigo,fontFamily:C.F,cursor:"pointer",marginLeft:"auto"}}>Upgrade for more ↗</span>}
             </div>
@@ -618,7 +838,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
           {!gen?(
             <button className="btn-g" onClick={generate} disabled={!canGen}
               style={{width:"100%",background:canGen?"linear-gradient(135deg,#6366f1,#8b5cf6)":C.surface,border:canGen?"none":`1px solid ${C.border}`,color:canGen?"#fff":C.textDim,padding:"14px 0",borderRadius:10,cursor:canGen?"pointer":"not-allowed",fontFamily:C.F,fontWeight:700,fontSize:14,letterSpacing:.2,boxShadow:canGen?"0 4px 18px rgba(99,102,241,.24)":"none"}}>
-              {!hasKey?"🔑 Add API Key First":credits<cost?`⚠ Need ${cost} Credits (Have ${credits})`:`⚡ Generate ${CONTENT_TYPES[type].label} — ${cost} Credits`}
+              {!hasKey?"🔑 Add AI Content Key First":credits<cost?`⚠ Need ${cost} Credits (Have ${credits})`:`⚡ Generate ${CONTENT_TYPES[type].label} — ${cost} Credits`}
             </button>
           ):(
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"26px 22px",textAlign:"center",animation:"fadeIn .2s ease"}}>
@@ -638,17 +858,26 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
             <div style={{marginTop:26}}>
               <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:14,animation:"fadeUp .28s ease",flexWrap:"wrap"}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 7px ${C.emerald}`}}/>
-                <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700,letterSpacing:.8}}>PACKAGE READY</span>
+                <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700}}>PACKAGE READY</span>
                 <Badge color={PLATFORMS[platform].color}>{platform}</Badge>
                 <Badge color={CONTENT_TYPES[type].color}>{CONTENT_TYPES[type].label}</Badge>
-                <Badge color={C.textDim}>{plan.hooks} HOOKS</Badge>
+                {vidState?.status==="generating"&&<Badge color={C.cyan}>🎬 VIDEO RENDERING…</Badge>}
+                {vidState?.status==="ready"&&<Badge color={C.emerald}>🎬 VIDEO READY</Badge>}
               </div>
 
               {/* Tab bar */}
               <div style={{display:"flex",background:"rgba(255,255,255,.03)",borderRadius:9,padding:3,marginBottom:12,gap:2}}>
-                {TABS.map(t=>(
-                  <button key={t} className="tab-b" onClick={()=>setTab(t)} style={{flex:1,padding:"7px 4px",borderRadius:6,border:"none",background:tab===t?C.surfaceUp:"transparent",color:tab===t?C.text:C.textDim,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:C.F,letterSpacing:.8,boxShadow:tab===t?"0 1px 4px rgba(0,0,0,.28)":"none"}}>{t.toUpperCase()}</button>
-                ))}
+                {TABS.map(t=>{
+                  const dot = t==="video"&&vidState?.status==="generating";
+                  const done = t==="video"&&vidState?.status==="ready";
+                  return(
+                    <button key={t} className="tab-b" onClick={()=>setTab(t)} style={{flex:1,padding:"7px 4px",borderRadius:6,border:"none",background:tab===t?C.surfaceUp:"transparent",color:tab===t?C.text:C.textDim,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:C.F,letterSpacing:.8,boxShadow:tab===t?"0 1px 4px rgba(0,0,0,.28)":"none",position:"relative"}}>
+                      {t.toUpperCase()}
+                      {dot&&<span style={{position:"absolute",top:4,right:4,width:5,height:5,borderRadius:"50%",background:C.cyan,animation:"pulse 1.2s ease infinite"}}/>}
+                      {done&&<span style={{position:"absolute",top:4,right:4,width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>}
+                    </button>
+                  );
+                })}
               </div>
 
               {tab==="script"&&(
@@ -669,7 +898,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
               )}
 
               {tab==="hooks"&&(
-                <RBlock accent={C.violet} label={`HOOK VARIANTS (${(result.hooks||[]).length} — ${plan.name} PLAN)`}
+                <RBlock accent={C.violet} label={`HOOK VARIANTS (${(result.hooks||[]).length})`}
                   action={<CopyBtn text={(result.hooks||[]).join("\n\n")} label="All hooks copied"/>}>
                   {(result.hooks||[]).map((h,i)=>(
                     <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"11px 0",borderBottom:`1px solid ${C.border}`,animation:`slideR .22s ease ${i*.04}s both`}}>
@@ -680,11 +909,6 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
                       <div style={{marginLeft:11,flexShrink:0}}><CopyBtn text={h} label={`Hook ${i+1} copied`}/></div>
                     </div>
                   ))}
-                  {planKey!=="team"&&(
-                    <div className="up-tease" onClick={onGoUpgrade} style={{marginTop:11,padding:"9px 13px",background:"rgba(245,158,11,.04)",border:"1px solid rgba(245,158,11,.14)",borderRadius:7,textAlign:"center"}}>
-                      <span style={{fontSize:11,color:C.amber,fontFamily:C.F}}>Get {PLANS[planKey==="agent"?"pro":"team"].hooks} hooks on {PLANS[planKey==="agent"?"pro":"team"].name} plan →</span>
-                    </div>
-                  )}
                 </RBlock>
               )}
 
@@ -709,27 +933,18 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
               )}
 
               {tab==="video"&&(
-                <RBlock accent={C.cyan} label={`HIGGSFIELD VIDEO — ${plan.videoQuality}`}>
-                  {vidStatus?.status==="ready"&&vidStatus.url?(
-                    <div>
-                      <video src={vidStatus.url} controls style={{width:"100%",borderRadius:8,maxHeight:320}}/>
-                      <a href={vidStatus.url} download style={{display:"block",textAlign:"center",marginTop:9,color:C.indigo,fontSize:12,fontFamily:C.F,textDecoration:"none"}}>⬇ Download Video</a>
-                    </div>
-                  ):(
-                    <div>
-                      <div style={{background:"rgba(34,211,238,.04)",border:"1px solid rgba(34,211,238,.12)",borderRadius:8,padding:13,fontSize:13,color:C.textMd,lineHeight:1.75,fontFamily:C.F,marginBottom:9}}>
-                        {result.higgsfield_prompt}
-                      </div>
-                      <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:result.thumbnail?14:0}}>
-                        <CopyBtn text={result.higgsfield_prompt||""} label="Higgsfield prompt copied"/>
-                        <span style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>or connect video generation in Settings to auto-render</span>
-                      </div>
-                      {result.thumbnail&&(
-                        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:13}}>
-                          <div style={{fontSize:9,color:C.cyan,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:5}}>THUMBNAIL CONCEPT</div>
-                          <p style={{fontSize:12,color:C.textMd,margin:0,fontFamily:C.F,lineHeight:1.6}}>{result.thumbnail}</p>
-                        </div>
-                      )}
+                <RBlock accent={C.cyan} label={`LISTING VIDEO · ${plan.videoQuality}`}>
+                  <VideoResultPanel
+                    vidState={vidState}
+                    higgsfieldPrompt={result.higgsfield_prompt}
+                    videoQuality={plan.videoQuality}
+                    hasHiggsfieldKey={hasVidKey}
+                    onGoSettings={onGoSettings}
+                  />
+                  {result.thumbnail&&(
+                    <div style={{marginTop:14,background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:13}}>
+                      <div style={{fontSize:9,color:C.cyan,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:5}}>THUMBNAIL CONCEPT</div>
+                      <p style={{fontSize:12,color:C.textMd,margin:0,fontFamily:C.F,lineHeight:1.6}}>{result.thumbnail}</p>
                     </div>
                   )}
                 </RBlock>
@@ -757,29 +972,22 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
 // AGENT VOICE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
 function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade}){
-  const plan=PLANS[planKey];
   const toast=useToast();
-  if(!plan.voiceMemory) return <UpgradePrompt feature="Agent Voice Memory" requiredPlan="pro" onUpgrade={onGoUpgrade}/>;
-
+  if(!PLANS[planKey].voiceMemory) return <UpgradePrompt feature="Agent Voice Memory" requiredPlan="pro" onUpgrade={onGoUpgrade}/>;
   const fields=[
-    {k:"name",       l:"YOUR NAME",         p:"Sarah Johnson"},
-    {k:"brokerage",  l:"BROKERAGE",         p:"Keller Williams Realty"},
-    {k:"market",     l:"PRIMARY MARKET",    p:"Miami, FL"},
-    {k:"specialty",  l:"SPECIALTY",         p:"Luxury waterfront, first-time buyers"},
-    {k:"tone",       l:"CONTENT TONE",      p:"Warm and knowledgeable — like a trusted friend"},
-    {k:"targetClient",l:"TARGET CLIENT",    p:"Families relocating from NYC, $600K–$1.2M"},
-    {k:"cta",        l:"PREFERRED CTA",     p:"DM me HOME for a free market analysis"},
+    {k:"name",l:"YOUR NAME",p:"Sarah Johnson"},
+    {k:"brokerage",l:"BROKERAGE",p:"Keller Williams Realty"},
+    {k:"market",l:"PRIMARY MARKET",p:"Miami, FL"},
+    {k:"specialty",l:"SPECIALTY",p:"Luxury waterfront, first-time buyers"},
+    {k:"tone",l:"CONTENT TONE",p:"Warm and knowledgeable — like a trusted friend"},
+    {k:"targetClient",l:"TARGET CLIENT",p:"Families relocating from NYC, $600K–$1.2M"},
+    {k:"cta",l:"PREFERRED CTA",p:"DM me HOME for a free market analysis"},
   ];
-
   function save(){
-    if(!voice.name||!voice.market){ toast("Add your name and market first","error"); return; }
-    const saved={...voice,saved:true};
-    setVoice(saved);
-    LS.set("sp_voice",saved);
-    toast("Agent voice saved — all scripts will now sound like you ✓");
-    onSave();
+    if(!voice.name||!voice.market){toast("Add your name and market first","error");return;}
+    const saved={...voice,saved:true}; setVoice(saved); LS.set("sp_voice",saved);
+    toast("Agent voice saved — all scripts will now sound like you ✓"); onSave();
   }
-
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
       <p style={{fontSize:13,color:C.textMd,lineHeight:1.7,marginBottom:22,fontFamily:C.F}}>Set your profile once. Every script, hook, and caption will sound exactly like you — not generic AI copy.</p>
@@ -798,166 +1006,84 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade}){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PLAN CAROUSEL — reused in both BillingPanel and LandingPage
-// Pro (index 1) always starts as the active/center card.
+// PLAN CAROUSEL
 // ─────────────────────────────────────────────────────────────────────────────
-function PlanCarousel({ currentPlanKey, onSelect, onStart, mode }) {
-  // mode: "billing" (inside app) | "landing" (public page)
-  const planEntries = Object.entries(PLANS); // [agent, pro, team]
-  const POP_IDX = 1; // "pro" is index 1 — always start here
+function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
+  const planEntries=Object.entries(PLANS);
+  const POP_IDX=1;
+  const [idx,setIdx]=useState(POP_IDX);
+  const [dir,setDir]=useState(null);
+  const [animKey,setAnimKey]=useState(0);
 
-  const [idx, setIdx]     = useState(POP_IDX);
-  const [dir, setDir]     = useState(null); // "l" | "r" | null
-  const [animKey, setAnimKey] = useState(0);
-
-  function go(next) {
-    const clamped = Math.max(0, Math.min(planEntries.length - 1, next));
-    if (clamped === idx) return;
-    setDir(clamped > idx ? "r" : "l");
-    setIdx(clamped);
-    setAnimKey(k => k + 1);
+  function go(next){
+    const c=Math.max(0,Math.min(planEntries.length-1,next));
+    if(c===idx) return;
+    setDir(c>idx?"r":"l"); setIdx(c); setAnimKey(k=>k+1);
   }
+  const [k,p]=planEntries[idx];
+  const prevOk=idx>0,nextOk=idx<planEntries.length-1;
+  const isCur=mode==="billing"&&k===currentPlanKey;
+  const isUp=mode==="billing"&&planRank(k)>planRank(currentPlanKey);
+  const isDn=mode==="billing"&&planRank(k)<planRank(currentPlanKey);
+  const slideAnim=dir==="r"?"carouselSlide .28s ease both":dir==="l"?"carouselSlideL .28s ease both":"scaleIn .28s ease both";
 
-  const [k, p]  = planEntries[idx];
-  const prevOk  = idx > 0;
-  const nextOk  = idx < planEntries.length - 1;
-  const isCur   = mode === "billing" && k === currentPlanKey;
-  const isUp    = mode === "billing" && planRank(k) > planRank(currentPlanKey);
-  const isDn    = mode === "billing" && planRank(k) < planRank(currentPlanKey);
-
-  const slideAnim = dir === "r"
-    ? `carouselSlide .28s ease both`
-    : dir === "l"
-    ? `carouselSlideL .28s ease both`
-    : `scaleIn .28s ease both`;
-
-  return (
-    <div style={{ userSelect: "none" }}>
-      {/* Peek row — shows all three plan names as tabs above */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 }}>
-        {planEntries.map(([pk, pp], i) => {
-          const active = i === idx;
-          const isCurTab = mode === "billing" && pk === currentPlanKey;
-          return (
-            <button key={pk} onClick={() => go(i)} style={{
-              padding: "5px 14px", borderRadius: 20, border: "none",
-              background: active ? `linear-gradient(135deg,${pp.accent},${pp.accent}bb)` : "rgba(255,255,255,.05)",
-              color: active ? "#fff" : C.textDim,
-              cursor: "pointer", fontSize: 11, fontWeight: active ? 700 : 500,
-              fontFamily: C.F, letterSpacing: .5, transition: "all .18s",
-              boxShadow: active ? `0 2px 12px ${pp.accent}44` : "none",
-              position: "relative",
-            }}>
+  return(
+    <div style={{userSelect:"none"}}>
+      <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:20}}>
+        {planEntries.map(([pk,pp],i)=>{
+          const active=i===idx, isCurTab=mode==="billing"&&pk===currentPlanKey;
+          return(
+            <button key={pk} onClick={()=>go(i)} style={{padding:"5px 14px",borderRadius:20,border:"none",background:active?`linear-gradient(135deg,${pp.accent},${pp.accent}bb)`:"rgba(255,255,255,.05)",color:active?"#fff":C.textDim,cursor:"pointer",fontSize:11,fontWeight:active?700:500,fontFamily:C.F,letterSpacing:.5,transition:"all .18s",boxShadow:active?`0 2px 12px ${pp.accent}44`:"none",position:"relative"}}>
               {pp.name}
-              {isCurTab && <span style={{ position: "absolute", top: -4, right: -4, width: 8, height: 8, borderRadius: "50%", background: C.emerald, border: `2px solid ${C.bg}`, boxShadow: `0 0 6px ${C.emerald}` }} />}
-              {pp.badge && !isCurTab && !active && <span style={{ position: "absolute", top: -8, right: -4, fontSize: 7, color: C.indigo, fontWeight: 800, fontFamily: C.F, letterSpacing: .5, whiteSpace: "nowrap" }}>★</span>}
+              {isCurTab&&<span style={{position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:C.emerald,border:`2px solid ${C.bg}`,boxShadow:`0 0 6px ${C.emerald}`}}/>}
             </button>
           );
         })}
       </div>
-
-      {/* Main carousel row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {/* Prev arrow */}
-        <button className="carousel-arrow" onClick={() => go(idx - 1)} disabled={!prevOk}
-          style={{ opacity: prevOk ? 1 : 0.2, pointerEvents: prevOk ? "auto" : "none" }}>
-          ←
-        </button>
-
-        {/* Card */}
-        <div key={animKey} style={{
-          flex: 1, background: isCur ? C.surfaceUp : C.surface,
-          border: `1px solid ${isCur ? p.accent + "55" : p.badge ? p.accent + "30" : C.border}`,
-          borderRadius: 16, padding: "28px 24px", position: "relative",
-          boxShadow: p.badge ? `0 0 40px ${p.accent}18, 0 8px 32px rgba(0,0,0,.3)` : isCur ? `0 0 28px ${p.accent}14` : "0 4px 20px rgba(0,0,0,.2)",
-          animation: slideAnim,
-        }}>
-          {/* Badge row */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <button className="carousel-arrow" onClick={()=>go(idx-1)} disabled={!prevOk} style={{opacity:prevOk?1:.2,pointerEvents:prevOk?"auto":"none"}}>←</button>
+        <div key={animKey} style={{flex:1,background:isCur?C.surfaceUp:C.surface,border:`1px solid ${isCur?p.accent+"55":p.badge?p.accent+"30":C.border}`,borderRadius:16,padding:"28px 24px",position:"relative",boxShadow:p.badge?`0 0 40px ${p.accent}18,0 8px 32px rgba(0,0,0,.3)`:isCur?`0 0 28px ${p.accent}14`:"0 4px 20px rgba(0,0,0,.2)",animation:slideAnim}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
             <Badge color={p.accent}>{p.name.toUpperCase()}</Badge>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {p.badge && <span style={{ background: `linear-gradient(135deg,${C.indigo},${C.violet})`, color: "#fff", fontSize: 8, fontWeight: 800, padding: "3px 10px", borderRadius: 8, letterSpacing: 1, fontFamily: C.F }}>{p.badge}</span>}
-              {isCur && <span style={{ background: p.accent, color: "#fff", fontSize: 8, fontWeight: 800, padding: "3px 10px", borderRadius: 8, letterSpacing: 1, fontFamily: C.F }}>CURRENT</span>}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+              {p.badge&&<span style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:"#fff",fontSize:8,fontWeight:800,padding:"3px 10px",borderRadius:8,letterSpacing:1,fontFamily:C.F}}>{p.badge}</span>}
+              {isCur&&<span style={{background:p.accent,color:"#fff",fontSize:8,fontWeight:800,padding:"3px 10px",borderRadius:8,letterSpacing:1,fontFamily:C.F}}>CURRENT</span>}
             </div>
           </div>
-
-          {/* Price */}
-          <div style={{ fontFamily: C.F, fontWeight: 800, fontSize: 48, lineHeight: 1, marginBottom: 4 }}>
-            ${p.price}
-            <span style={{ fontSize: 14, color: C.textDim, fontWeight: 400 }}>/mo</span>
-          </div>
-          <div style={{ fontSize: 12, color: C.textDim, marginBottom: 22, fontFamily: C.F }}>
-            {p.credits} credits · {p.videoQuality} video · {p.hooks} hooks
-          </div>
-
-          {/* Perks */}
-          <div style={{ marginBottom: 22 }}>
-            {p.perks.map((pk, j) => (
-              <div key={j} style={{ fontSize: 13, color: C.textMd, marginBottom: 8, display: "flex", gap: 8, fontFamily: C.F, alignItems: "flex-start" }}>
-                <span style={{ color: p.accent, flexShrink: 0, marginTop: 1 }}>✓</span>{pk}
+          <div style={{fontFamily:C.F,fontWeight:800,fontSize:48,lineHeight:1,marginBottom:4}}>${p.price}<span style={{fontSize:14,color:C.textDim,fontWeight:400}}>/mo</span></div>
+          <div style={{fontSize:12,color:C.textDim,marginBottom:22,fontFamily:C.F}}>{p.credits} credits · {p.videoQuality} video · {p.hooks} hooks · {p.maxPhotos} photos</div>
+          <div style={{marginBottom:22}}>
+            {p.perks.map((pk,j)=>(
+              <div key={j} style={{fontSize:13,color:C.textMd,marginBottom:8,display:"flex",gap:8,fontFamily:C.F,alignItems:"flex-start"}}>
+                <span style={{color:p.accent,flexShrink:0,marginTop:1}}>✓</span>{pk}
               </div>
             ))}
           </div>
-
-          {/* Key unlocks callout */}
-          <div style={{ background: p.accent + "0c", border: `1px solid ${p.accent}22`, borderRadius: 8, padding: "10px 14px", marginBottom: 18 }}>
-            <div style={{ fontSize: 9, color: p.accent, fontFamily: C.F, fontWeight: 700, letterSpacing: 1.5, marginBottom: 5 }}>PLATFORMS INCLUDED</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-              {p.platforms.map(pl => (
-                <span key={pl} style={{ background: "rgba(255,255,255,.05)", border: `1px solid ${C.border}`, color: C.textMd, fontSize: 10, padding: "2px 8px", borderRadius: 10, fontFamily: C.F }}>{pl}</span>
-              ))}
+          <div style={{background:p.accent+"0c",border:`1px solid ${p.accent}22`,borderRadius:8,padding:"10px 14px",marginBottom:18}}>
+            <div style={{fontSize:9,color:p.accent,fontFamily:C.F,fontWeight:700,letterSpacing:1.5,marginBottom:5}}>PLATFORMS INCLUDED</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+              {p.platforms.map(pl=><span key={pl} style={{background:"rgba(255,255,255,.05)",border:`1px solid ${C.border}`,color:C.textMd,fontSize:10,padding:"2px 8px",borderRadius:10,fontFamily:C.F}}>{pl}</span>)}
             </div>
           </div>
-
-          {/* CTA button */}
-          {mode === "landing" ? (
-            <button className="btn-g" onClick={() => onStart("signup")} style={{
-              width: "100%", background: `linear-gradient(135deg,${p.accent},${p.accent}bb)`,
-              border: "none", color: "#fff", padding: "13px 0", borderRadius: 10,
-              cursor: "pointer", fontWeight: 700, fontSize: 14, fontFamily: C.F,
-              boxShadow: `0 4px 18px ${p.accent}33`, letterSpacing: .3,
-            }}>
+          {mode==="landing"?(
+            <button className="btn-g" onClick={()=>onStart("signup")} style={{width:"100%",background:`linear-gradient(135deg,${p.accent},${p.accent}bb)`,border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:`0 4px 18px ${p.accent}33`,letterSpacing:.3}}>
               Get Started with {p.name} ⚡
             </button>
-          ) : (
-            <button className="btn-g" onClick={() => onSelect(k)} disabled={isCur}
-              style={{
-                width: "100%",
-                background: isCur ? "transparent" : isUp ? `linear-gradient(135deg,${p.accent},${p.accent}bb)` : "rgba(255,255,255,.06)",
-                border: `1px solid ${isCur ? p.accent + "44" : isUp ? p.accent + "66" : C.border}`,
-                color: isCur ? p.accent : isUp ? "#fff" : C.textMd,
-                padding: "13px 0", borderRadius: 10,
-                cursor: isCur ? "default" : "pointer",
-                fontWeight: 700, fontSize: 14, fontFamily: C.F,
-                boxShadow: isUp ? `0 4px 18px ${p.accent}30` : "none",
-              }}>
-              {isCur ? "Your Current Plan" : isUp ? `Upgrade to ${p.name} →` : isDn ? `Switch to ${p.name} ↓` : "Select Plan"}
+          ):(
+            <button className="btn-g" onClick={()=>onSelect(k)} disabled={isCur}
+              style={{width:"100%",background:isCur?"transparent":isUp?`linear-gradient(135deg,${p.accent},${p.accent}bb)`:"rgba(255,255,255,.06)",border:`1px solid ${isCur?p.accent+"44":isUp?p.accent+"66":C.border}`,color:isCur?p.accent:isUp?"#fff":C.textMd,padding:"13px 0",borderRadius:10,cursor:isCur?"default":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:isUp?`0 4px 18px ${p.accent}30`:"none"}}>
+              {isCur?"Your Current Plan":isUp?`Upgrade to ${p.name} →`:isDn?`Switch to ${p.name} ↓`:"Select Plan"}
             </button>
           )}
         </div>
-
-        {/* Next arrow */}
-        <button className="carousel-arrow" onClick={() => go(idx + 1)} disabled={!nextOk}
-          style={{ opacity: nextOk ? 1 : 0.2, pointerEvents: nextOk ? "auto" : "none" }}>
-          →
-        </button>
+        <button className="carousel-arrow" onClick={()=>go(idx+1)} disabled={!nextOk} style={{opacity:nextOk?1:.2,pointerEvents:nextOk?"auto":"none"}}>→</button>
       </div>
-
-      {/* Dot indicators */}
-      <div style={{ display: "flex", justifyContent: "center", gap: 7, marginTop: 18 }}>
-        {planEntries.map(([pk, pp], i) => (
-          <div key={pk} className="carousel-dot" onClick={() => go(i)} style={{
-            width: i === idx ? 20 : 7, height: 7,
-            background: i === idx ? planEntries[i][1].accent : "rgba(255,255,255,.15)",
-            borderRadius: 4,
-          }} />
+      <div style={{display:"flex",justifyContent:"center",gap:7,marginTop:18}}>
+        {planEntries.map(([pk,pp],i)=>(
+          <div key={pk} className="carousel-dot" onClick={()=>go(i)} style={{width:i===idx?20:7,height:7,background:i===idx?planEntries[i][1].accent:"rgba(255,255,255,.15)",borderRadius:4}}/>
         ))}
       </div>
-
-      {/* Plan navigation hint */}
-      <p style={{ textAlign: "center", fontSize: 10, color: C.textDim, fontFamily: C.F, marginTop: 10, letterSpacing: .8 }}>
-        ← swipe or click arrows to compare plans →
-      </p>
+      <p style={{textAlign:"center",fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:10,letterSpacing:.8}}>← click arrows or tabs to compare plans →</p>
     </div>
   );
 }
@@ -972,46 +1098,23 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
 
   function doUpgrade(k){
     if(k===planKey) return;
-    if(planRank(k)<planRank(planKey)){
-      // downgrade
-      setPlanKey(k); LS.set("sp_plan",k);
-      const nc=PLANS[k].credits; setCredits(nc); LS.set("sp_credits",nc);
-      toast(`Switched to ${PLANS[k].name} plan`,"info");
-    } else {
-      setConfirmKey(k);
-    }
+    if(planRank(k)<planRank(planKey)){ setPlanKey(k); LS.set("sp_plan",k); const nc=PLANS[k].credits; setCredits(nc); LS.set("sp_credits",nc); toast(`Switched to ${PLANS[k].name} plan`,"info"); }
+    else setConfirmKey(k);
   }
-
   function confirmUpgrade(){
-    const np=PLANS[confirmKey];
-    const delta=Math.max(0,np.credits-plan.credits);
-    const nc=credits+delta;
-    setPlanKey(confirmKey); LS.set("sp_plan",confirmKey);
-    setCredits(nc); LS.set("sp_credits",nc);
-    toast(`Upgraded to ${np.name} plan — ${nc} credits added ✓`);
-    setConfirmKey(null);
+    const np=PLANS[confirmKey]; const nc=credits+Math.max(0,np.credits-plan.credits);
+    setPlanKey(confirmKey); LS.set("sp_plan",confirmKey); setCredits(nc); LS.set("sp_credits",nc);
+    toast(`Upgraded to ${np.name} ✓`); setConfirmKey(null);
   }
 
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
-
-      {/* Upgrade confirm modal */}
       {confirmKey&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.88)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}}>
           <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:16,padding:30,maxWidth:400,width:"90%",boxShadow:"0 40px 80px rgba(0,0,0,.5)",animation:"scaleIn .24s ease"}}>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:8}}>Upgrade to {PLANS[confirmKey].name}?</div>
-            <p style={{fontSize:13,color:C.textMd,marginBottom:6,fontFamily:C.F,lineHeight:1.6}}>
-              Your plan becomes <strong style={{color:PLANS[confirmKey].accent}}>{PLANS[confirmKey].name}</strong> at ${PLANS[confirmKey].price}/month.
-            </p>
-            <p style={{fontSize:13,color:C.textMd,marginBottom:22,fontFamily:C.F,lineHeight:1.6}}>
-              New unlocks:{" "}
-              <strong style={{color:C.text}}>
-                {PLANS[confirmKey].contentTypes.filter(t=>!PLANS[planKey].contentTypes.includes(t)).map(t=>CONTENT_TYPES[t].label).join(", ")||"all current features plus higher limits"}
-              </strong>
-            </p>
-            <div style={{background:"rgba(245,158,11,.07)",border:"1px solid rgba(245,158,11,.2)",borderRadius:8,padding:"10px 13px",marginBottom:20,fontSize:12,color:C.amber,fontFamily:C.F}}>
-              ⚠ In production this would redirect to Stripe. For this demo the plan updates immediately.
-            </div>
+            <p style={{fontSize:13,color:C.textMd,marginBottom:20,fontFamily:C.F,lineHeight:1.6}}>Your plan becomes <strong style={{color:PLANS[confirmKey].accent}}>{PLANS[confirmKey].name}</strong> at ${PLANS[confirmKey].price}/month with {PLANS[confirmKey].maxPhotos} listing photos and {PLANS[confirmKey].videoQuality} video generation.</p>
+            <div style={{background:"rgba(245,158,11,.07)",border:"1px solid rgba(245,158,11,.2)",borderRadius:8,padding:"10px 13px",marginBottom:20,fontSize:12,color:C.amber,fontFamily:C.F}}>⚠ Connect Stripe in Settings to charge real payments.</div>
             <div style={{display:"flex",gap:10}}>
               <button className="btn-g" onClick={confirmUpgrade} style={{flex:1,background:`linear-gradient(135deg,${PLANS[confirmKey].accent},${C.violet})`,border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>Confirm Upgrade</button>
               <button className="btn-o" onClick={()=>setConfirmKey(null)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 18px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>Cancel</button>
@@ -1027,7 +1130,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
           <div>
             <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:5}}>CURRENT PLAN</div>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:plan.accent}}>{plan.name}</div>
-            <div style={{fontSize:12,color:C.textMd,marginTop:2,fontFamily:C.F}}>${plan.price}/mo · {plan.videoQuality} video · {plan.hooks} hooks</div>
+            <div style={{fontSize:12,color:C.textMd,marginTop:2,fontFamily:C.F}}>${plan.price}/mo · {plan.videoQuality} · {plan.maxPhotos} photos · {plan.hooks} hooks</div>
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:38,color:credits<5?C.rose:C.text,lineHeight:1}}>{credits}</div>
@@ -1043,21 +1146,15 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
         </div>
       </div>
 
-      {/* Plan carousel */}
       <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:18}}>PLANS</div>
-      <div style={{marginBottom:30}}>
-        <PlanCarousel currentPlanKey={planKey} onSelect={doUpgrade} mode="billing"/>
-      </div>
+      <div style={{marginBottom:30}}><PlanCarousel currentPlanKey={planKey} onSelect={doUpgrade} mode="billing"/></div>
 
       {/* Credit packs */}
       <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:13}}>BUY EXTRA CREDITS</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:11}}>
         {CREDIT_PACKS.map((pk,i)=>(
-          <button key={i} className="cp-b" onClick={()=>{
-            const nc=credits+pk.credits;
-            setCredits(nc); LS.set("sp_credits",nc);
-            toast(`${pk.credits} credits added ✓`);
-          }} style={{background:C.surface,border:`1px solid ${pk.hot?"rgba(99,102,241,.28)":C.border}`,borderRadius:10,padding:"16px 10px",textAlign:"center",cursor:"pointer",position:"relative",animation:`fadeUp .3s ease ${i*.06}s both`}}>
+          <button key={i} className="cp-b" onClick={()=>{ const nc=credits+pk.credits; setCredits(nc); LS.set("sp_credits",nc); toast(`${pk.credits} credits added ✓`); }}
+            style={{background:C.surface,border:`1px solid ${pk.hot?"rgba(99,102,241,.28)":C.border}`,borderRadius:10,padding:"16px 10px",textAlign:"center",cursor:"pointer",position:"relative",animation:`fadeUp .3s ease ${i*.06}s both`}}>
             {pk.hot&&<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:"#fff",fontSize:7,fontWeight:800,padding:"2px 8px",borderRadius:8,letterSpacing:.8,whiteSpace:"nowrap",fontFamily:C.F}}>BEST VALUE</div>}
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:26,color:C.indigo}}>{pk.credits}</div>
             <div style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,marginBottom:6}}>CREDITS</div>
@@ -1067,9 +1164,6 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
           </button>
         ))}
       </div>
-      <p style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:12,textAlign:"center"}}>
-        Credit packs persist in your browser. <span style={{color:C.indigo}}>Connect Stripe to charge real payments.</span>
-      </p>
     </div>
   );
 }
@@ -1080,22 +1174,15 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
 function SettingsPanel({apiKeys,setApiKeys,onSaved}){
   const [local,setLocal]=useState({...apiKeys});
   const toast=useToast();
-
-  function save(){
-    setApiKeys(local);
-    LS.set("sp_keys",local);
-    toast("API keys saved ✓");
-    onSaved?.();
-  }
-
+  function save(){ setApiKeys(local); LS.set("sp_keys",local); toast("Keys saved ✓"); onSaved?.(); }
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26,marginBottom:16}}>
         <div style={{fontFamily:C.F,fontWeight:700,fontSize:16,marginBottom:4}}>API Keys</div>
-        <p style={{fontSize:12,color:C.textMd,marginBottom:22,fontFamily:C.F,lineHeight:1.6}}>Keys are saved in your browser's localStorage. They are never transmitted anywhere except directly to the respective APIs.</p>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:22,fontFamily:C.F,lineHeight:1.6}}>Keys are stored in your browser only — never sent to our servers. They go directly to each API.</p>
         {[
-          {k:"anthropic", l:"ANTHROPIC API KEY",  p:"sk-ant-api03-...", note:"Powers all content generation",    link:"console.anthropic.com", req:true},
-          {k:"higgsfield",l:"HIGGSFIELD API KEY", p:"hf-...",           note:"Auto-generates listing videos",     link:"cloud.higgsfield.ai",   req:false},
+          {k:"anthropic",l:"AI CONTENT KEY",p:"sk-ant-api03-...",note:"Powers all script, hook & caption generation",link:"console.anthropic.com",req:true},
+          {k:"higgsfield",l:"VIDEO ENGINE KEY",p:"hf-...",note:"Auto-renders animated listing videos from your photos",link:"cloud.higgsfield.ai",req:false},
         ].map((f,i)=>(
           <div key={f.k} style={{marginBottom:20,animation:`fadeUp .28s ease ${i*.1}s both`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -1104,17 +1191,17 @@ function SettingsPanel({apiKeys,setApiKeys,onSaved}){
             </div>
             <input className="ifield" type="password" value={local[f.k]||""} onChange={e=>setLocal(p=>({...p,[f.k]:e.target.value}))} placeholder={f.p}
               style={{width:"100%",background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"all .18s"}}/>
-            <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:5}}>{f.note}</div>
+            <div style={{fontSize:11,color:f.k==="anthropic"?C.textDim:C.cyan,fontFamily:C.F,marginTop:5,display:"flex",alignItems:"center",gap:5}}>
+              {f.k==="higgsfield"&&<span style={{background:"rgba(34,211,238,.08)",border:"1px solid rgba(34,211,238,.2)",borderRadius:4,padding:"1px 6px",fontSize:9,color:C.cyan,fontWeight:700}}>VIDEO</span>}
+              {f.note}
+            </div>
           </div>
         ))}
-        <button className="btn-g" onClick={save} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 24px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,boxShadow:"0 4px 16px rgba(99,102,241,.22)"}}>
-          Save Keys
-        </button>
+        <button className="btn-g" onClick={save} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 24px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,boxShadow:"0 4px 16px rgba(99,102,241,.22)"}}>Save Keys ⚡</button>
       </div>
-
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
         <div style={{fontFamily:C.F,fontWeight:700,fontSize:16,marginBottom:4}}>Connect Stripe</div>
-        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>To charge real payments, replace the <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>stripeLink</code> values in the <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>PLANS</code> config with your real Stripe Payment Link URLs, then wire the plan card buttons to <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>window.location.href = plan.stripeLink</code>.</p>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>Create 3 Payment Links at dashboard.stripe.com ($29/$49/$99 recurring), paste the URLs into the <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>stripeLink</code> values in the <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>PLANS</code> config, then wire upgrade buttons to redirect to those URLs.</p>
         <a href="https://dashboard.stripe.com/payment-links" target="_blank" rel="noreferrer">
           <button className="btn-g" style={{background:"#635bff",border:"none",color:"#fff",padding:"11px 22px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F}}>Open Stripe Dashboard ↗</button>
         </a>
@@ -1124,23 +1211,19 @@ function SettingsPanel({apiKeys,setApiKeys,onSaved}){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// API KEY MODAL
+// KEY MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function KeyModal({apiKeys,setApiKeys,onClose}){
-  const [local,setLocal]=useState({...apiKeys});
-  const toast=useToast();
-  function save(){
-    setApiKeys(local); LS.set("sp_keys",local);
-    toast("API keys saved ✓"); onClose();
-  }
+  const [local,setLocal]=useState({...apiKeys}); const toast=useToast();
+  function save(){ setApiKeys(local); LS.set("sp_keys",local); toast("Keys saved ✓"); onClose(); }
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1001,backdropFilter:"blur(9px)",animation:"fadeIn .2s ease"}}>
       <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:16,padding:30,maxWidth:430,width:"90%",boxShadow:"0 48px 96px rgba(0,0,0,.55)",animation:"scaleIn .24s ease"}}>
         <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:6}}>Add API Keys</div>
-        <p style={{fontSize:12,color:C.textMd,marginBottom:22,lineHeight:1.7,fontFamily:C.F}}>Keys are stored locally in your browser and only sent to the respective APIs — never to our servers.</p>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:22,lineHeight:1.7,fontFamily:C.F}}>Stored locally in your browser. Sent only to the respective APIs — never to SPARK servers.</p>
         {[
-          {k:"anthropic", l:"ANTHROPIC API KEY *", p:"sk-ant-api03-...", link:"console.anthropic.com"},
-          {k:"higgsfield",l:"HIGGSFIELD API KEY (optional)", p:"hf-...", link:"cloud.higgsfield.ai"},
+          {k:"anthropic",l:"AI CONTENT KEY *",p:"sk-ant-api03-...",link:"console.anthropic.com"},
+          {k:"higgsfield",l:"VIDEO ENGINE KEY (optional — enables auto listing videos)",p:"hf-...",link:"cloud.higgsfield.ai"},
         ].map(f=>(
           <div key={f.k} style={{marginBottom:14}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
@@ -1161,69 +1244,337 @@ function KeyModal({apiKeys,setApiKeys,onClose}){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AFFILIATE PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+function AffiliatePanel({ user, planKey }){
+  const toast = useToast();
+
+  // Derive a stable referral code from the user's email
+  const refCode = "SPARK-" + (user.email||"").split("@")[0].toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);
+  const refLink = `https://getspark.app/?ref=${refCode}`;
+
+  // Simulated affiliate stats — replace with real DB values once Supabase is wired
+  const [stats] = useState({
+    clicks:       LS.get("aff_clicks",   0),
+    signups:      LS.get("aff_signups",  0),
+    conversions:  LS.get("aff_converts", 0),
+    activeRefs:   LS.get("aff_active",   0),
+    pendingPayout:LS.get("aff_pending",  0.00),
+    totalEarned:  LS.get("aff_total",    0.00),
+    tier:         "standard",
+  });
+
+  const COMMISSION_TIERS = [
+    {name:"Standard",  min:0,   max:9,   pct:20, color:C.emerald,  desc:"Your current tier"},
+    {name:"Silver",    min:10,  max:24,  pct:25, color:C.sky,      desc:"10+ active referrals"},
+    {name:"Gold",      min:25,  max:49,  pct:30, color:C.amber,    desc:"25+ active referrals"},
+    {name:"Platinum",  min:50,  max:999, pct:35, color:C.violet,   desc:"50+ active referrals"},
+  ];
+  const currentTier = COMMISSION_TIERS.find(t=>stats.activeRefs>=t.min&&stats.activeRefs<=t.max)||COMMISSION_TIERS[0];
+  const nextTier    = COMMISSION_TIERS[COMMISSION_TIERS.indexOf(currentTier)+1]||null;
+
+  const SOCIAL_SCRIPTS = [
+    {
+      platform:"TikTok / Reels",
+      icon:"🎬",
+      hook:"I found a tool that writes my TikTok listing scripts in 47 seconds.",
+      caption:`I've been using this AI tool to create all my listing content — scripts, hooks, captions, and auto-generated listing videos. Takes about 60 seconds per property. If you want to try it, I have a referral link that gets you started: ${refLink} #realestate #realtorlife #realestatetiktok #listingvideo`,
+    },
+    {
+      platform:"Instagram Bio",
+      icon:"📲",
+      bio:`Real estate agent | AI-powered listing content 🏠⚡ | I use SPARK to create all my listing videos — try it: ${refLink}`,
+    },
+    {
+      platform:"Facebook Group Post",
+      icon:"👥",
+      hook:"Fellow agents — I've been testing an AI content tool for the last few weeks.",
+      caption:`It writes my full TikTok listing scripts, generates hooks and captions, and auto-renders a cinematic listing video from my property photos. The whole thing takes under 60 seconds. I know we all struggle with content — this actually works. Here's my referral link if you want to try it: ${refLink}`,
+    },
+    {
+      platform:"Instagram DM",
+      icon:"💬",
+      caption:`Hey [name] — I know you're working on your social media content. I've been using a tool called SPARK that writes my listing scripts and auto-generates the video from my photos. First 3 generations are free. Here's my link: ${refLink}`,
+    },
+    {
+      platform:"Email to Sphere",
+      icon:"📧",
+      caption:`Subject: The AI tool I've been using for listing content\n\nHey [name],\n\nQuick heads up — I've been using an AI tool called SPARK to create all my real estate content and it's been a game changer. It writes my TikTok scripts, generates hooks and captions, and even renders a cinematic listing video from my photos automatically.\n\nI thought of you because I know you've been trying to be more consistent with your social media. The first 3 generations are completely free. Here's my referral link:\n\n${refLink}\n\nLet me know if you try it — happy to walk you through how I use it.`,
+    },
+  ];
+
+  const [activeScript, setActiveScript] = useState(0);
+  const [payoutEmail, setPayoutEmail]   = useState("");
+  const [payoutSent, setPayoutSent]     = useState(false);
+
+  function copyLink(){
+    navigator.clipboard.writeText(refLink).then(()=>toast("Referral link copied ✓")).catch(()=>toast("Copy failed","error"));
+  }
+  function copyScript(){
+    const s = SOCIAL_SCRIPTS[activeScript];
+    const text = [s.hook,s.caption||s.bio].filter(Boolean).join("\n\n");
+    navigator.clipboard.writeText(text).then(()=>toast(`${s.platform} script copied ✓`)).catch(()=>toast("Copy failed","error"));
+  }
+  function requestPayout(){
+    if(!payoutEmail){ toast("Enter your PayPal or Venmo email","error"); return; }
+    setPayoutSent(true);
+    toast("Payout request submitted ✓ — processed within 5 business days");
+  }
+
+  // Monthly passive income projection
+  function project(refs){ return (refs * 49 * currentTier.pct/100).toFixed(0); }
+
+  return(
+    <div style={{animation:"fadeUp .38s ease"}}>
+
+      {/* Hero stats row */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:22}}>
+        {[
+          {label:"TOTAL EARNED",   value:`$${stats.totalEarned.toFixed(2)}`,  color:C.emerald, icon:"💰"},
+          {label:"PENDING PAYOUT", value:`$${stats.pendingPayout.toFixed(2)}`,color:C.amber,   icon:"⏳"},
+          {label:"ACTIVE REFS",    value:stats.activeRefs,                    color:C.indigo,  icon:"👥"},
+          {label:"CONVERSIONS",    value:stats.conversions,                   color:C.cyan,    icon:"✓"},
+        ].map((s,i)=>(
+          <div key={i} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"16px 14px",animation:`fadeUp .3s ease ${i*.06}s both`}}>
+            <div style={{fontSize:18,marginBottom:6}}>{s.icon}</div>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:s.color,lineHeight:1}}>{s.value}</div>
+            <div style={{fontSize:8,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginTop:4}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Referral link card */}
+      <div style={{background:`linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06))`,border:`1px solid rgba(99,102,241,.22)`,borderRadius:14,padding:22,marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
+          <div>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:16,marginBottom:4}}>Your Referral Link</div>
+            <div style={{fontFamily:C.F,fontSize:12,color:C.textMd}}>Share this link. Every subscriber you refer earns you <strong style={{color:C.emerald}}>{currentTier.pct}% recurring commission</strong> every month they stay subscribed. No cap.</div>
+          </div>
+          <Badge color={currentTier.color}>{currentTier.name.toUpperCase()} · {currentTier.pct}%</Badge>
+        </div>
+        <div style={{display:"flex",gap:9,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{flex:1,background:"rgba(0,0,0,.3)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontFamily:"monospace",fontSize:13,color:C.indigoLt,wordBreak:"break-all",minWidth:0}}>
+            {refLink}
+          </div>
+          <button className="btn-g" onClick={copyLink}
+            style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
+            Copy Link
+          </button>
+        </div>
+        <div style={{display:"flex",gap:16,marginTop:12,flexWrap:"wrap"}}>
+          {[["Clicks","→",stats.clicks],["Signups","→",stats.signups],["Paid Subscribers","→",stats.conversions]].map(([l,,v],i)=>(
+            <div key={i} style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>
+              {l}: <strong style={{color:C.text}}>{v}</strong>
+            </div>
+          ))}
+          <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginLeft:"auto"}}>
+            Monthly recurring: <strong style={{color:C.emerald}}>${(stats.activeRefs*49*currentTier.pct/100).toFixed(2)}</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Commission tier ladder */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20,marginBottom:18}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,marginBottom:4}}>Commission Tiers</div>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>Your rate increases automatically as you grow your referral base. No applications, no approval needed.</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
+          {COMMISSION_TIERS.map((t,i)=>{
+            const active = t.name===currentTier.name;
+            const locked = stats.activeRefs < t.min;
+            return(
+              <div key={i} style={{borderRadius:10,padding:"14px 12px",border:`1px solid ${active?t.color+"55":locked?C.border:t.color+"22"}`,background:active?t.color+"0d":locked?"transparent":t.color+"05",position:"relative",opacity:locked?.5:1}}>
+                {active&&<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:t.color,color:"#fff",fontSize:7,fontWeight:800,padding:"2px 8px",borderRadius:8,fontFamily:C.F,whiteSpace:"nowrap",letterSpacing:.8}}>YOUR TIER</div>}
+                <div style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:active?t.color:locked?C.textDim:t.color,lineHeight:1}}>{t.pct}%</div>
+                <div style={{fontSize:11,fontWeight:700,color:active?t.color:locked?C.textDim:C.textMd,fontFamily:C.F,margin:"4px 0 2px"}}>{t.name}</div>
+                <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginBottom:8}}>{t.desc}</div>
+                <div style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>
+                  {t.min===0?"Start earning":""+t.min+"+ refs needed"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {nextTier&&(
+          <div style={{marginTop:14,padding:"9px 13px",background:`rgba(${nextTier.color==="#f59e0b"?"245,158,11":nextTier.color==="rgba(56,189,248,1)"?"56,189,248":"99,102,241"},.06)`,border:`1px solid ${nextTier.color}22`,borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
+            <strong style={{color:nextTier.color}}>{nextTier.min - stats.activeRefs} more active referrals</strong> to unlock {nextTier.name} at {nextTier.pct}% commission — that's an extra <strong style={{color:C.text}}>${((nextTier.pct-currentTier.pct)/100*stats.activeRefs*49).toFixed(0)}/mo</strong> on your current base.
+          </div>
+        )}
+      </div>
+
+      {/* Income projector */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20,marginBottom:18}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,marginBottom:4}}>Income Projector</div>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F}}>Based on {currentTier.pct}% of the $49 Pro plan. Agent/Team plans earn proportionally.</p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10}}>
+          {[5,10,25,50,100].map(refs=>(
+            <div key={refs} style={{textAlign:"center",background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:9,padding:"12px 8px"}}>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:19,color:C.indigoLt}}>{refs}</div>
+              <div style={{fontSize:9,color:C.textDim,letterSpacing:1.2,fontFamily:C.F,marginBottom:6}}>REFS</div>
+              <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,color:C.emerald}}>${project(refs)}</div>
+              <div style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>/ month</div>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:12,padding:"9px 13px",background:"rgba(16,185,129,.05)",border:"1px solid rgba(16,185,129,.15)",borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
+          50 active referrals = <strong style={{color:C.emerald}}>${project(50)}/month passive income</strong> at your current tier. That's {Math.round(50/1500000*100*10000)/100}% of US real estate agents — entirely achievable from a single viral TikTok.
+        </div>
+      </div>
+
+      {/* Ready-made social scripts */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20,marginBottom:18}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,marginBottom:4}}>Ready-Made Scripts</div>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F}}>Copy and post directly. Your referral link is already embedded.</p>
+        <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
+          {SOCIAL_SCRIPTS.map((s,i)=>(
+            <button key={i} onClick={()=>setActiveScript(i)}
+              style={{padding:"5px 12px",borderRadius:18,border:`1px solid ${activeScript===i?"rgba(99,102,241,.5)":C.border}`,background:activeScript===i?"rgba(99,102,241,.1)":"transparent",color:activeScript===i?C.indigoLt:C.textDim,cursor:"pointer",fontSize:11,fontFamily:C.F,fontWeight:activeScript===i?700:400,transition:"all .14s",display:"flex",alignItems:"center",gap:5}}>
+              <span>{s.icon}</span>{s.platform}
+            </button>
+          ))}
+        </div>
+        {SOCIAL_SCRIPTS[activeScript].hook&&(
+          <div style={{background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:7,padding:"8px 12px",marginBottom:10}}>
+            <div style={{fontSize:9,color:C.indigo,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:4}}>HOOK</div>
+            <p style={{fontFamily:C.F,fontSize:13,fontWeight:700,color:C.text,margin:0}}>"{SOCIAL_SCRIPTS[activeScript].hook}"</p>
+          </div>
+        )}
+        <div style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:14,marginBottom:12}}>
+          <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:8}}>{SOCIAL_SCRIPTS[activeScript].bio?"BIO TEXT":"CAPTION / MESSAGE"}</div>
+          <pre style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,whiteSpace:"pre-wrap",lineHeight:1.75}}>
+            {SOCIAL_SCRIPTS[activeScript].caption||SOCIAL_SCRIPTS[activeScript].bio}
+          </pre>
+        </div>
+        <div style={{display:"flex",gap:9}}>
+          <button className="btn-g" onClick={copyScript}
+            style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"10px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F}}>
+            Copy {SOCIAL_SCRIPTS[activeScript].platform} Script
+          </button>
+          <button className="btn-o" onClick={copyLink}
+            style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"10px 16px",borderRadius:8,cursor:"pointer",fontSize:12,fontFamily:C.F}}>
+            Copy Link Only
+          </button>
+        </div>
+      </div>
+
+      {/* How it works */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20,marginBottom:18}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,marginBottom:16}}>How It Works</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+          {[
+            {n:"01",icon:"🔗",title:"Share Your Link",body:"Post your referral link on TikTok, Instagram, in Facebook groups, or DM it directly to agents in your network."},
+            {n:"02",icon:"👤",title:"Agent Signs Up",body:"When they click your link and subscribe to any paid plan, they're tracked to your account automatically."},
+            {n:"03",icon:"💰",title:"You Get Paid",body:"You earn 20% of their monthly subscription every single month they stay subscribed. Forever, with no cap."},
+          ].map((s,i)=>(
+            <div key={i} style={{padding:"16px 14px",background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <div style={{width:22,height:22,borderRadius:6,background:"rgba(99,102,241,.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:800}}>{s.n}</div>
+                <span style={{fontSize:18}}>{s.icon}</span>
+              </div>
+              <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:6}}>{s.title}</div>
+              <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.6}}>{s.body}</p>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:14,display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {[
+            ["20%","recurring commission on every referral, every month"],
+            ["No cap","unlimited referrals, unlimited income"],
+            ["Monthly payouts","via PayPal or Venmo, minimum $25"],
+            ["Real-time tracking","clicks, signups, conversions in your dashboard"],
+          ].map(([bold,rest],i)=>(
+            <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:12,fontFamily:C.F}}>
+              <span style={{color:C.emerald,flexShrink:0,marginTop:1}}>✓</span>
+              <span style={{color:C.textMd}}><strong style={{color:C.text}}>{bold}</strong> {rest}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Payout request */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,marginBottom:4}}>Request Payout</div>
+        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>
+          Minimum payout is $25. Processed within 5 business days via PayPal or Venmo.
+          {stats.pendingPayout>0?<strong style={{color:C.amber}}> You have ${stats.pendingPayout.toFixed(2)} available.</strong>:" Payouts accumulate until you request them."}
+        </p>
+        {payoutSent?(
+          <div style={{padding:"14px 16px",background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",borderRadius:9,fontSize:13,color:C.emerald,fontFamily:C.F,fontWeight:600}}>
+            ✓ Payout request received — you'll receive ${stats.pendingPayout.toFixed(2)} within 5 business days.
+          </div>
+        ):(
+          <div style={{display:"flex",gap:9,flexWrap:"wrap"}}>
+            <input className="ifield" type="email" value={payoutEmail} onChange={e=>setPayoutEmail(e.target.value)} placeholder="your@paypal.com or @venmo"
+              style={{flex:1,minWidth:220,background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F}}/>
+            <button className="btn-g" onClick={requestPayout} disabled={stats.pendingPayout<25}
+              style={{background:stats.pendingPayout>=25?"linear-gradient(135deg,#6366f1,#8b5cf6)":C.surface,border:stats.pendingPayout>=25?"none":`1px solid ${C.border}`,color:stats.pendingPayout>=25?"#fff":C.textDim,padding:"10px 22px",borderRadius:8,cursor:stats.pendingPayout>=25?"pointer":"not-allowed",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
+              {stats.pendingPayout>=25?`Request $${stats.pendingPayout.toFixed(2)} Payout`:"Min. $25 Required"}
+            </button>
+          </div>
+        )}
+        <p style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:10}}>
+          Referral tracking via URL parameter. Once Supabase is connected, all stats update in real time. Payout requests are reviewed manually — reach us at <span style={{color:C.indigo}}>support@getspark.app</span>
+        </p>
+      </div>
+
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────────────────────
 function MainApp({user,onLogout}){
-  const [tab,setTab]       =useState("generate");
+  const [tab,setTab]        =useState("generate");
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"pro"));
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits||63));
-  const [voice,setVoice]   =useState(()=>LS.get("sp_voice",{saved:false,name:"",brokerage:"",market:"",specialty:"",tone:"",targetClient:"",cta:""}));
+  const [voice,setVoice]    =useState(()=>LS.get("sp_voice",{saved:false,name:"",brokerage:"",market:"",specialty:"",tone:"",targetClient:"",cta:""}));
   const [apiKeys,setApiKeys]=useState(()=>LS.get("sp_keys",{anthropic:"",higgsfield:""}));
   const [showKeyModal,setKeyModal]=useState(false);
-  const [showOnboard,setOnboard]=useState(()=>LS.get("sp_onboarded",false)===false);
+  const [showOnboard,setOnboard] =useState(()=>LS.get("sp_onboarded",false)===false);
   const toast=useToast();
-
   const plan=PLANS[planKey];
 
-  // Sync voice memory flag when plan downgraded
   useEffect(()=>{
-    if(!PLANS[planKey].voiceMemory&&voice.saved){
-      const v={...voice,saved:false};
-      setVoice(v); LS.set("sp_voice",v);
-    }
+    if(!PLANS[planKey].voiceMemory&&voice.saved){ const v={...voice,saved:false}; setVoice(v); LS.set("sp_voice",v); }
   },[planKey]);
 
-  function handleOnboardClose(){
-    setOnboard(false); LS.set("sp_onboarded",true);
-    if(!apiKeys.anthropic) setKeyModal(true);
-  }
-
+  function handleOnboardClose(){ setOnboard(false); LS.set("sp_onboarded",true); if(!apiKeys.anthropic) setKeyModal(true); }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
   function handleNeedKey(){ setKeyModal(true); }
+  function handleGoSettings(){ setTab("settings"); }
 
   const NAV=[
-    {id:"generate",icon:"⚡",label:"Generate"},
-    {id:"voice",   icon:"◎", label:"Agent Voice"},
-    {id:"billing", icon:"◈", label:"Billing"},
-    {id:"settings",icon:"⚙", label:"Settings"},
+    {id:"generate",  icon:"⚡",label:"Generate"},
+    {id:"voice",     icon:"◎", label:"Agent Voice"},
+    {id:"billing",   icon:"◈", label:"Billing"},
+    {id:"affiliate", icon:"🔗",label:"Affiliate"},
+    {id:"settings",  icon:"⚙", label:"Settings"},
   ];
-
   const TITLES={
     generate:<>Generate <Shimmer>Content</Shimmer></>,
     voice:   <>Agent <Shimmer>Voice</Shimmer></>,
     billing: <>Billing & <Shimmer>Credits</Shimmer></>,
+    affiliate:<>Affiliate <Shimmer>Program</Shimmer></>,
     settings:<Shimmer>Settings</Shimmer>,
   };
-
   const SUBTITLES={
-    generate: voice.saved&&plan.voiceMemory?`✓ Agent voice active — ${voice.name||""} · ${voice.market||""}`:`${plan.name.toUpperCase()} PLAN · ${plan.contentTypes.length} CONTENT TYPES · ${plan.platforms.length} PLATFORMS`,
-    voice:    plan.voiceMemory?"SAVED ONCE · EVERY SCRIPT SOUNDS LIKE YOU":"REQUIRES PRO PLAN OR ABOVE",
-    billing:  `${plan.name.toUpperCase()} · $${plan.price}/MO · ${credits} CREDITS REMAINING`,
-    settings: "API KEYS ARE STORED IN YOUR BROWSER ONLY",
+    generate:  voice.saved&&plan.voiceMemory?`✓ Voice active — ${voice.name||""} · ${voice.market||""}`:`${plan.name.toUpperCase()} · ${plan.contentTypes.length} CONTENT TYPES · ${plan.maxPhotos} PHOTOS · ${plan.videoQuality} VIDEO`,
+    voice:     plan.voiceMemory?"SAVED ONCE · EVERY SCRIPT SOUNDS LIKE YOU":"REQUIRES PRO PLAN OR ABOVE",
+    billing:   `${plan.name.toUpperCase()} · $${plan.price}/MO · ${credits} CREDITS REMAINING`,
+    affiliate: "20% RECURRING COMMISSION · PAID MONTHLY · NO CAP",
+    settings:  "API KEYS STORED IN YOUR BROWSER ONLY",
   };
 
   return(
     <div style={{display:"flex",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
       <OrbBg/>
       <ToastContainer/>
-
       {showOnboard&&<OnboardingModal planKey={planKey} onClose={handleOnboardClose}/>}
       {showKeyModal&&<KeyModal apiKeys={apiKeys} setApiKeys={setApiKeys} onClose={()=>setKeyModal(false)}/>}
 
       {/* Sidebar */}
-      <div style={{width:216,background:"rgba(13,15,23,.9)",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",flexShrink:0,backdropFilter:"blur(20px)",position:"relative",zIndex:10}}>
+      <div style={{width:220,background:"rgba(13,15,23,.9)",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",flexShrink:0,backdropFilter:"blur(20px)",position:"relative",zIndex:10}}>
         <div style={{padding:"20px 18px 16px",borderBottom:`1px solid ${C.border}`}}><Logo small/></div>
-
         <div style={{flex:1,padding:"11px 9px"}}>
           {NAV.map((item,i)=>(
             <button key={item.id} className={`nav-item${tab===item.id?" active":""}`} onClick={()=>setTab(item.id)}
@@ -1233,6 +1584,8 @@ function MainApp({user,onLogout}){
               {item.id==="voice"&&plan.voiceMemory&&voice.saved&&<span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>}
               {item.id==="voice"&&!plan.voiceMemory&&<span style={{marginLeft:"auto",fontSize:7,color:C.amber,fontFamily:C.F,fontWeight:700}}>PRO</span>}
               {item.id==="billing"&&credits<5&&<span style={{marginLeft:"auto",fontSize:7,color:C.rose,fontFamily:C.F,fontWeight:700}}>LOW</span>}
+              {item.id==="affiliate"&&<span style={{marginLeft:"auto",fontSize:7,color:C.emerald,fontFamily:C.F,fontWeight:700}}>EARN</span>}
+              {item.id==="settings"&&!apiKeys.higgsfield&&<span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:"rgba(34,211,238,.5)",flexShrink:0}} title="Add Video Engine key"/>}
             </button>
           ))}
         </div>
@@ -1260,15 +1613,13 @@ function MainApp({user,onLogout}){
 
       {/* Main content */}
       <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
-        <div style={{maxWidth:820,margin:"0 auto"}}>
+        <div style={{maxWidth:840,margin:"0 auto"}}>
           <div style={{marginBottom:26}}>
             <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
             <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
           </div>
 
-          {tab==="generate"&&(
-            <GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade}/>
-          )}
+          {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
 
           {tab==="voice"&&(
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
@@ -1282,13 +1633,9 @@ function MainApp({user,onLogout}){
             </div>
           )}
 
-          {tab==="billing"&&(
-            <BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>
-          )}
-
-          {tab==="settings"&&(
-            <SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>
-          )}
+          {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+          {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
+          {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
         </div>
       </div>
     </div>
@@ -1304,21 +1651,21 @@ function LandingPage({onStart}){
 
   const FEATURES=[
     ["Content types","Listing + Tips","All 4","All 4"],
+    ["Listing photos","3 photos","8 photos","20 photos"],
+    ["Auto video generation","✓","✓","✓ 4K"],
     ["Platforms","TikTok + Reels","All 5","All 5"],
     ["Hook variants","3","7","10"],
     ["Agent voice memory","✗","✓","✓"],
     ["Video quality","720p","1080p","4K"],
     ["Credits / month","20","60","180"],
     ["Team seats","1","1","5"],
-    ["API access","✗","✗","✓"],
   ];
 
   return(
-    <div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:C.F,overflowX:"hidden"}}>
+    <div style={{background:"#08090e",minHeight:"100vh",color:C.text,fontFamily:C.F,overflowX:"hidden"}}>
       <OrbBg/>
       <div style={{position:"relative",zIndex:1}}>
-
-        {/* Sticky nav */}
+        {/* Nav */}
         <nav style={{padding:"18px 48px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(14px)",background:"rgba(8,9,14,.65)",position:"sticky",top:0,zIndex:100}}>
           <Logo/>
           <div style={{display:"flex",gap:10}}>
@@ -1333,12 +1680,24 @@ function LandingPage({onStart}){
             ⚡ BUILT FOR REAL ESTATE AGENTS
           </div>
           <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(36px,5.5vw,66px)",lineHeight:1.1,margin:"0 0 22px",animation:ready?"fadeUp .45s ease .1s both":"none"}}>
-            Turn Any Listing Into<br/><Shimmer style={{fontSize:"inherit",fontWeight:"inherit"}}>Viral Video Content</Shimmer><br/>
-            <span style={{color:C.textDim,fontSize:".58em",fontWeight:600}}>in under 60 seconds.</span>
+            Upload Photos.<br/><Shimmer style={{fontSize:"inherit",fontWeight:"inherit"}}>Get a Viral Listing Video.</Shimmer><br/>
+            <span style={{color:C.textDim,fontSize:".52em",fontWeight:600}}>Script. Hooks. Caption. Cinematic video. 60 seconds.</span>
           </h1>
-          <p style={{fontSize:16,color:C.textMd,maxWidth:490,margin:"0 auto 38px",lineHeight:1.7,fontWeight:400,animation:ready?"fadeUp .45s ease .2s both":"none"}}>
-            SPARK's proprietary AI engine writes your listing scripts, generates cinematic walkthrough videos, and produces MLS-safe captions — fully optimized for TikTok, Reels, and Shorts.
+          <p style={{fontSize:16,color:C.textMd,maxWidth:520,margin:"0 auto 38px",lineHeight:1.7,fontWeight:400,animation:ready?"fadeUp .45s ease .2s both":"none"}}>
+            Upload your listing photos → SPARK's proprietary AI engine writes your full TikTok script, generates hooks and MLS-safe captions, and automatically renders a cinematic walkthrough video — ready to post.
           </p>
+
+          {/* 3-step visual */}
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:36,flexWrap:"wrap",animation:ready?"fadeUp .45s ease .25s both":"none"}}>
+            {[["📸","Upload Photos","Your listing photos become the hero frames"],["⚡","AI Writes Everything","Script, hooks, captions, hashtags — all optimized"],["🎬","Auto Video Renders","Cinematic listing video ready to download & post"]].map(([icon,title,desc],i)=>(
+              <div key={i} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:12,padding:"16px 14px",maxWidth:170,textAlign:"left",flex:"1 1 140px"}}>
+                <div style={{fontSize:22,marginBottom:8}}>{icon}</div>
+                <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text,marginBottom:4}}>{title}</div>
+                <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,lineHeight:1.5}}>{desc}</div>
+              </div>
+            ))}
+          </div>
+
           <div style={{display:"flex",gap:11,justifyContent:"center",marginBottom:13,animation:ready?"fadeUp .45s ease .3s both":"none"}}>
             <button className="btn-g" onClick={()=>onStart("signup")} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 30px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 22px rgba(99,102,241,.28)"}}>Get 3 Free Generations ⚡</button>
             <button className="btn-o" onClick={()=>onStart("login")} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,color:C.textMd,padding:"13px 26px",borderRadius:10,cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:C.F}}>Sign In →</button>
@@ -1346,10 +1705,10 @@ function LandingPage({onStart}){
           <p style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:600,animation:ready?"fadeIn .5s ease .5s both":"none"}}>NO CREDIT CARD · 3 FREE CREDITS · CANCEL ANYTIME</p>
         </div>
 
-        {/* Stats bar */}
+        {/* Stats */}
         <div style={{borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,padding:"22px 48px",background:"rgba(255,255,255,.008)"}}>
-          <div style={{maxWidth:700,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,textAlign:"center"}}>
-            {[["60s","idea to video"],["1.5M+","licensed US agents"],["$49","pro plan / mo"],["5×","platforms at once"]].map(([n,l],i)=>(
+          <div style={{maxWidth:760,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,textAlign:"center"}}>
+            {[["60s","listing to video"],["403%","more inquiries with video"],["$49","pro plan / mo"],["1.5M+","US agents to reach"]].map(([n,l],i)=>(
               <div key={i} style={{animation:`fadeUp .38s ease ${i*.07}s both`}}>
                 <div style={{fontFamily:C.F,fontWeight:800,fontSize:24,color:C.indigoLt}}>{n}</div>
                 <div style={{fontSize:10,color:C.textDim,letterSpacing:.8,fontFamily:C.F,marginTop:3}}>{l}</div>
@@ -1358,7 +1717,7 @@ function LandingPage({onStart}){
           </div>
         </div>
 
-        {/* Feature comparison table */}
+        {/* Feature table */}
         <div style={{padding:"72px 48px 0",maxWidth:960,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:36}}>
             <div style={{fontSize:9,color:C.indigo,letterSpacing:4,fontFamily:C.F,fontWeight:700,marginBottom:10}}>WHAT YOU GET</div>
@@ -1374,18 +1733,18 @@ function LandingPage({onStart}){
               <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"10px 18px",borderBottom:i<FEATURES.length-1?`1px solid ${C.border}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,.008)"}}>
                 <div style={{fontSize:12,color:C.textMd,fontFamily:C.F}}>{feat}</div>
                 {vals.map((v,j)=>(
-                  <div key={j} style={{fontSize:12,textAlign:"center",color:v==="✗"?C.textDim:v==="✓"?C.emerald:C.text,fontFamily:C.F,fontWeight:v==="✓"||v==="✗"?700:400}}>{v}</div>
+                  <div key={j} style={{fontSize:12,textAlign:"center",color:v==="✗"?C.textDim:v.includes("✓")?C.emerald:C.text,fontFamily:C.F,fontWeight:v==="✓"||v==="✗"?700:400}}>{v}</div>
                 ))}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Pricing */}
+        {/* Pricing carousel */}
         <div style={{padding:"0 48px 96px",maxWidth:960,margin:"0 auto"}}>
           <div style={{textAlign:"center",marginBottom:38}}>
             <div style={{fontSize:9,color:C.indigo,letterSpacing:4,fontFamily:C.F,fontWeight:700,marginBottom:10}}>PRICING</div>
-            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:30,lineHeight:1.2}}>Less than one open house flyer print run.<br/><Shimmer>Cancel anytime.</Shimmer></h2>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:30,lineHeight:1.2}}>Less than one open house print run.<br/><Shimmer>Cancel anytime.</Shimmer></h2>
           </div>
           <div style={{maxWidth:520,margin:"0 auto"}}>
             <PlanCarousel mode="landing" onStart={onStart}/>
@@ -1410,7 +1769,6 @@ function AuthPage({mode,onAuth,onSwitch}){
     if(!email){ toast("Enter your email address","error"); return; }
     if(pass.length<6){ toast("Password must be at least 6 characters","error"); return; }
     setLoading(true);
-    // Simulate async auth — replace with Supabase/Clerk in production
     setTimeout(()=>{
       const credits=mode==="signup"?PLANS[plan].credits+3:LS.get("sp_credits",PLANS[plan].credits);
       const savedPlan=mode==="login"?LS.get("sp_plan",plan):plan;
@@ -1425,15 +1783,11 @@ function AuthPage({mode,onAuth,onSwitch}){
       <div style={{width:"100%",maxWidth:420,padding:20,position:"relative",zIndex:1,animation:"scaleIn .28s ease"}}>
         <div style={{textAlign:"center",marginBottom:28}}>
           <Logo/>
-          <p style={{color:C.textMd,fontSize:13,marginTop:10,fontFamily:C.F}}>{mode==="login"?"Welcome back, agent":"Start closing more deals with AI content"}</p>
+          <p style={{color:C.textMd,fontSize:13,marginTop:10,fontFamily:C.F}}>{mode==="login"?"Welcome back, agent":"Upload photos. Get a viral listing video."}</p>
         </div>
         <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:15,padding:26,boxShadow:"0 40px 80px rgba(0,0,0,.3)"}}>
-          <div style={{marginBottom:14}}>
-            <Field label="EMAIL" value={email} onChange={e=>setEmail(e.target.value)} placeholder="sarah@kw.com" type="email"/>
-          </div>
-          <div style={{marginBottom:mode==="signup"?14:20}}>
-            <Field label="PASSWORD" value={pass} onChange={e=>setPass(e.target.value)} placeholder="min 6 characters" type="password"/>
-          </div>
+          <div style={{marginBottom:14}}><Field label="EMAIL" value={email} onChange={e=>setEmail(e.target.value)} placeholder="sarah@kw.com" type="email"/></div>
+          <div style={{marginBottom:mode==="signup"?14:20}}><Field label="PASSWORD" value={pass} onChange={e=>setPass(e.target.value)} placeholder="min 6 characters" type="password"/></div>
           {mode==="signup"&&(
             <div style={{marginBottom:18}}>
               <div style={{fontSize:9,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:7}}>SELECT PLAN</div>
@@ -1466,9 +1820,9 @@ function AuthPage({mode,onAuth,onSwitch}){
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App(){
   useStyles();
-  const [screen,setScreen]     =useState("landing");
-  const [authMode,setAuthMode] =useState("signup");
-  const [user,setUser]         =useState(null);
+  const [screen,setScreen]   =useState("landing");
+  const [authMode,setAuthMode]=useState("signup");
+  const [user,setUser]       =useState(null);
 
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
