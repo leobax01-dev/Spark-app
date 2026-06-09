@@ -731,7 +731,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
       )}
 
       {/* Content type selector */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:18}}>
         {Object.entries(CONTENT_TYPES).map(([k,ct],i)=>{
           const locked=!plan.contentTypes.includes(k);
           const active=type===k;
@@ -1531,8 +1531,15 @@ function MainApp({user,onLogout}){
   const [apiKeys,setApiKeys]=useState(()=>LS.get("sp_keys",{anthropic:"",higgsfield:""}));
   const [showKeyModal,setKeyModal]=useState(false);
   const [showOnboard,setOnboard] =useState(()=>LS.get("sp_onboarded",false)===false);
+  const [isMobile,setIsMobile]   =useState(()=>window.innerWidth<768);
   const toast=useToast();
   const plan=PLANS[planKey];
+
+  useEffect(()=>{
+    const check=()=>setIsMobile(window.innerWidth<768);
+    window.addEventListener("resize",check);
+    return ()=>window.removeEventListener("resize",check);
+  },[]);
 
   useEffect(()=>{
     if(!PLANS[planKey].voiceMemory&&voice.saved){ const v={...voice,saved:false}; setVoice(v); LS.set("sp_voice",v); }
@@ -1545,11 +1552,12 @@ function MainApp({user,onLogout}){
 
   const NAV=[
     {id:"generate",  icon:"⚡",label:"Generate"},
-    {id:"voice",     icon:"◎", label:"Agent Voice"},
+    {id:"voice",     icon:"◎", label:"Voice"},
     {id:"billing",   icon:"◈", label:"Billing"},
     {id:"affiliate", icon:"🔗",label:"Affiliate"},
     {id:"settings",  icon:"⚙", label:"Settings"},
   ];
+
   const TITLES={
     generate:<>Generate <Shimmer>Content</Shimmer></>,
     voice:   <>Agent <Shimmer>Voice</Shimmer></>,
@@ -1558,86 +1566,200 @@ function MainApp({user,onLogout}){
     settings:<Shimmer>Settings</Shimmer>,
   };
   const SUBTITLES={
-    generate:  voice.saved&&plan.voiceMemory?`✓ Voice active — ${voice.name||""} · ${voice.market||""}`:`${plan.name.toUpperCase()} · ${plan.contentTypes.length} CONTENT TYPES · ${plan.maxPhotos} PHOTOS · ${plan.videoQuality} VIDEO`,
-    voice:     plan.voiceMemory?"SAVED ONCE · EVERY SCRIPT SOUNDS LIKE YOU":"REQUIRES PRO PLAN OR ABOVE",
-    billing:   `${plan.name.toUpperCase()} · $${plan.price}/MO · ${credits} CREDITS REMAINING`,
-    affiliate: "20% RECURRING COMMISSION · PAID MONTHLY · NO CAP",
-    settings:  "API KEYS STORED IN YOUR BROWSER ONLY",
+    generate:  voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
+    voice:     plan.voiceMemory?"Saved once · every script sounds like you":"Requires Pro plan",
+    billing:   `${plan.name} · $${plan.price}/mo · ${credits} credits`,
+    affiliate: "20% recurring commission · no cap",
+    settings:  "Your settings",
   };
 
+  // ── MOBILE BOTTOM NAV BAR ──────────────────────────────────────────────────
+  const MobileNav = ()=>(
+    <div style={{
+      position:"fixed",bottom:0,left:0,right:0,
+      background:"rgba(13,15,23,.97)",
+      borderTop:`1px solid ${C.border}`,
+      backdropFilter:"blur(20px)",
+      display:"flex",alignItems:"stretch",
+      zIndex:200,
+      paddingBottom:"env(safe-area-inset-bottom)",
+    }}>
+      {NAV.map(item=>{
+        const active=tab===item.id;
+        return(
+          <button key={item.id} onClick={()=>setTab(item.id)}
+            style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,padding:"10px 0",background:"transparent",border:"none",cursor:"pointer",position:"relative",minHeight:56}}>
+            <span style={{fontSize:18,lineHeight:1,filter:active?"none":"grayscale(1) opacity(0.5)"}}>{item.icon}</span>
+            <span style={{fontSize:9,fontFamily:C.F,fontWeight:active?700:500,color:active?C.indigoLt:C.textDim,letterSpacing:.4}}>{item.label}</span>
+            {active&&<div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:28,height:2,borderRadius:1,background:`linear-gradient(90deg,${C.indigo},${C.violet})`}}/>}
+            {item.id==="billing"&&credits<5&&<div style={{position:"absolute",top:6,right:"calc(50% - 16px)",width:6,height:6,borderRadius:"50%",background:C.rose,boxShadow:`0 0 5px ${C.rose}`}}/>}
+            {item.id==="affiliate"&&<div style={{position:"absolute",top:6,right:"calc(50% - 16px)",width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  // ── MOBILE HEADER ──────────────────────────────────────────────────────────
+  const MobileHeader = ()=>(
+    <div style={{
+      position:"sticky",top:0,zIndex:100,
+      background:"rgba(8,9,14,.95)",
+      borderBottom:`1px solid ${C.border}`,
+      backdropFilter:"blur(16px)",
+      padding:"12px 16px",
+      paddingTop:"calc(12px + env(safe-area-inset-top))",
+    }}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <Logo small/>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{textAlign:"right"}}>
+            <div style={{fontSize:11,color:credits<5?C.rose:plan.accent,fontFamily:C.F,fontWeight:700}}>{credits} cr</div>
+            <div style={{fontSize:8,color:C.textDim,fontFamily:C.F,letterSpacing:1}}>{plan.name.toUpperCase()}</div>
+          </div>
+          <div style={{width:1,height:24,background:C.border}}/>
+          <button onClick={onLogout} style={{background:"none",border:`1px solid ${C.border}`,color:C.textDim,cursor:"pointer",fontSize:10,fontFamily:C.F,padding:"5px 10px",borderRadius:6}}>Out</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── CONTENT ────────────────────────────────────────────────────────────────
+  const Content = ()=>(
+    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
+      padding:isMobile?"16px 14px 90px":"32px 36px",
+      position:"relative",zIndex:1}}>
+      <div style={{maxWidth:isMobile?"100%":840,margin:"0 auto"}}>
+        <div style={{marginBottom:isMobile?16:26}}>
+          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?22:26,margin:"0 0 4px",lineHeight:1.2}}>{TITLES[tab]}</h1>
+          <p style={{fontSize:isMobile?11:10,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F,fontWeight:500}}>{SUBTITLES[tab]}</p>
+        </div>
+
+        {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+
+        {tab==="voice"&&(
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:isMobile?16:26}}>
+            {voice.saved&&plan.voiceMemory&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:18}}>
+                <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>
+                <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update and save to refresh</span>
+              </div>
+            )}
+            <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
+          </div>
+        )}
+
+        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+        {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
+        {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
+      </div>
+    </div>
+  );
+
+  // ── DESKTOP SIDEBAR ────────────────────────────────────────────────────────
+  const DesktopSidebar = ()=>(
+    <div style={{width:220,background:"rgba(13,15,23,.9)",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",flexShrink:0,backdropFilter:"blur(20px)",position:"relative",zIndex:10}}>
+      <div style={{padding:"20px 18px 16px",borderBottom:`1px solid ${C.border}`}}><Logo small/></div>
+      <div style={{flex:1,padding:"11px 9px"}}>
+        {NAV.map((item,i)=>(
+          <button key={item.id} className={`nav-item${tab===item.id?" active":""}`} onClick={()=>setTab(item.id)}
+            style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,marginBottom:2,background:"transparent",border:"1px solid transparent",color:C.textDim,cursor:"pointer",fontSize:13,fontWeight:500,textAlign:"left"}}>
+            <span style={{fontSize:13,width:17,textAlign:"center"}}>{item.icon}</span>
+            {item.label}
+            {item.id==="voice"&&plan.voiceMemory&&voice.saved&&<span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>}
+            {item.id==="voice"&&!plan.voiceMemory&&<span style={{marginLeft:"auto",fontSize:7,color:C.amber,fontFamily:C.F,fontWeight:700}}>PRO</span>}
+            {item.id==="billing"&&credits<5&&<span style={{marginLeft:"auto",fontSize:7,color:C.rose,fontFamily:C.F,fontWeight:700}}>LOW</span>}
+            {item.id==="affiliate"&&<span style={{marginLeft:"auto",fontSize:7,color:C.emerald,fontFamily:C.F,fontWeight:700}}>EARN</span>}
+          </button>
+        ))}
+      </div>
+      <div style={{padding:"13px 15px",borderTop:`1px solid ${C.border}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+          <span style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700}}>CREDITS</span>
+          <span style={{fontSize:9,color:credits<5?C.rose:plan.accent,fontWeight:700}}>{credits} / {plan.credits}</span>
+        </div>
+        <div style={{height:3,background:"rgba(255,255,255,.04)",borderRadius:2,overflow:"hidden"}}>
+          <div style={{height:"100%",width:`${Math.min(100,(credits/plan.credits)*100)}%`,background:`linear-gradient(90deg,${credits<5?C.rose:plan.accent},${C.indigoLt})`,borderRadius:2,transition:"width .5s ease"}}/>
+        </div>
+        <button className="btn-o" onClick={()=>setTab("billing")} style={{width:"100%",marginTop:7,background:"rgba(255,255,255,.025)",border:`1px solid ${C.border}`,color:C.textDim,borderRadius:6,padding:"5px 0",fontSize:8,cursor:"pointer",fontFamily:C.F,fontWeight:700,letterSpacing:2}}>+ BUY CREDITS</button>
+      </div>
+      <div style={{padding:"11px 15px",borderTop:`1px solid ${C.border}`}}>
+        <div style={{fontSize:9,color:C.textDim,marginBottom:4,fontFamily:C.F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <Badge color={plan.accent}>{plan.name.toUpperCase()}</Badge>
+          <button onClick={onLogout} style={{background:"none",border:"none",color:C.textDim,cursor:"pointer",fontSize:10,fontFamily:C.F}}>sign out</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return(
-    <div style={{display:"flex",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
       <OrbBg/>
       <ToastContainer/>
       {showOnboard&&<OnboardingModal planKey={planKey} onClose={handleOnboardClose}/>}
       {showKeyModal&&<KeyModal apiKeys={apiKeys} setApiKeys={setApiKeys} onClose={()=>setKeyModal(false)}/>}
 
-      {/* Sidebar */}
-      <div style={{width:220,background:"rgba(13,15,23,.9)",borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",flexShrink:0,backdropFilter:"blur(20px)",position:"relative",zIndex:10}}>
-        <div style={{padding:"20px 18px 16px",borderBottom:`1px solid ${C.border}`}}><Logo small/></div>
-        <div style={{flex:1,padding:"11px 9px"}}>
-          {NAV.map((item,i)=>(
-            <button key={item.id} className={`nav-item${tab===item.id?" active":""}`} onClick={()=>setTab(item.id)}
-              style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,marginBottom:2,background:"transparent",border:"1px solid transparent",color:C.textDim,cursor:"pointer",fontSize:13,fontWeight:500,textAlign:"left",animation:`slideR .28s ease ${i*.06}s both`}}>
-              <span style={{fontSize:13,width:17,textAlign:"center"}}>{item.icon}</span>
-              {item.label}
-              {item.id==="voice"&&plan.voiceMemory&&voice.saved&&<span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>}
-              {item.id==="voice"&&!plan.voiceMemory&&<span style={{marginLeft:"auto",fontSize:7,color:C.amber,fontFamily:C.F,fontWeight:700}}>PRO</span>}
-              {item.id==="billing"&&credits<5&&<span style={{marginLeft:"auto",fontSize:7,color:C.rose,fontFamily:C.F,fontWeight:700}}>LOW</span>}
-              {item.id==="affiliate"&&<span style={{marginLeft:"auto",fontSize:7,color:C.emerald,fontFamily:C.F,fontWeight:700}}>EARN</span>}
-              {item.id==="settings"&&!apiKeys.higgsfield&&<span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:"rgba(34,211,238,.5)",flexShrink:0}} title="Add Video Engine key"/>}
-            </button>
-          ))}
-        </div>
+      {isMobile?(
+        // ── MOBILE LAYOUT ──
+        <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+          <MobileHeader/>
+          <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
+            padding:"16px 14px 90px",position:"relative",zIndex:1}}>
+            <div style={{maxWidth:"100%"}}>
+              <div style={{marginBottom:16}}>
+                <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:22,margin:"0 0 4px",lineHeight:1.2}}>{TITLES[tab]}</h1>
+                <p style={{fontSize:11,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F}}>{SUBTITLES[tab]}</p>
+              </div>
 
-        {/* Credit meter */}
-        <div style={{padding:"13px 15px",borderTop:`1px solid ${C.border}`}}>
-          <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-            <span style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700}}>CREDITS</span>
-            <span style={{fontSize:9,color:credits<5?C.rose:plan.accent,fontWeight:700}}>{credits} / {plan.credits}</span>
-          </div>
-          <div style={{height:3,background:"rgba(255,255,255,.04)",borderRadius:2,overflow:"hidden"}}>
-            <div style={{height:"100%",width:`${Math.min(100,(credits/plan.credits)*100)}%`,background:`linear-gradient(90deg,${credits<5?C.rose:plan.accent},${C.indigoLt})`,borderRadius:2,transition:"width .5s ease"}}/>
-          </div>
-          <button className="btn-o" onClick={()=>setTab("billing")} style={{width:"100%",marginTop:7,background:"rgba(255,255,255,.025)",border:`1px solid ${C.border}`,color:C.textDim,borderRadius:6,padding:"5px 0",fontSize:8,cursor:"pointer",fontFamily:C.F,fontWeight:700,letterSpacing:2}}>+ BUY CREDITS</button>
-        </div>
-
-        <div style={{padding:"11px 15px",borderTop:`1px solid ${C.border}`}}>
-          <div style={{fontSize:9,color:C.textDim,marginBottom:4,fontFamily:C.F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <Badge color={plan.accent}>{plan.name.toUpperCase()}</Badge>
-            <button onClick={onLogout} style={{background:"none",border:"none",color:C.textDim,cursor:"pointer",fontSize:10,fontFamily:C.F,transition:"color .15s"}} onMouseEnter={e=>e.currentTarget.style.color=C.text} onMouseLeave={e=>e.currentTarget.style.color=C.textDim}>sign out</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
-        <div style={{maxWidth:840,margin:"0 auto"}}>
-          <div style={{marginBottom:26}}>
-            <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
-            <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
-          </div>
-
-          {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
-
-          {tab==="voice"&&(
-            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
-              {voice.saved&&plan.voiceMemory&&(
-                <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:18}}>
-                  <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`}}/>
-                  <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update any field and save to refresh</span>
+              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+              {tab==="voice"&&(
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:16}}>
+                  {voice.saved&&plan.voiceMemory&&(
+                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:16}}>
+                      <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,flexShrink:0}}/>
+                      <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active</span>
+                    </div>
+                  )}
+                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+              {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
+              {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
             </div>
-          )}
-
-          {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
-          {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-          {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
+          </div>
+          <MobileNav/>
         </div>
-      </div>
+      ):(
+        // ── DESKTOP LAYOUT ──
+        <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+          <DesktopSidebar/>
+          <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
+            <div style={{maxWidth:840,margin:"0 auto"}}>
+              <div style={{marginBottom:26}}>
+                <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
+                <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
+              </div>
+              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+              {tab==="voice"&&(
+                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
+                  {voice.saved&&plan.voiceMemory&&(
+                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:18}}>
+                      <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`}}/>
+                      <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update any field and save to refresh</span>
+                    </div>
+                  )}
+                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
+                </div>
+              )}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+              {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
+              {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
