@@ -1647,7 +1647,7 @@ function MainApp({user,onLogout}){
 // ─────────────────────────────────────────────────────────────────────────────
 function LandingPage({onStart}){
   const [ready,setReady]=useState(false);
-  useEffect(()=>setTimeout(()=>setReady(true),60),[]);
+  useEffect(()=>{ const t=setTimeout(()=>setReady(true),60); return ()=>clearTimeout(t); },[]);
 
   const FEATURES=[
     ["Content types","Listing + Tips","All 4","All 4"],
@@ -1759,55 +1759,106 @@ function LandingPage({onStart}){
 // AUTH PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 function AuthPage({mode,onAuth,onSwitch}){
-  const [email,setEmail]=useState("");
-  const [pass,setPass]  =useState("");
-  const [plan,setPlan]  =useState("pro");
+  const [email,setEmail]   =useState("");
+  const [pass,setPass]     =useState("");
+  const [plan,setPlan]     =useState("pro");
   const [loading,setLoading]=useState(false);
+  const [mounted,setMounted]=useState(false);
   const toast=useToast();
 
+  useEffect(()=>{ setMounted(true); },[]);
+
   function submit(){
-    if(!email){ toast("Enter your email address","error"); return; }
-    if(pass.length<6){ toast("Password must be at least 6 characters","error"); return; }
+    if(!email||email.indexOf("@")<0){ toast("Enter a valid email address","error"); return; }
+    if(!pass||pass.length<6){ toast("Password must be at least 6 characters","error"); return; }
     setLoading(true);
     setTimeout(()=>{
-      const credits=mode==="signup"?PLANS[plan].credits+3:LS.get("sp_credits",PLANS[plan].credits);
-      const savedPlan=mode==="login"?LS.get("sp_plan",plan):plan;
-      onAuth({email,plan:savedPlan,credits});
+      try{
+        const credits=mode==="signup"?PLANS[plan].credits+3:LS.get("sp_credits",PLANS[plan].credits);
+        const savedPlan=mode==="login"?LS.get("sp_plan",plan):plan;
+        onAuth({email,plan:savedPlan,credits});
+      }catch(e){
+        setLoading(false);
+        toast("Something went wrong — try again","error");
+      }
     },600);
   }
 
   return(
-    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F}}>
-      <OrbBg/>
+    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
       <ToastContainer/>
-      <div style={{width:"100%",maxWidth:420,padding:20,position:"relative",zIndex:2,animation:"scaleIn .28s ease"}}>
+      <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:-1}}>
+        <div style={{position:"absolute",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.10) 0%,transparent 68%)",top:"-10%",left:"-5%"}}/>
+        <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.07) 0%,transparent 68%)",bottom:"5%",right:"-5%"}}/>
+      </div>
+      <div style={{width:"100%",maxWidth:420,padding:"20px",position:"relative",zIndex:1,opacity:mounted?1:0,transition:"opacity .3s ease"}}>
         <div style={{textAlign:"center",marginBottom:28}}>
-          <Logo/>
-          <p style={{color:C.textMd,fontSize:13,marginTop:10,fontFamily:C.F}}>{mode==="login"?"Welcome back, agent":"Upload photos. Get a viral listing video."}</p>
+          <div style={{display:"inline-flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <div style={{width:32,height:32,borderRadius:7,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,boxShadow:"0 0 18px rgba(99,102,241,.35)"}}>⚡</div>
+            <div style={{textAlign:"left"}}>
+              <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:800,fontSize:15,color:"rgba(255,255,255,.92)",letterSpacing:.3}}>SPARK</div>
+              <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:8,color:"rgba(255,255,255,.26)",letterSpacing:2,marginTop:-1}}>REAL ESTATE AI</div>
+            </div>
+          </div>
+          <p style={{color:"rgba(255,255,255,.56)",fontSize:13,margin:0,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{mode==="login"?"Welcome back, agent":"Upload photos. Get a viral listing video."}</p>
         </div>
-        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:15,padding:26,boxShadow:"0 40px 80px rgba(0,0,0,.3)"}}>
-          <div style={{marginBottom:14}}><Field label="EMAIL" value={email} onChange={e=>setEmail(e.target.value)} placeholder="sarah@kw.com" type="email"/></div>
-          <div style={{marginBottom:mode==="signup"?14:20}}><Field label="PASSWORD" value={pass} onChange={e=>setPass(e.target.value)} placeholder="min 6 characters" type="password"/></div>
+
+        <div style={{background:"#0d0f17",border:"1px solid rgba(255,255,255,.06)",borderRadius:15,padding:26,boxShadow:"0 40px 80px rgba(0,0,0,.4)"}}>
+
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:10,color:"rgba(255,255,255,.26)",letterSpacing:1.5,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,marginBottom:6}}>EMAIL</div>
+            <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+              placeholder="sarah@kw.com" autoComplete="email"
+              style={{width:"100%",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:8,padding:"10px 13px",color:"rgba(255,255,255,.92)",fontSize:13,fontFamily:"'Plus Jakarta Sans',sans-serif",outline:"none",boxSizing:"border-box"}}
+              onFocus={e=>e.target.style.borderColor="rgba(99,102,241,.48)"}
+              onBlur={e=>e.target.style.borderColor="rgba(255,255,255,.06)"}
+            />
+          </div>
+
+          <div style={{marginBottom:mode==="signup"?14:22}}>
+            <div style={{fontSize:10,color:"rgba(255,255,255,.26)",letterSpacing:1.5,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,marginBottom:6}}>PASSWORD</div>
+            <input type="password" value={pass} onChange={e=>setPass(e.target.value)}
+              placeholder="min 6 characters" autoComplete={mode==="login"?"current-password":"new-password"}
+              style={{width:"100%",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:8,padding:"10px 13px",color:"rgba(255,255,255,.92)",fontSize:13,fontFamily:"'Plus Jakarta Sans',sans-serif",outline:"none",boxSizing:"border-box"}}
+              onFocus={e=>e.target.style.borderColor="rgba(99,102,241,.48)"}
+              onBlur={e=>e.target.style.borderColor="rgba(255,255,255,.06)"}
+            />
+          </div>
+
           {mode==="signup"&&(
             <div style={{marginBottom:18}}>
-              <div style={{fontSize:9,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:7}}>SELECT PLAN</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,.26)",letterSpacing:1.5,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,marginBottom:7}}>SELECT PLAN</div>
               <div style={{display:"flex",gap:7}}>
                 {Object.entries(PLANS).map(([k,p])=>(
-                  <button key={k} onClick={()=>setPlan(k)} style={{flex:1,padding:"10px 4px",borderRadius:8,border:`1px solid ${plan===k?p.accent+"60":C.border}`,background:plan===k?p.accent+"0e":"transparent",color:plan===k?p.accent:C.textDim,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:C.F,letterSpacing:.8,transition:"all .14s"}}>
+                  <button key={k} onClick={()=>setPlan(k)}
+                    style={{flex:1,padding:"10px 4px",borderRadius:8,border:`1px solid ${plan===k?p.accent+"60":"rgba(255,255,255,.06)"}`,background:plan===k?p.accent+"14":"transparent",color:plan===k?p.accent:"rgba(255,255,255,.26)",cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:"'Plus Jakarta Sans',sans-serif",letterSpacing:.8,transition:"all .14s"}}>
                     {p.name}<br/><span style={{fontWeight:400,fontSize:9}}>${p.price}/mo</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
-          <button className="btn-g" onClick={submit} disabled={loading}
-            style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 18px rgba(99,102,241,.24)",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-            {loading?<><Spinner size={16} color="#fff"/>{mode==="login"?"Signing in...":"Creating account..."}</>:mode==="login"?"Sign In ⚡":"Create Account ⚡"}
+
+          <button onClick={submit} disabled={loading}
+            style={{width:"100%",background:loading?"rgba(99,102,241,.5)":"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:"'Plus Jakarta Sans',sans-serif",boxShadow:"0 4px 18px rgba(99,102,241,.24)",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxSizing:"border-box"}}>
+            {loading?(
+              <><div style={{width:16,height:16,borderRadius:"50%",border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",animation:"spin .7s linear infinite"}}/>{mode==="login"?"Signing in...":"Creating account..."}</>
+            ):(
+              mode==="login"?"Sign In ⚡":"Create Account ⚡"
+            )}
           </button>
-          {mode==="signup"&&<p style={{textAlign:"center",fontSize:9,color:C.textDim,marginTop:8,letterSpacing:1.2,fontFamily:C.F}}>+3 FREE CREDITS ON SIGNUP · NO CARD REQUIRED</p>}
-          <p style={{textAlign:"center",marginTop:14,fontSize:12,color:C.textMd,fontFamily:C.F}}>
+
+          {mode==="signup"&&(
+            <p style={{textAlign:"center",fontSize:9,color:"rgba(255,255,255,.26)",marginTop:8,letterSpacing:1.2,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+              +3 FREE CREDITS ON SIGNUP · NO CARD REQUIRED
+            </p>
+          )}
+
+          <p style={{textAlign:"center",marginTop:14,fontSize:12,color:"rgba(255,255,255,.56)",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
             {mode==="login"?"No account? ":"Have an account? "}
-            <span onClick={onSwitch} style={{color:C.indigo,cursor:"pointer",fontWeight:700}}>{mode==="login"?"Start free":"Sign in"}</span>
+            <span onClick={onSwitch} style={{color:"#6366f1",cursor:"pointer",fontWeight:700}}>
+              {mode==="login"?"Start free":"Sign in"}
+            </span>
           </p>
         </div>
       </div>
