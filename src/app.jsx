@@ -1419,7 +1419,7 @@ function AuthPage({mode,onAuth,onSwitch}){
   }
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F}}>
+    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F,position:"relative"}}>
       <OrbBg/>
       <ToastContainer/>
       <div style={{width:"100%",maxWidth:420,padding:20,position:"relative",zIndex:1,animation:"scaleIn .28s ease"}}>
@@ -1473,5 +1473,5 @@ export default function App(){
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
   if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
-  return null;
+  return <div style={{minHeight:"100vh",background:"#08090e"}}/>;
 }
