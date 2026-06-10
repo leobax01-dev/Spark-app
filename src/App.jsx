@@ -80,7 +80,7 @@ const PLANS = {
     platforms:["TikTok","Reels"],
     hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
     perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","Up to 3 listing photos","MLS-safe captions","Email support"],
-    stripeLink:"REPLACE_AGENT_STRIPE_LINK",
+    stripeLink:"https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00",
   },
   pro:{
     name:"Pro", price:49, credits:60, accent:C.indigo, badge:"Most Popular",
@@ -88,7 +88,7 @@ const PLANS = {
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
     perks:["60 credits / month","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","Priority support"],
-    stripeLink:"REPLACE_PRO_STRIPE_LINK",
+    stripeLink:"https://buy.stripe.com/7sYcN4gvr4Y37bfddY0sU01",
   },
   team:{
     name:"Team", price:99, credits:180, accent:C.violet, badge:null,
@@ -96,15 +96,15 @@ const PLANS = {
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:5, apiAccess:true,
     perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","Dedicated support"],
-    stripeLink:"REPLACE_TEAM_STRIPE_LINK",
+    stripeLink:"https://buy.stripe.com/00waEWgvr0HNfHLei20sU02",
   },
 };
 
 const CREDIT_PACKS = [
-  {credits:10,  price:8,  label:"Starter",    stripeLink:"REPLACE_CREDITS_10_LINK"},
-  {credits:30,  price:18, label:"Popular",     stripeLink:"REPLACE_CREDITS_30_LINK"},
-  {credits:80,  price:40, label:"Best Value",  stripeLink:"REPLACE_CREDITS_80_LINK",  hot:true},
-  {credits:200, price:85, label:"Broker Pack", stripeLink:"REPLACE_CREDITS_200_LINK"},
+  {credits:10,  price:8,  label:"Starter",    stripeLink:"https://buy.stripe.com/6oUbJ00wtbmrdzD4Hs0sU03"},
+  {credits:30,  price:18, label:"Popular",     stripeLink:"https://buy.stripe.com/7sYcN4cfb2PV9jn2zk0sU04"},
+  {credits:80,  price:40, label:"Best Value",  stripeLink:"https://buy.stripe.com/bJeaEW0wt3TZeDH3Do0sU05",  hot:true},
+  {credits:200, price:85, label:"Broker Pack", stripeLink:"https://buy.stripe.com/14AbJ0gvr9ej537ddY0sU06"},
 ];
 
 // Stripe redirect — prepends user email so checkout is pre-filled
@@ -129,12 +129,6 @@ const PLATFORMS = {
   LinkedIn:{color:"#0A66C2",spec:"1:1 · pro tone",  minPlan:"pro"},
 };
 
-const CREDIT_PACKS = [
-  {credits:10, price:8,  label:"Starter"},
-  {credits:30, price:18, label:"Popular"},
-  {credits:80, price:40, label:"Best Value", hot:true},
-  {credits:200,price:85, label:"Broker Pack"},
-];
 
 const INPUT_META = {
   address:      ["Address",              "123 Ocean Drive, Miami Beach, FL 33139"],
