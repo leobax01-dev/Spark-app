@@ -80,7 +80,7 @@ const PLANS = {
     platforms:["TikTok","Reels"],
     hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
     perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","Up to 3 listing photos","MLS-safe captions","Email support"],
-    stripeLink:"https://buy.stripe.com/your-agent-link",
+    stripeLink:"REPLACE_AGENT_STRIPE_LINK",
   },
   pro:{
     name:"Pro", price:49, credits:60, accent:C.indigo, badge:"Most Popular",
@@ -88,7 +88,7 @@ const PLANS = {
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
     perks:["60 credits / month","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","Priority support"],
-    stripeLink:"https://buy.stripe.com/your-pro-link",
+    stripeLink:"REPLACE_PRO_STRIPE_LINK",
   },
   team:{
     name:"Team", price:99, credits:180, accent:C.violet, badge:null,
@@ -96,9 +96,23 @@ const PLANS = {
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:5, apiAccess:true,
     perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","Dedicated support"],
-    stripeLink:"https://buy.stripe.com/your-team-link",
+    stripeLink:"REPLACE_TEAM_STRIPE_LINK",
   },
 };
+
+const CREDIT_PACKS = [
+  {credits:10,  price:8,  label:"Starter",    stripeLink:"REPLACE_CREDITS_10_LINK"},
+  {credits:30,  price:18, label:"Popular",     stripeLink:"REPLACE_CREDITS_30_LINK"},
+  {credits:80,  price:40, label:"Best Value",  stripeLink:"REPLACE_CREDITS_80_LINK",  hot:true},
+  {credits:200, price:85, label:"Broker Pack", stripeLink:"REPLACE_CREDITS_200_LINK"},
+];
+
+// Stripe redirect — prepends user email so checkout is pre-filled
+function goStripe(link, email){
+  if(!link||link.startsWith("REPLACE")){ alert("Stripe not connected yet — add your Payment Links to the PLANS config."); return; }
+  const url = email ? link+"?prefilled_email="+encodeURIComponent(email) : link;
+  window.location.href = url;
+}
 
 const CONTENT_TYPES = {
   listing:  {label:"Listing Video",      icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video", minPlan:"agent"},
@@ -164,7 +178,7 @@ const LS = {
 // ─────────────────────────────────────────────────────────────────────────────
 // API — CLAUDE
 // ─────────────────────────────────────────────────────────────────────────────
-async function callClaude({ type, inputs, platform, voice, planKey, apiKey, photoBase64s }) {
+async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s }) {
   const plan  = PLANS[planKey];
   const hooks = plan.hooks;
   const useVoice = plan.voiceMemory && voice?.saved;
@@ -193,9 +207,9 @@ async function callClaude({ type, inputs, platform, voice, planKey, apiKey, phot
     `{"headline":"best single hook","hooks":["exactly ${hooks} distinct hook variants"],"script":"full timed script [0:00] with (camera cues)","higgsfield_prompt":"detailed Higgsfield AI image-to-video prompt: cinematic camera moves (slow dolly in, aerial reveal, orbit), lighting mood, color grade, focus on hero shots from the uploaded photos — specific enough to render immediately","caption":"MLS-safe caption under 220 chars","hashtags":["15 hashtags"],"cta":"platform-native CTA","shot_list":["5 specific shot/scene descriptions"],"thumbnail":"thumbnail concept: composition + text overlay + color","posting_tip":"one specific ${platform} optimization tip"}`
   });
 
-  const r = await fetch("https://api.anthropic.com/v1/messages",{
+  const r = await fetch("/api/claude",{
     method:"POST",
-    headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    headers:{"Content-Type":"application/json"},
     body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
       system:`You are SPARK, an elite real estate content strategist for ${platform}. Always write MLS-compliant content. Return ONLY valid JSON, no markdown.`,
       messages:[{role:"user", content:userContent}],
@@ -608,7 +622,7 @@ function OnboardingModal({planKey,onClose}){
 // ─────────────────────────────────────────────────────────────────────────────
 // GENERATE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoUpgrade,onGoSettings}){
+function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onGoSettings}){
   const plan=PLANS[planKey];
   const toast=useToast();
 
@@ -633,9 +647,8 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
   const typeLocked     = !plan.contentTypes.includes(type);
   const platformLocked = !plan.platforms.includes(platform);
   const cost           = CONTENT_TYPES[type]?.cost||2;
-  const hasKey         = !!apiKeys.anthropic;
   const hasVidKey      = !!apiKeys.higgsfield;
-  const canGen         = hasKey && credits>=cost && !typeLocked && !platformLocked;
+  const canGen         = credits>=cost && !typeLocked && !platformLocked;
   const showPhotoUpload= type==="listing";
 
   const STAGES=[
@@ -649,8 +662,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
 
   async function generate(){
     if(genRef.current) return;
-    if(!hasKey){ onNeedKey(); return; }
-    if(credits<cost){ toast(`Need ${cost} credits — top up in Billing`,"error"); return; }
+    if(credits<cost){ onGoUpgrade(); toast("Add credits to generate more content","info"); return; }
     if(typeLocked||platformLocked){ toast("Upgrade your plan to unlock this","error"); return; }
 
     genRef.current=true;
@@ -664,7 +676,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
 
     try{
       const photoBase64s = photos.map(ph=>ph.b64);
-      const content = await callClaude({type,inputs,platform,voice,planKey,apiKey:apiKeys.anthropic,photoBase64s});
+      const content = await callClaude({type,inputs,platform,voice,planKey,photoBase64s});
       setPct(94); setStage("Content ready ✓");
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
@@ -707,7 +719,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
       }
 
     }catch(e){
-      toast(e.message||"Generation failed — check your API key","error");
+      toast(e.message||"Generation failed — please try again","error");
     }finally{
       genRef.current=false;
       setGen(false); setStage(""); setPct(0);
@@ -718,17 +730,6 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
 
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
-
-      {/* No API key banner */}
-      {!hasKey&&(
-        <div className="up-tease" onClick={onNeedKey} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:"rgba(99,102,241,.07)",border:"1px solid rgba(99,102,241,.2)",borderRadius:10,marginBottom:16,gap:12}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <span style={{fontSize:18}}>🔑</span>
-            <span style={{fontFamily:C.F,fontSize:13,color:C.indigoLt,fontWeight:600}}>Add your AI Content Key to start generating</span>
-          </div>
-          <div style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",padding:"6px 14px",borderRadius:7,fontSize:11,fontWeight:700,fontFamily:C.F,whiteSpace:"nowrap"}}>Add Key →</div>
-        </div>
-      )}
 
       {/* Content type selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:18}}>
@@ -838,7 +839,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onNeedKey,onGoU
           {!gen?(
             <button className="btn-g" onClick={generate} disabled={!canGen}
               style={{width:"100%",background:canGen?"linear-gradient(135deg,#6366f1,#8b5cf6)":C.surface,border:canGen?"none":`1px solid ${C.border}`,color:canGen?"#fff":C.textDim,padding:"14px 0",borderRadius:10,cursor:canGen?"pointer":"not-allowed",fontFamily:C.F,fontWeight:700,fontSize:14,letterSpacing:.2,boxShadow:canGen?"0 4px 18px rgba(99,102,241,.24)":"none"}}>
-              {!hasKey?"🔑 Add AI Content Key First":credits<cost?`⚠ Need ${cost} Credits (Have ${credits})`:`⚡ Generate ${CONTENT_TYPES[type].label} — ${cost} Credits`}
+              {credits<=0?"⚡ Buy Credits to Continue":credits<cost?`Need ${cost} Credits — Buy More`:`⚡ Generate ${CONTENT_TYPES[type].label} — ${cost} Credits`}
             </button>
           ):(
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"26px 22px",textAlign:"center",animation:"fadeIn .2s ease"}}>
@@ -1091,7 +1092,7 @@ function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
 // ─────────────────────────────────────────────────────────────────────────────
 // BILLING PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function BillingPanel({planKey,setPlanKey,credits,setCredits}){
+function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail}){
   const plan=PLANS[planKey];
   const toast=useToast();
   const [confirmKey,setConfirmKey]=useState(null);
@@ -1102,9 +1103,8 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
     else setConfirmKey(k);
   }
   function confirmUpgrade(){
-    const np=PLANS[confirmKey]; const nc=credits+Math.max(0,np.credits-plan.credits);
-    setPlanKey(confirmKey); LS.set("sp_plan",confirmKey); setCredits(nc); LS.set("sp_credits",nc);
-    toast(`Upgraded to ${np.name} ✓`); setConfirmKey(null);
+    window.location.href = PLANS[confirmKey].stripeLink;
+    setConfirmKey(null);
   }
 
   return(
@@ -1114,7 +1114,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
           <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:16,padding:30,maxWidth:400,width:"90%",boxShadow:"0 40px 80px rgba(0,0,0,.5)",animation:"scaleIn .24s ease"}}>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:8}}>Upgrade to {PLANS[confirmKey].name}?</div>
             <p style={{fontSize:13,color:C.textMd,marginBottom:20,fontFamily:C.F,lineHeight:1.6}}>Your plan becomes <strong style={{color:PLANS[confirmKey].accent}}>{PLANS[confirmKey].name}</strong> at ${PLANS[confirmKey].price}/month with {PLANS[confirmKey].maxPhotos} listing photos and {PLANS[confirmKey].videoQuality} video generation.</p>
-            <div style={{background:"rgba(245,158,11,.07)",border:"1px solid rgba(245,158,11,.2)",borderRadius:8,padding:"10px 13px",marginBottom:20,fontSize:12,color:C.amber,fontFamily:C.F}}>⚠ Connect Stripe in Settings to charge real payments.</div>
+            <div style={{background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",borderRadius:8,padding:"10px 13px",marginBottom:20,fontSize:12,color:C.emerald,fontFamily:C.F}}>You will be taken to secure Stripe checkout to complete your upgrade.</div>
             <div style={{display:"flex",gap:10}}>
               <button className="btn-g" onClick={confirmUpgrade} style={{flex:1,background:`linear-gradient(135deg,${PLANS[confirmKey].accent},${C.violet})`,border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>Confirm Upgrade</button>
               <button className="btn-o" onClick={()=>setConfirmKey(null)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 18px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>Cancel</button>
@@ -1153,7 +1153,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits}){
       <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:13}}>BUY EXTRA CREDITS</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:11}}>
         {CREDIT_PACKS.map((pk,i)=>(
-          <button key={i} className="cp-b" onClick={()=>{ const nc=credits+pk.credits; setCredits(nc); LS.set("sp_credits",nc); toast(`${pk.credits} credits added ✓`); }}
+          <button key={i} className="cp-b" onClick={()=>{ goStripe(pk.stripeLink, userEmail||""); }}
             style={{background:C.surface,border:`1px solid ${pk.hot?"rgba(99,102,241,.28)":C.border}`,borderRadius:10,padding:"16px 10px",textAlign:"center",cursor:"pointer",position:"relative",animation:`fadeUp .3s ease ${i*.06}s both`}}>
             {pk.hot&&<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:"#fff",fontSize:7,fontWeight:800,padding:"2px 8px",borderRadius:8,letterSpacing:.8,whiteSpace:"nowrap",fontFamily:C.F}}>BEST VALUE</div>}
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:26,color:C.indigo}}>{pk.credits}</div>
@@ -1278,7 +1278,7 @@ function AffiliatePanel({ user, planKey }){
       platform:"TikTok / Reels",
       icon:"🎬",
       hook:"I found a tool that writes my TikTok listing scripts in 47 seconds.",
-      caption:`I've been using this AI tool to create all my listing content — scripts, hooks, captions, and auto-generated listing videos. Takes about 60 seconds per property. If you want to try it, I have a referral link that gets you started: ${refLink} #realestate #realtorlife #realestatetiktok #listingvideo`,
+      caption:`I have been using this AI tool to create all my listing content — scripts, hooks, captions, and auto-generated listing videos. Takes about 60 seconds per property. If you want to try it, I have a referral link that gets you started: ${refLink} #realestate #realtorlife #realestatetiktok #listingvideo`,
     },
     {
       platform:"Instagram Bio",
@@ -1288,18 +1288,18 @@ function AffiliatePanel({ user, planKey }){
     {
       platform:"Facebook Group Post",
       icon:"👥",
-      hook:"Fellow agents — I've been testing an AI content tool for the last few weeks.",
-      caption:`It writes my full TikTok listing scripts, generates hooks and captions, and auto-renders a cinematic listing video from my property photos. The whole thing takes under 60 seconds. I know we all struggle with content — this actually works. Here's my referral link if you want to try it: ${refLink}`,
+      hook:"Fellow agents — I have been testing an AI content tool for the last few weeks.",
+      caption:`It writes my full TikTok listing scripts, generates hooks and captions, and auto-renders a cinematic listing video from my property photos. The whole thing takes under 60 seconds. I know we all struggle with content — this actually works. Here is my referral link if you want to try it: ${refLink}`,
     },
     {
       platform:"Instagram DM",
       icon:"💬",
-      caption:`Hey [name] — I know you're working on your social media content. I've been using a tool called SPARK that writes my listing scripts and auto-generates the video from my photos. First 3 generations are free. Here's my link: ${refLink}`,
+      caption:`Hey [name] — I know you are working on your social media content. I have been using a tool called SPARK that writes my listing scripts and auto-generates the video from my photos. First 3 generations are free. Here is my link: ${refLink}`,
     },
     {
       platform:"Email to Sphere",
       icon:"📧",
-      caption:`Subject: The AI tool I've been using for listing content\n\nHey [name],\n\nQuick heads up — I've been using an AI tool called SPARK to create all my real estate content and it's been a game changer. It writes my TikTok scripts, generates hooks and captions, and even renders a cinematic listing video from my photos automatically.\n\nI thought of you because I know you've been trying to be more consistent with your social media. The first 3 generations are completely free. Here's my referral link:\n\n${refLink}\n\nLet me know if you try it — happy to walk you through how I use it.`,
+      caption:`Subject: The AI tool I have been using for listing content\n\nHey [name],\n\nQuick heads up — I have been using an AI tool called SPARK to create all my real estate content and it has been a game changer. It writes my TikTok scripts, generates hooks and captions, and even renders a cinematic listing video from my photos automatically.\n\nI thought of you because I know you have been trying to be more consistent with your social media. The first 3 generations are completely free. Here is my referral link:\n\n${refLink}\n\nLet me know if you try it — happy to walk you through how I use it.`,
     },
   ];
 
@@ -1396,7 +1396,7 @@ function AffiliatePanel({ user, planKey }){
         </div>
         {nextTier&&(
           <div style={{marginTop:14,padding:"9px 13px",background:"rgba(99,102,241,.06)",border:`1px solid ${nextTier.color}44`,borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
-            <strong style={{color:nextTier.color}}>{nextTier.min - stats.activeRefs} more active referrals</strong> to unlock {nextTier.name} at {nextTier.pct}% commission — that's an extra <strong style={{color:C.text}}>${((nextTier.pct-currentTier.pct)/100*stats.activeRefs*49).toFixed(0)}/mo</strong> on your current base.
+            <strong style={{color:nextTier.color}}>{nextTier.min - stats.activeRefs} more active referrals</strong> to unlock {nextTier.name} at {nextTier.pct}% commission — that is an extra <strong style={{color:C.text}}>${((nextTier.pct-currentTier.pct)/100*stats.activeRefs*49).toFixed(0)}/mo</strong> on your current base.
           </div>
         )}
       </div>
@@ -1499,7 +1499,7 @@ function AffiliatePanel({ user, planKey }){
         </p>
         {payoutSent?(
           <div style={{padding:"14px 16px",background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",borderRadius:9,fontSize:13,color:C.emerald,fontFamily:C.F,fontWeight:600}}>
-            ✓ Payout request received — you'll receive ${stats.pendingPayout.toFixed(2)} within 5 business days.
+            ✓ Payout request received — you will receive ${stats.pendingPayout.toFixed(2)} within 5 business days.
           </div>
         ):(
           <div style={{display:"flex",gap:9,flexWrap:"wrap"}}>
@@ -1547,7 +1547,6 @@ function MainApp({user,onLogout}){
 
   function handleOnboardClose(){ setOnboard(false); LS.set("sp_onboarded",true); if(!apiKeys.anthropic) setKeyModal(true); }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
-  function handleNeedKey(){ setKeyModal(true); }
   function handleGoSettings(){ setTab("settings"); }
 
   const NAV=[
@@ -1635,7 +1634,7 @@ function MainApp({user,onLogout}){
           <p style={{fontSize:isMobile?11:10,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F,fontWeight:500}}>{SUBTITLES[tab]}</p>
         </div>
 
-        {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+        {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
 
         {tab==="voice"&&(
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:isMobile?16:26}}>
@@ -1649,7 +1648,7 @@ function MainApp({user,onLogout}){
           </div>
         )}
 
-        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
       </div>
@@ -1712,7 +1711,7 @@ function MainApp({user,onLogout}){
                 <p style={{fontSize:11,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F}}>{SUBTITLES[tab]}</p>
               </div>
 
-              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
               {tab==="voice"&&(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:16}}>
                   {voice.saved&&plan.voiceMemory&&(
@@ -1724,7 +1723,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
             </div>
@@ -1741,7 +1740,7 @@ function MainApp({user,onLogout}){
                 <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
                 <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
               </div>
-              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onNeedKey={handleNeedKey} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
               {tab==="voice"&&(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
                   {voice.saved&&plan.voiceMemory&&(
@@ -1753,7 +1752,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
             </div>
@@ -1806,7 +1805,7 @@ function LandingPage({onStart}){
             <span style={{color:C.textDim,fontSize:".52em",fontWeight:600}}>Script. Hooks. Caption. Cinematic video. 60 seconds.</span>
           </h1>
           <p style={{fontSize:16,color:C.textMd,maxWidth:520,margin:"0 auto 38px",lineHeight:1.7,fontWeight:400,animation:ready?"fadeUp .45s ease .2s both":"none"}}>
-            Upload your listing photos → SPARK's proprietary AI engine writes your full TikTok script, generates hooks and MLS-safe captions, and automatically renders a cinematic walkthrough video — ready to post.
+            Upload your listing photos → SPARK proprietary AI engine writes your full TikTok script, generates hooks and MLS-safe captions, and automatically renders a cinematic walkthrough video — ready to post.
           </p>
 
           {/* 3-step visual */}
