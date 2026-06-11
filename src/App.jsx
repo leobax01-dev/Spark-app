@@ -218,49 +218,47 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
 // ─────────────────────────────────────────────────────────────────────────────
 // API — HIGGSFIELD IMAGE-TO-VIDEO
 // ─────────────────────────────────────────────────────────────────────────────
-async function callHiggsfieldImg(imageBase64, prompt, key){
-  // Convert base64 to blob for multipart upload
-  const byteStr = atob(imageBase64);
-  const arr = new Uint8Array(byteStr.length);
-  for(let i=0;i<byteStr.length;i++) arr[i]=byteStr.charCodeAt(i);
-  const blob = new Blob([arr], {type:"image/jpeg"});
-
-  const fd = new FormData();
-  fd.append("image", blob, "listing.jpg");
-  fd.append("prompt", prompt);
-  fd.append("model", "soul-v2");
-  fd.append("aspect_ratio", "9:16");
-  fd.append("duration", "5");
-
-  const r = await fetch("https://cloud.higgsfield.ai/api/v1/image-to-video",{
+async function callHiggsfieldImg(imageBase64, prompt){
+  const r = await fetch("/api/higgsfield",{
     method:"POST",
-    headers:{"Authorization":`Bearer ${key}`},
-    body:fd,
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      endpoint:"https://cloud.higgsfield.ai/api/v1/image-to-video",
+      prompt,
+      image:`data:image/jpeg;base64,${imageBase64}`,
+      model:"soul-v2",
+      aspect_ratio:"9:16",
+      duration:5,
+    }),
   });
   if(!r.ok) throw new Error(`Video generation error ${r.status}`);
   return r.json();
 }
 
-async function callHiggsfieldTxt(prompt, key){
-  const r = await fetch("https://cloud.higgsfield.ai/api/v1/generate",{
+async function callHiggsfieldTxt(prompt){
+  const r = await fetch("/api/higgsfield",{
     method:"POST",
-    headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
-    body:JSON.stringify({prompt, model:"soul-v2", aspect_ratio:"9:16", duration:5}),
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      endpoint:"https://cloud.higgsfield.ai/api/v1/generate",
+      prompt,
+      model:"soul-v2",
+      aspect_ratio:"9:16",
+      duration:5,
+    }),
   });
   if(!r.ok) throw new Error(`Video generation error ${r.status}`);
   return r.json();
 }
 
-async function pollHiggsfield(jobId, key, onProgress){
+async function pollHiggsfield(jobId, onProgress){
   const MAX=60, INTERVAL=4000;
   for(let i=0;i<MAX;i++){
     await new Promise(r=>setTimeout(r,INTERVAL));
     const pct = Math.min(92, 20+(i/MAX)*72);
     onProgress(Math.round(pct));
     try{
-      const r = await fetch(`https://cloud.higgsfield.ai/api/v1/jobs/${jobId}`,{
-        headers:{"Authorization":`Bearer ${key}`},
-      });
+      const r = await fetch(`/api/higgsfield-poll?jobId=${jobId}`);
       if(!r.ok) continue;
       const d = await r.json();
       const status = d?.status||d?.state;
@@ -677,7 +675,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       toast("Content package ready ✓");
 
       // Trigger Higgsfield video generation in background
-      if(hasVidKey && type==="listing"){
+      if(type==="listing"){
         setVid({status:"generating",pct:5});
         const heroB64 = photos[0]?.b64 || null;
         const prompt  = content.higgsfield_prompt || `Cinematic listing video for ${inputs.address||"the property"}. Slow dolly-in reveal, warm golden hour lighting, luxury real estate aesthetic.`;
@@ -685,14 +683,14 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
           let job;
           if(heroB64){
             setStage("Rendering cinematic video...");
-            job = await callHiggsfieldImg(heroB64, prompt, apiKeys.higgsfield);
+            job = await callHiggsfieldImg(heroB64, prompt);
           } else {
-            job = await callHiggsfieldTxt(prompt, apiKeys.higgsfield);
+            job = await callHiggsfieldTxt(prompt);
           }
           const jobId = job?.id || job?.job_id || job?.data?.id;
           if(jobId){
             // Poll in background without blocking UI
-            pollHiggsfield(jobId, apiKeys.higgsfield, (pct)=>{
+            pollHiggsfield(jobId, (pct)=>{
               setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
             }).then(res=>{
               if(res.url) setVid({status:"ready",url:res.url});
@@ -1162,76 +1160,110 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail}){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SETTINGS PANEL
+// SETTINGS PANEL — real user settings
 // ─────────────────────────────────────────────────────────────────────────────
-function SettingsPanel({apiKeys,setApiKeys,onSaved}){
-  const [local,setLocal]=useState({...apiKeys});
-  const toast=useToast();
-  function save(){ setApiKeys(local); LS.set("sp_keys",local); toast("Keys saved ✓"); onSaved?.(); }
+function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
+  const toast = useToast();
+  const plan  = PLANS[planKey];
+  const [showVidKey, setShowVidKey] = useState(false);
+  const [vidKey, setVidKey]         = useState(apiKeys.higgsfield||"");
+  const [showDeleteConfirm, setDeleteConfirm] = useState(false);
+
+  function saveVidKey(){
+    const updated = {...apiKeys, higgsfield:vidKey};
+    setApiKeys(updated); LS.set("sp_keys",updated);
+    toast("Video Engine key saved ✓");
+  }
+
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26,marginBottom:16}}>
-        <div style={{fontFamily:C.F,fontWeight:700,fontSize:16,marginBottom:4}}>API Keys</div>
-        <p style={{fontSize:12,color:C.textMd,marginBottom:22,fontFamily:C.F,lineHeight:1.6}}>Keys are stored in your browser only — never sent to our servers. They go directly to each API.</p>
-        {[
-          {k:"anthropic",l:"AI CONTENT KEY",p:"sk-ant-api03-...",note:"Powers all script, hook & caption generation",link:"console.anthropic.com",req:true},
-          {k:"higgsfield",l:"VIDEO ENGINE KEY",p:"hf-...",note:"Auto-renders animated listing videos from your photos",link:"cloud.higgsfield.ai",req:false},
-        ].map((f,i)=>(
-          <div key={f.k} style={{marginBottom:20,animation:`fadeUp .28s ease ${i*.1}s both`}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700}}>{f.l}{f.req&&<span style={{color:C.rose}}> *</span>}</div>
-              <a href={`https://${f.link}`} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.indigo,fontFamily:C.F,textDecoration:"none"}}>{f.link} ↗</a>
-            </div>
-            <input className="ifield" type="password" value={local[f.k]||""} onChange={e=>setLocal(p=>({...p,[f.k]:e.target.value}))} placeholder={f.p}
-              style={{width:"100%",background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"all .18s"}}/>
-            <div style={{fontSize:11,color:f.k==="anthropic"?C.textDim:C.cyan,fontFamily:C.F,marginTop:5,display:"flex",alignItems:"center",gap:5}}>
-              {f.k==="higgsfield"&&<span style={{background:"rgba(34,211,238,.08)",border:"1px solid rgba(34,211,238,.2)",borderRadius:4,padding:"1px 6px",fontSize:9,color:C.cyan,fontWeight:700}}>VIDEO</span>}
-              {f.note}
-            </div>
-          </div>
-        ))}
-        <button className="btn-g" onClick={save} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 24px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,boxShadow:"0 4px 16px rgba(99,102,241,.22)"}}>Save Keys ⚡</button>
-      </div>
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
-        <div style={{fontFamily:C.F,fontWeight:700,fontSize:16,marginBottom:4}}>Connect Stripe</div>
-        <p style={{fontSize:12,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>Create 3 Payment Links at dashboard.stripe.com ($29/$49/$99 recurring), paste the URLs into the <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>stripeLink</code> values in the <code style={{background:"rgba(255,255,255,.06)",padding:"1px 5px",borderRadius:4,fontSize:11}}>PLANS</code> config, then wire upgrade buttons to redirect to those URLs.</p>
-        <a href="https://dashboard.stripe.com/payment-links" target="_blank" rel="noreferrer">
-          <button className="btn-g" style={{background:"#635bff",border:"none",color:"#fff",padding:"11px 22px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F}}>Open Stripe Dashboard ↗</button>
-        </a>
-      </div>
-    </div>
-  );
-}
 
-// ─────────────────────────────────────────────────────────────────────────────
-// KEY MODAL
-// ─────────────────────────────────────────────────────────────────────────────
-function KeyModal({apiKeys,setApiKeys,onClose}){
-  const [local,setLocal]=useState({...apiKeys}); const toast=useToast();
-  function save(){ setApiKeys(local); LS.set("sp_keys",local); toast("Keys saved ✓"); onClose(); }
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1001,backdropFilter:"blur(9px)",animation:"fadeIn .2s ease"}}>
-      <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:16,padding:30,maxWidth:430,width:"90%",boxShadow:"0 48px 96px rgba(0,0,0,.55)",animation:"scaleIn .24s ease"}}>
-        <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:6}}>Add API Keys</div>
-        <p style={{fontSize:12,color:C.textMd,marginBottom:22,lineHeight:1.7,fontFamily:C.F}}>Stored locally in your browser. Sent only to the respective APIs — never to SPARK servers.</p>
-        {[
-          {k:"anthropic",l:"AI CONTENT KEY *",p:"sk-ant-api03-...",link:"console.anthropic.com"},
-          {k:"higgsfield",l:"VIDEO ENGINE KEY (optional — enables auto listing videos)",p:"hf-...",link:"cloud.higgsfield.ai"},
-        ].map(f=>(
-          <div key={f.k} style={{marginBottom:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-              <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700}}>{f.l}</div>
-              <a href={`https://${f.link}`} target="_blank" rel="noreferrer" style={{fontSize:10,color:C.indigo,fontFamily:C.F,textDecoration:"none"}}>{f.link} ↗</a>
+      {/* Account card */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:14}}>
+        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:14}}>YOUR ACCOUNT</div>
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
+          <div style={{width:48,height:48,borderRadius:"50%",background:`linear-gradient(135deg,${plan.accent},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>
+            {(user?.email||"?")[0].toUpperCase()}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
+            <div style={{display:"flex",alignItems:"center",gap:7,marginTop:4}}>
+              <span style={{background:plan.accent+"18",border:`1px solid ${plan.accent}40`,color:plan.accent,fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,fontFamily:C.F,letterSpacing:1.5}}>{plan.name.toUpperCase()}</span>
+              <span style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>${plan.price}/mo</span>
             </div>
-            <input className="ifield" type="password" value={local[f.k]||""} onChange={e=>setLocal(p=>({...p,[f.k]:e.target.value}))} placeholder={f.p}
-              style={{width:"100%",background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"all .18s"}}/>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:18}}>
+          {[
+            {label:"PLAN",    value:plan.name,            color:plan.accent},
+            {label:"CREDITS", value:`${LS.get("sp_credits",plan.credits)} left`, color:C.indigoLt},
+            {label:"VIDEO",   value:plan.videoQuality,    color:C.cyan},
+          ].map((s,i)=>(
+            <div key={i} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:9,padding:"12px 10px",textAlign:"center"}}>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:16,color:s.color}}>{s.value}</div>
+              <div style={{fontSize:8,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginTop:3}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <button onClick={onLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"11px 0",borderRadius:9,cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:13,transition:"all .15s"}}
+          onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(244,63,94,.4)"}
+          onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+          Sign Out
+        </button>
+      </div>
+
+      {/* System status */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:14}}>
+        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:14}}>SYSTEM STATUS</div>
+        {[
+          {label:"AI Content Engine", status:"Operational", color:C.emerald, note:"Scripts, hooks & captions"},
+          {label:"Payment System",    status:"Operational", color:C.emerald, note:"Stripe — secure checkout"},
+          {label:"Video Engine",      status:"Connected", color:C.emerald, note:"Auto-renders cinematic listing videos"},
+        ].map((s,i)=>(
+          <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
+            <div>
+              <div style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text}}>{s.label}</div>
+              <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:2}}>{s.note}</div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+              <div style={{width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 6px ${s.color}`}}/>
+              <span style={{fontSize:11,color:s.color,fontFamily:C.F,fontWeight:600}}>{s.status}</span>
+            </div>
           </div>
         ))}
-        <div style={{display:"flex",gap:10,marginTop:6}}>
-          <button className="btn-g" onClick={save} style={{flex:1,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>Save Keys ⚡</button>
-          <button className="btn-o" onClick={onClose} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"13px 18px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>Cancel</button>
-        </div>
       </div>
+
+
+
+      {/* Support */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:14}}>
+        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:14}}>SUPPORT</div>
+        {[
+          {icon:"📧",label:"Email Support",    sub:"Get help from the SPARK team", href:"mailto:support@getspark.app"},
+          {icon:"💳",label:"Manage Billing",   sub:"Update payment method or cancel", href:"https://billing.stripe.com"},
+          {icon:"📖",label:"How to Use SPARK", sub:"Tips, guides and best practices", href:"https://getspark.app/guide"},
+        ].map((s,i)=>(
+          <a key={i} href={s.href} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<2?`1px solid ${C.border}`:"none",cursor:"pointer"}}
+              onMouseEnter={e=>e.currentTarget.style.opacity=".7"}
+              onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+              <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{s.icon}</div>
+              <div style={{flex:1}}>
+                <div style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text}}>{s.label}</div>
+                <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:1}}>{s.sub}</div>
+              </div>
+              <span style={{color:C.textDim,fontSize:14}}>›</span>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      {/* App info */}
+      <div style={{textAlign:"center",padding:"8px 0 4px"}}>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>SPARK Real Estate AI · v1.0</div>
+        <div style={{fontFamily:C.F,fontSize:10,color:C.textFaint,marginTop:3}}>© 2026 SPARK AI · <a href="https://getspark.app/privacy" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Privacy</a> · <a href="https://getspark.app/terms" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Terms</a></div>
+      </div>
+
     </div>
   );
 }
@@ -1581,7 +1613,7 @@ function MainApp({user,onLogout}){
     voice:     plan.voiceMemory?"Saved once · every script sounds like you":"Requires Pro plan",
     billing:   `${plan.name} · $${plan.price}/mo · ${credits} credits`,
     affiliate: "20% recurring commission · no cap",
-    settings:  "Your settings",
+    settings:  "Account · Plan · Support",
   };
 
   // ── MOBILE BOTTOM NAV BAR ──────────────────────────────────────────────────
@@ -1662,7 +1694,7 @@ function MainApp({user,onLogout}){
 
         {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-        {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
+        {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={onLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
       </div>
     </div>
   );
@@ -1736,7 +1768,7 @@ function MainApp({user,onLogout}){
               )}
               {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
+              {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={onLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
           </div>
           <MobileNav/>
@@ -1765,7 +1797,7 @@ function MainApp({user,onLogout}){
               )}
               {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<SettingsPanel apiKeys={apiKeys} setApiKeys={setApiKeys} onSaved={()=>setTab("generate")}/>}
+              {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={onLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
           </div>
         </div>
@@ -1904,36 +1936,58 @@ function AuthPage({mode,onAuth,onSwitch}){
     if(!email||email.indexOf("@")<0){ toast("Enter a valid email address","error"); return; }
     if(!pass||pass.length<6){ toast("Password must be at least 6 characters","error"); return; }
     setLoading(true);
+
+    // Try Supabase first if available, fall back to localStorage auth
     const sb = window.__supabase;
-    if(!sb){
-      // Fallback if Supabase not yet loaded — should not happen in production
-      toast("Auth service unavailable — please refresh","error");
-      setLoading(false);
+    if(sb){
+      (async()=>{
+        try{
+          if(mode==="signup"){
+            const {data,error} = await sb.auth.signUp({ email, password:pass });
+            if(error) throw new Error(error.message);
+            const startCredits = PLANS[plan].credits + 3;
+            await sb.from("users").upsert({ id:data.user.id, email, plan, credits:startCredits });
+            // Also save locally as backup
+            const accounts = LS.get("sp_accounts",{});
+            accounts[email.toLowerCase()] = { plan, credits:startCredits, pass };
+            LS.set("sp_accounts", accounts);
+            onAuth({ email, plan, credits:startCredits });
+          } else {
+            const {data,error} = await sb.auth.signInWithPassword({ email, password:pass });
+            if(error) throw new Error(error.message);
+            const {data:userData} = await sb.from("users").select("plan,credits").eq("id",data.user.id).single();
+            onAuth({ email, plan:userData?.plan||"pro", credits:userData?.credits||60 });
+          }
+        }catch(e){
+          toast(e.message||"Something went wrong — try again","error");
+          setLoading(false);
+        }
+      })();
       return;
     }
-    (async()=>{
+
+    // localStorage auth — works without Supabase
+    setTimeout(()=>{
       try{
+        const accounts = LS.get("sp_accounts", {});
+        const key = email.toLowerCase();
         if(mode==="signup"){
-          const {data,error} = await sb.auth.signUp({ email, password:pass });
-          if(error) throw new Error(error.message);
+          if(accounts[key]){ toast("An account with this email already exists — sign in instead","error"); setLoading(false); return; }
           const startCredits = PLANS[plan].credits + 3;
-          await sb.from("users").upsert({
-            id: data.user.id, email, plan, credits: startCredits,
-          });
-          onAuth({ email, plan, credits: startCredits });
+          accounts[key] = { plan, credits:startCredits, pass };
+          LS.set("sp_accounts", accounts);
+          onAuth({ email, plan, credits:startCredits });
         } else {
-          const {data,error} = await sb.auth.signInWithPassword({ email, password:pass });
-          if(error) throw new Error(error.message);
-          const {data:userData,error:dbErr} = await sb
-            .from("users").select("plan,credits").eq("id",data.user.id).single();
-          if(dbErr||!userData) throw new Error("Account not found — please sign up");
-          onAuth({ email, plan:userData.plan, credits:userData.credits });
+          const account = accounts[key];
+          if(!account){ toast("No account found — tap Start Free to create one","error"); setLoading(false); return; }
+          if(account.pass !== pass){ toast("Incorrect password — try again","error"); setLoading(false); return; }
+          onAuth({ email, plan:account.plan, credits:account.credits });
         }
       }catch(e){
-        toast(e.message||"Something went wrong — try again","error");
+        toast("Something went wrong — try again","error");
         setLoading(false);
       }
-    })();
+    },400);
   }
 
   return(
@@ -2042,6 +2096,6 @@ export default function App(){
 
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
-  if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
+  if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ const accts=LS.get("sp_accounts",{}); const k=(user?.email||'').toLowerCase(); if(accts[k]){ accts[k].credits=credits; accts[k].plan=planKey; LS.set("sp_accounts",accts); } LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
   return <div style={{minHeight:"100vh",background:"#08090e"}}/>;
 }
