@@ -583,11 +583,10 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
 function OnboardingModal({planKey,onClose}){
   const [step,setStep]=useState(0);
   const steps=[
-    {icon:"⚡",title:"Welcome to SPARK",body:`You're on the ${PLANS[planKey].name} plan with ${PLANS[planKey].credits} credits. Turn any listing into a viral video in under 60 seconds.`},
-    {icon:"🔑",title:"Add Your Keys",body:"Go to Settings → add your AI Content Key (console.anthropic.com). Optionally add your Video Engine Key for auto-generated listing videos."},
-    {icon:"📸",title:"Upload Listing Photos",body:"On the Generate page, upload your property photos. The first photo becomes the hero frame for your cinematic listing video."},
+    {icon:"⚡",title:"Welcome to SPARK",body:`You are on the ${PLANS[planKey].name} plan with ${PLANS[planKey].credits} credits. Turn any listing into a viral video in under 60 seconds.`},
+    {icon:"📸",title:"Upload Listing Photos",body:"Go to Generate, tap Listing Video, and upload your property photos. The first photo becomes the hero frame for your cinematic listing video."},
     {icon:"⚡",title:"Generate Everything",body:"Hit Generate — SPARK writes your script, hooks, captions, and automatically renders your animated listing video. One click, everything done."},
-    {icon:"📤",title:"Post & Get Leads",body:"Copy your caption + hashtags, download your video, and post. Most agents see their first inquiry within 48 hours of posting."},
+    {icon:"📤",title:"Post and Get Leads",body:"Copy your script, caption, and hashtags. Download your animated listing video with one tap. Most agents see their first lead inquiry within 48 hours."},
   ];
   const s=steps[step];
   return(
@@ -1523,7 +1522,6 @@ function MainApp({user,onLogout}){
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits||63));
   const [voice,setVoice]    =useState(()=>LS.get("sp_voice",{saved:false,name:"",brokerage:"",market:"",specialty:"",tone:"",targetClient:"",cta:""}));
   const [apiKeys,setApiKeys]=useState(()=>LS.get("sp_keys",{anthropic:"",higgsfield:""}));
-  const [showKeyModal,setKeyModal]=useState(false);
   const [showOnboard,setOnboard] =useState(()=>LS.get("sp_onboarded",false)===false);
   const [isMobile,setIsMobile]   =useState(()=>window.innerWidth<768);
   const toast=useToast();
@@ -1559,7 +1557,7 @@ function MainApp({user,onLogout}){
     return ()=>document.removeEventListener("visibilitychange", onVisible);
   },[user?.email]);
 
-  function handleOnboardClose(){ setOnboard(false); LS.set("sp_onboarded",true); if(!apiKeys.anthropic) setKeyModal(true); }
+  function handleOnboardClose(){ setOnboard(false); LS.set("sp_onboarded",true); }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
   function handleGoSettings(){ setTab("settings"); }
 
@@ -1711,7 +1709,6 @@ function MainApp({user,onLogout}){
       <OrbBg/>
       <ToastContainer/>
       {showOnboard&&<OnboardingModal planKey={planKey} onClose={handleOnboardClose}/>}
-      {showKeyModal&&<KeyModal apiKeys={apiKeys} setApiKeys={setApiKeys} onClose={()=>setKeyModal(false)}/>}
 
       {isMobile?(
         // ── MOBILE LAYOUT ──
