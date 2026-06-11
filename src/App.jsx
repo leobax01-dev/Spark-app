@@ -1539,6 +1539,26 @@ function MainApp({user,onLogout}){
     if(!PLANS[planKey].voiceMemory&&voice.saved){ const v={...voice,saved:false}; setVoice(v); LS.set("sp_voice",v); }
   },[planKey]);
 
+  // Refresh credits and plan from Supabase when user returns to the tab
+  // (e.g. after completing Stripe checkout)
+  useEffect(()=>{
+    async function syncFromDB(){
+      const sb = window.__supabase;
+      if(!sb||!user?.email) return;
+      try{
+        const {data} = await sb.from("users").select("plan,credits").eq("email",user.email).single();
+        if(data){
+          setPlanKey(data.plan); LS.set("sp_plan",data.plan);
+          setCredits(data.credits); LS.set("sp_credits",data.credits);
+        }
+      }catch{}
+    }
+    const onVisible = ()=>{ if(document.visibilityState==="visible") syncFromDB(); };
+    document.addEventListener("visibilitychange", onVisible);
+    syncFromDB(); // also sync on mount
+    return ()=>document.removeEventListener("visibilitychange", onVisible);
+  },[user?.email]);
+
   function handleOnboardClose(){ setOnboard(false); LS.set("sp_onboarded",true); if(!apiKeys.anthropic) setKeyModal(true); }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
   function handleGoSettings(){ setTab("settings"); }
@@ -1887,16 +1907,36 @@ function AuthPage({mode,onAuth,onSwitch}){
     if(!email||email.indexOf("@")<0){ toast("Enter a valid email address","error"); return; }
     if(!pass||pass.length<6){ toast("Password must be at least 6 characters","error"); return; }
     setLoading(true);
-    setTimeout(()=>{
+    const sb = window.__supabase;
+    if(!sb){
+      // Fallback if Supabase not yet loaded — should not happen in production
+      toast("Auth service unavailable — please refresh","error");
+      setLoading(false);
+      return;
+    }
+    (async()=>{
       try{
-        const credits=mode==="signup"?PLANS[plan].credits+3:LS.get("sp_credits",PLANS[plan].credits);
-        const savedPlan=mode==="login"?LS.get("sp_plan",plan):plan;
-        onAuth({email,plan:savedPlan,credits});
+        if(mode==="signup"){
+          const {data,error} = await sb.auth.signUp({ email, password:pass });
+          if(error) throw new Error(error.message);
+          const startCredits = PLANS[plan].credits + 3;
+          await sb.from("users").upsert({
+            id: data.user.id, email, plan, credits: startCredits,
+          });
+          onAuth({ email, plan, credits: startCredits });
+        } else {
+          const {data,error} = await sb.auth.signInWithPassword({ email, password:pass });
+          if(error) throw new Error(error.message);
+          const {data:userData,error:dbErr} = await sb
+            .from("users").select("plan,credits").eq("id",data.user.id).single();
+          if(dbErr||!userData) throw new Error("Account not found — please sign up");
+          onAuth({ email, plan:userData.plan, credits:userData.credits });
+        }
       }catch(e){
+        toast(e.message||"Something went wrong — try again","error");
         setLoading(false);
-        toast("Something went wrong — try again","error");
       }
-    },600);
+    })();
   }
 
   return(
@@ -1989,6 +2029,19 @@ export default function App(){
   const [screen,setScreen]   =useState("landing");
   const [authMode,setAuthMode]=useState("signup");
   const [user,setUser]       =useState(null);
+
+  // Initialise Supabase once — stored on window so AuthPage can access it
+  // without prop-drilling. Requires VITE_SUPABASE_URL and VITE_SUPABASE_KEY
+  // to be set as Vercel environment variables.
+  useEffect(()=>{
+    if(window.__supabase) return; // already initialised
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_KEY;
+    if(!url||!key) return; // env vars not set yet — auth falls back gracefully
+    import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm").then(({createClient})=>{
+      window.__supabase = createClient(url, key);
+    }).catch(()=>{});
+  },[]);
 
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
