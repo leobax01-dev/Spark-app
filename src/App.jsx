@@ -5,73 +5,78 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // ─────────────────────────────────────────────────────────────────────────────
 const FONTS_URL = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
 const C = {
-  bg:"#08090e", surface:"#0d0f17", surfaceUp:"#12141f", surfaceHigh:"#181a28",
-  border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.11)", borderHi:"rgba(255,255,255,0.16)",
+  bg:"#050507", surface:"#0a0b0f", surfaceUp:"#0f1018", surfaceHigh:"#141520",
+  border:"rgba(255,255,255,0.055)", borderMd:"rgba(255,255,255,0.10)", borderHi:"rgba(255,255,255,0.18)",
   indigo:"#6366f1", indigoLt:"#818cf8", indigoD:"#4f52c9",
   violet:"#8b5cf6", cyan:"#22d3ee", emerald:"#10b981",
   amber:"#f59e0b", rose:"#f43f5e", sky:"#38bdf8",
-  text:"rgba(255,255,255,0.92)", textMd:"rgba(255,255,255,0.56)",
-  textDim:"rgba(255,255,255,0.26)", textFaint:"rgba(255,255,255,0.09)",
+  text:"rgba(255,255,255,0.94)", textMd:"rgba(255,255,255,0.52)",
+  textDim:"rgba(255,255,255,0.24)", textFaint:"rgba(255,255,255,0.07)",
   F:"'Plus Jakarta Sans',sans-serif",
 };
 
 const GLOBAL_CSS = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#08090e}
-  ::-webkit-scrollbar{width:3px}
+  html,body{height:100%;background:#050507;-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:2px}
   ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.07);border-radius:2px}
-  ::placeholder{color:rgba(255,255,255,0.17)!important}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:2px}
+  ::placeholder{color:rgba(255,255,255,0.15)!important}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  @keyframes scaleIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
-  @keyframes slideR{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes scaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+  @keyframes slideR{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
   @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
-  @keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(44px,-32px) scale(1.09)}66%{transform:translate(-22px,18px) scale(0.96)}}
-  @keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-48px,28px) scale(1.06)}66%{transform:translate(28px,-18px) scale(1.1)}}
-  @keyframes orb3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(18px,36px) scale(0.92)}}
-  @keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
-  @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+  @keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.08)}}
+  @keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-44px,26px) scale(1.06)}}
+  @keyframes orb3{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,30px)}}
+  @keyframes pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.2)}}
+  @keyframes toastIn{from{opacity:0;transform:translateY(10px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
   @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes vidPulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.4)}70%{box-shadow:0 0 0 10px rgba(99,102,241,0)}}
-  @keyframes carouselSlide{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
-  @keyframes carouselSlideL{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
-  @keyframes photoIn{from{opacity:0;transform:scale(0.88)}to{opacity:1;transform:scale(1)}}
-  .nav-item{transition:all .15s}
-  .nav-item:hover{background:rgba(255,255,255,0.055)!important;color:rgba(255,255,255,.88)!important}
-  .nav-item.active{background:rgba(99,102,241,.11)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.24)!important}
-  .btn-g{transition:all .18s}
-  .btn-g:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 26px rgba(99,102,241,.32)!important}
-  .btn-g:active:not(:disabled){transform:translateY(0)}
-  .btn-g:disabled{opacity:.45;cursor:not-allowed!important}
-  .btn-o{transition:all .15s}
-  .btn-o:hover{border-color:rgba(255,255,255,.2)!important;color:rgba(255,255,255,.9)!important}
-  .ifield:focus{border-color:rgba(99,102,241,.48)!important;box-shadow:0 0 0 3px rgba(99,102,241,.1)!important;outline:none}
-  .tab-b{transition:all .14s}
-  .tab-b:hover{color:rgba(255,255,255,.82)!important}
-  .card-h{transition:all .2s}
-  .card-h:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.12)!important}
-  .plan-c{transition:all .2s}
-  .plan-c:hover{transform:translateY(-3px);box-shadow:0 20px 44px rgba(0,0,0,.32)!important}
-  .cp-b{transition:all .18s}
-  .cp-b:hover{border-color:rgba(99,102,241,.38)!important;transform:translateY(-2px)}
-  .copy-b{transition:all .14s}
-  .copy-b:hover{background:rgba(99,102,241,.11)!important;border-color:rgba(99,102,241,.34)!important;color:#a5b4fc!important}
-  .up-tease{transition:all .18s;cursor:pointer}
-  .up-tease:hover{border-color:rgba(245,158,11,.44)!important;background:rgba(245,158,11,.07)!important}
-  .plat-b{transition:all .16s}
+  @keyframes carouselSlide{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes carouselSlideL{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes photoIn{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}
+  @keyframes lineGrow{from{width:0}to{width:100%}}
+  @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
+  .nav-item{transition:all .18s ease}
+  .nav-item:hover{background:rgba(255,255,255,0.04)!important;color:rgba(255,255,255,.9)!important}
+  .nav-item.active{background:rgba(99,102,241,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.22)!important}
+  .btn-g{transition:all .2s ease}
+  .btn-g:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 32px rgba(99,102,241,.28)!important;filter:brightness(1.08)}
+  .btn-g:active:not(:disabled){transform:translateY(0);filter:brightness(.96)}
+  .btn-g:disabled{opacity:.38;cursor:not-allowed!important}
+  .btn-o{transition:all .18s ease}
+  .btn-o:hover{border-color:rgba(255,255,255,.18)!important;color:rgba(255,255,255,.92)!important;background:rgba(255,255,255,.03)!important}
+  .ifield:focus{border-color:rgba(99,102,241,.5)!important;box-shadow:0 0 0 3px rgba(99,102,241,.08)!important;outline:none}
+  .tab-b{transition:all .16s}
+  .tab-b:hover{color:rgba(255,255,255,.85)!important}
+  .card-h{transition:all .22s ease}
+  .card-h:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.1)!important;background:rgba(255,255,255,.025)!important}
+  .cp-b{transition:all .2s ease}
+  .cp-b:hover{border-color:rgba(99,102,241,.35)!important;transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)!important}
+  .copy-b{transition:all .16s}
+  .copy-b:hover{background:rgba(99,102,241,.1)!important;border-color:rgba(99,102,241,.3)!important;color:#a5b4fc!important}
+  .up-tease{transition:all .2s;cursor:pointer}
+  .up-tease:hover{border-color:rgba(245,158,11,.4)!important;background:rgba(245,158,11,.06)!important}
+  .plat-b{transition:all .18s}
   .plat-b:hover:not([data-locked="true"]){transform:translateY(-1px)}
   .photo-thumb{transition:all .2s;cursor:pointer}
-  .photo-thumb:hover{transform:scale(1.04);border-color:rgba(99,102,241,.5)!important}
-  .drop-zone{transition:all .22s}
-  .drop-zone.drag-over{border-color:rgba(99,102,241,.6)!important;background:rgba(99,102,241,.08)!important}
-  .carousel-arrow{transition:all .18s;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;width:36px;height:36px;flex-shrink:0}
-  .carousel-arrow:hover{background:rgba(99,102,241,.18)!important;border-color:rgba(99,102,241,.4)!important;color:#a5b4fc!important;transform:scale(1.08)}
-  .carousel-dot{transition:all .22s;cursor:pointer;border-radius:4px;flex-shrink:0}
+  .photo-thumb:hover{transform:scale(1.05);border-color:rgba(99,102,241,.5)!important}
+  .drop-zone{transition:all .24s}
+  .drop-zone.drag-over{border-color:rgba(99,102,241,.6)!important;background:rgba(99,102,241,.07)!important}
+  .carousel-arrow{transition:all .2s;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:rgba(255,255,255,.35);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;width:38px;height:38px;flex-shrink:0}
+  .carousel-arrow:hover{background:rgba(99,102,241,.14)!important;border-color:rgba(99,102,241,.35)!important;color:#a5b4fc!important;transform:scale(1.1)}
+  .carousel-dot{transition:all .24s;cursor:pointer;border-radius:4px;flex-shrink:0}
+  .premium-card{transition:all .22s ease;position:relative}
+  .premium-card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.1),transparent);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0;transition:opacity .3s}
+  .premium-card:hover::before{opacity:1}
+  .feature-row{transition:all .16s}
+  .feature-row:hover{background:rgba(255,255,255,.018)!important}
+  .signout-btn{transition:all .18s;cursor:pointer}
+  .signout-btn:hover{color:#f43f5e!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
 `;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PLAN DEFINITIONS
+
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = {
   agent:{
@@ -321,19 +326,20 @@ function ToastContainer(){
 function OrbBg(){
   return(
     <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:-1}}>
-      <div style={{position:"absolute",width:640,height:640,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.10) 0%,transparent 68%)",top:"-8%",left:"-4%",animation:"orb1 20s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",width:520,height:520,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.07) 0%,transparent 68%)",bottom:"4%",right:"-4%",animation:"orb2 24s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.05) 0%,transparent 68%)",top:"36%",left:"46%",animation:"orb3 17s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.07) 0%,transparent 65%)",top:"-20%",left:"-15%",animation:"orb1 28s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.05) 0%,transparent 65%)",bottom:"-10%",right:"-10%",animation:"orb2 32s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.03) 0%,transparent 65%)",top:"40%",left:"50%",animation:"orb3 22s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.008) 60px,rgba(255,255,255,.008) 61px),repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.008) 60px,rgba(255,255,255,.008) 61px)"}}/>
     </div>
   );
 }
 function Logo({small}){
   return(
     <div style={{display:"flex",alignItems:"center",gap:10}}>
-      <div style={{width:small?28:32,height:small?28:32,borderRadius:7,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:small?13:15,boxShadow:"0 0 18px rgba(99,102,241,.35)",flexShrink:0}}>⚡</div>
+      <div style={{width:small?30:36,height:small?30:36,borderRadius:9,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:small?14:17,boxShadow:"0 0 0 1px rgba(99,102,241,.3), 0 4px 20px rgba(99,102,241,.3)",flexShrink:0}}>⚡</div>
       <div>
-        <div style={{fontFamily:C.F,fontWeight:800,fontSize:small?13:15,color:C.text,letterSpacing:.3}}>SPARK</div>
-        <div style={{fontFamily:C.F,fontSize:8,color:C.textDim,letterSpacing:2,marginTop:-1}}>REAL ESTATE AI</div>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:small?14:16,color:C.text,letterSpacing:.5}}>SPARK</div>
+        <div style={{fontFamily:C.F,fontSize:8,color:C.textDim,letterSpacing:2.5,marginTop:-1}}>REAL ESTATE AI</div>
       </div>
     </div>
   );
@@ -342,7 +348,7 @@ function Shimmer({children,style={}}){
   return <span style={{background:"linear-gradient(90deg,#6366f1,#a5b4fc,#8b5cf6,#6366f1)",backgroundSize:"200% auto",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite",...style}}>{children}</span>;
 }
 function Badge({color=C.indigo,children}){
-  return <span style={{background:color+"18",border:`1px solid ${color}40`,color,fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,fontFamily:C.F,letterSpacing:1.5,whiteSpace:"nowrap"}}>{children}</span>;
+  return <span style={{background:color+"14",border:`1px solid ${color}35`,color,fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:20,fontFamily:C.F,letterSpacing:1.8,whiteSpace:"nowrap",backdropFilter:"blur(4px)"}}>{children}</span>;
 }
 function CopyBtn({text,label}){
   const [ok,setOk]=useState(false); const toast=useToast();
@@ -1205,9 +1211,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
             </div>
           ))}
         </div>
-        <button onClick={onLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"11px 0",borderRadius:9,cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:13,transition:"all .15s"}}
-          onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(244,63,94,.4)"}
-          onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+        <button className="signout-btn" onClick={doLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 0",borderRadius:9,cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:13}}>
           Sign Out
         </button>
       </div>
@@ -1594,6 +1598,16 @@ function MainApp({user,onLogout}){
   },[user?.email]);
 
   function handleOnboardClose(){ setOnboard(false); LS.set("sp_onboarded",true); }
+
+  function doLogout(){
+    // Save current state before logout
+    const accts = LS.get("sp_accounts",{});
+    const k = (user?.email||"").toLowerCase();
+    if(accts[k]){ accts[k].credits=credits; accts[k].plan=planKey; LS.set("sp_accounts",accts); }
+    LS.del("sp_onboarded");
+    setUser(null);
+    setScreen("landing");
+  }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
   function handleGoSettings(){ setTab("settings"); }
 
@@ -1649,23 +1663,16 @@ function MainApp({user,onLogout}){
 
   // ── MOBILE HEADER ──────────────────────────────────────────────────────────
   const MobileHeader = ()=>(
-    <div style={{
-      position:"sticky",top:0,zIndex:100,
-      background:"rgba(8,9,14,.95)",
-      borderBottom:`1px solid ${C.border}`,
-      backdropFilter:"blur(16px)",
-      padding:"12px 16px",
-      paddingTop:"calc(12px + env(safe-area-inset-top))",
-    }}>
+    <div style={{position:"sticky",top:0,zIndex:100,background:"rgba(5,5,7,.94)",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(20px)",padding:"10px 16px",paddingTop:"calc(10px + env(safe-area-inset-top))"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <Logo small/>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{textAlign:"right"}}>
-            <div style={{fontSize:11,color:credits<5?C.rose:plan.accent,fontFamily:C.F,fontWeight:700}}>{credits} cr</div>
-            <div style={{fontSize:8,color:C.textDim,fontFamily:C.F,letterSpacing:1}}>{plan.name.toUpperCase()}</div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 10px"}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:plan.accent,boxShadow:`0 0 5px ${plan.accent}`}}/>
+            <span style={{fontSize:12,color:C.text,fontFamily:C.F,fontWeight:700}}>{credits}</span>
+            <span style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>CR</span>
           </div>
-          <div style={{width:1,height:24,background:C.border}}/>
-          <button onClick={onLogout} style={{background:"none",border:`1px solid ${C.border}`,color:C.textDim,cursor:"pointer",fontSize:10,fontFamily:C.F,padding:"5px 10px",borderRadius:6}}>Out</button>
+          <button className="signout-btn" onClick={doLogout} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:C.F,fontWeight:500,padding:"5px 10px",borderRadius:7}}>Out</button>
         </div>
       </div>
     </div>
@@ -1698,7 +1705,7 @@ function MainApp({user,onLogout}){
 
         {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-        {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={onLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
+        {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
       </div>
     </div>
   );
@@ -1730,15 +1737,20 @@ function MainApp({user,onLogout}){
         </div>
         <button className="btn-o" onClick={()=>setTab("billing")} style={{width:"100%",marginTop:7,background:"rgba(255,255,255,.025)",border:`1px solid ${C.border}`,color:C.textDim,borderRadius:6,padding:"5px 0",fontSize:8,cursor:"pointer",fontFamily:C.F,fontWeight:700,letterSpacing:2}}>+ BUY CREDITS</button>
       </div>
-      <div style={{padding:"11px 15px",borderTop:`1px solid ${C.border}`}}>
-        <div style={{fontSize:9,color:C.textDim,marginBottom:4,fontFamily:C.F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email}</div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <Badge color={plan.accent}>{plan.name.toUpperCase()}</Badge>
-          <button onClick={onLogout} style={{background:"none",border:"none",color:C.textDim,cursor:"pointer",fontSize:10,fontFamily:C.F}}>sign out</button>
+      <div style={{padding:"14px 12px",borderTop:`1px solid ${C.border}`}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:9}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg,${plan.accent},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>
+              {(user?.email||"?")[0].toUpperCase()}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:10,color:C.text,fontFamily:C.F,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
+              <div style={{marginTop:2}}><Badge color={plan.accent}>{plan.name.toUpperCase()}</Badge></div>
+            </div>
+          </div>
+          <button className="signout-btn" onClick={doLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:C.F,fontWeight:500,padding:"7px 0",borderRadius:7}}>Sign out</button>
         </div>
       </div>
-    </div>
-  );
+    );
 
   return(
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
@@ -1772,7 +1784,7 @@ function MainApp({user,onLogout}){
               )}
               {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={onLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
+              {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
           </div>
           <MobileNav/>
@@ -1801,7 +1813,7 @@ function MainApp({user,onLogout}){
               )}
               {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={onLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
+              {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
           </div>
         </div>
@@ -1820,108 +1832,142 @@ function LandingPage({onStart}){
   const FEATURES=[
     ["Content types","Listing + Tips","All 4","All 4"],
     ["Listing photos","3 photos","8 photos","20 photos"],
-    ["Auto video generation","✓","✓","✓ 4K"],
+    ["Auto video generation","720p","1080p","4K"],
     ["Platforms","TikTok + Reels","All 5","All 5"],
     ["Hook variants","3","7","10"],
-    ["Agent voice memory","✗","✓","✓"],
+    ["Agent voice memory","—","✓","✓"],
     ["Video quality","720p","1080p","4K"],
     ["Credits / month","20","60","180"],
-    ["Team seats","1","1","5"],
   ];
 
+  const anim = (delay=0) => ready?`fadeUp .5s ease ${delay}s both`:"none";
+
   return(
-    <div style={{background:"#08090e",minHeight:"100vh",color:C.text,fontFamily:C.F,overflowX:"hidden"}}>
+    <div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:C.F,overflowX:"hidden"}}>
       <OrbBg/>
       <div style={{position:"relative",zIndex:1}}>
+
         {/* Nav */}
-        <nav style={{padding:"18px 48px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(14px)",background:"rgba(8,9,14,.65)",position:"sticky",top:0,zIndex:100}}>
+        <nav style={{padding:"0 24px",height:60,display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`,backdropFilter:"blur(20px)",background:"rgba(5,5,7,.7)",position:"sticky",top:0,zIndex:100}}>
           <Logo/>
-          <div style={{display:"flex",gap:10}}>
-            <button className="btn-o" onClick={()=>onStart("login")} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"8px 20px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:600,fontFamily:C.F}}>Sign In</button>
-            <button className="btn-g" onClick={()=>onStart("signup")} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"8px 20px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:C.F,boxShadow:"0 4px 14px rgba(99,102,241,.26)"}}>Start Free ⚡</button>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <button className="btn-o" onClick={()=>onStart("login")} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"7px 18px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:500,fontFamily:C.F}}>Sign in</button>
+            <button className="btn-g" onClick={()=>onStart("signup")} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"7px 18px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:C.F,boxShadow:"0 0 0 1px rgba(99,102,241,.4), 0 4px 16px rgba(99,102,241,.2)"}}>Start free</button>
           </div>
         </nav>
 
         {/* Hero */}
-        <div style={{padding:"108px 48px 76px",maxWidth:960,margin:"0 auto",textAlign:"center"}}>
-          <div style={{display:"inline-flex",alignItems:"center",gap:7,background:"rgba(99,102,241,.08)",border:"1px solid rgba(99,102,241,.2)",borderRadius:18,padding:"4px 14px",fontSize:9,color:C.indigoLt,letterSpacing:2,fontWeight:700,marginBottom:26,animation:ready?"fadeUp .45s ease both":"none"}}>
-            ⚡ BUILT FOR REAL ESTATE AGENTS
+        <div style={{padding:"80px 24px 64px",maxWidth:760,margin:"0 auto",textAlign:"center"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:20,padding:"5px 14px",fontSize:10,color:C.indigoLt,letterSpacing:2,fontWeight:600,marginBottom:28,animation:anim()}}>
+            ⚡ AI-POWERED REAL ESTATE CONTENT
           </div>
-          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(36px,5.5vw,66px)",lineHeight:1.1,margin:"0 0 22px",animation:ready?"fadeUp .45s ease .1s both":"none"}}>
-            Upload Photos.<br/><Shimmer style={{fontSize:"inherit",fontWeight:"inherit"}}>Get a Viral Listing Video.</Shimmer><br/>
-            <span style={{color:C.textDim,fontSize:".52em",fontWeight:600}}>Script. Hooks. Caption. Cinematic video. 60 seconds.</span>
+
+          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(32px,6vw,60px)",lineHeight:1.08,margin:"0 0 20px",letterSpacing:"-0.02em",animation:anim(.08)}}>
+            <Shimmer>Upload photos.</Shimmer><br/>
+            <span style={{color:C.text}}>Get a viral listing video.</span>
           </h1>
-          <p style={{fontSize:16,color:C.textMd,maxWidth:520,margin:"0 auto 38px",lineHeight:1.7,fontWeight:400,animation:ready?"fadeUp .45s ease .2s both":"none"}}>
-            Upload your listing photos → SPARK proprietary AI engine writes your full TikTok script, generates hooks and MLS-safe captions, and automatically renders a cinematic walkthrough video — ready to post.
+
+          <p style={{fontSize:17,color:C.textMd,maxWidth:480,margin:"0 auto 36px",lineHeight:1.65,fontWeight:400,animation:anim(.16)}}>
+            SPARK writes your TikTok script, hooks, captions — and auto-renders a cinematic listing video from your photos. Everything in 60 seconds.
           </p>
 
-          {/* 3-step visual */}
-          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:36,flexWrap:"wrap",animation:ready?"fadeUp .45s ease .25s both":"none"}}>
-            {[["📸","Upload Photos","Your listing photos become the hero frames"],["⚡","AI Writes Everything","Script, hooks, captions, hashtags — all optimized"],["🎬","Auto Video Renders","Cinematic listing video ready to download & post"]].map(([icon,title,desc],i)=>(
-              <div key={i} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:12,padding:"16px 14px",maxWidth:170,textAlign:"left",flex:"1 1 140px"}}>
-                <div style={{fontSize:22,marginBottom:8}}>{icon}</div>
-                <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text,marginBottom:4}}>{title}</div>
-                <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,lineHeight:1.5}}>{desc}</div>
+          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:16,animation:anim(.22)}}>
+            <button className="btn-g" onClick={()=>onStart("signup")}
+              style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"14px 28px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:15,fontFamily:C.F,boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 8px 28px rgba(99,102,241,.24)"}}>
+              Start free — 3 credits ⚡
+            </button>
+            <button className="btn-o" onClick={()=>onStart("login")}
+              style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,color:C.textMd,padding:"14px 24px",borderRadius:10,cursor:"pointer",fontWeight:500,fontSize:15,fontFamily:C.F}}>
+              Sign in
+            </button>
+          </div>
+          <p style={{fontSize:11,color:C.textDim,fontFamily:C.F,letterSpacing:1,animation:anim(.3)}}>No credit card · cancel anytime</p>
+        </div>
+
+        {/* 3-step flow */}
+        <div style={{padding:"0 24px 72px",maxWidth:700,margin:"0 auto"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:1,background:C.border,borderRadius:16,overflow:"hidden",border:`1px solid ${C.border}`}}>
+            {[
+              {n:"01",icon:"📸",title:"Upload photos",body:"Drop your listing photos. First one becomes the hero frame."},
+              {n:"02",icon:"⚡",title:"AI generates everything",body:"Full script, hooks, MLS captions, hashtags — optimised for your platform."},
+              {n:"03",icon:"🎬",title:"Download your video",body:"Cinematic listing video rendered automatically. Post in one tap."},
+            ].map((s,i)=>(
+              <div key={i} style={{background:C.surface,padding:"24px 18px",animation:anim(.1+i*.08)}}>
+                <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:2,marginBottom:12}}>{s.n}</div>
+                <div style={{fontSize:22,marginBottom:10}}>{s.icon}</div>
+                <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:6}}>{s.title}</div>
+                <div style={{fontFamily:C.F,fontSize:12,color:C.textDim,lineHeight:1.55}}>{s.body}</div>
               </div>
             ))}
           </div>
-
-          <div style={{display:"flex",gap:11,justifyContent:"center",marginBottom:13,animation:ready?"fadeUp .45s ease .3s both":"none"}}>
-            <button className="btn-g" onClick={()=>onStart("signup")} style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 30px",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 22px rgba(99,102,241,.28)"}}>Get 3 Free Generations ⚡</button>
-            <button className="btn-o" onClick={()=>onStart("login")} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,color:C.textMd,padding:"13px 26px",borderRadius:10,cursor:"pointer",fontWeight:600,fontSize:14,fontFamily:C.F}}>Sign In →</button>
-          </div>
-          <p style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:600,animation:ready?"fadeIn .5s ease .5s both":"none"}}>NO CREDIT CARD · 3 FREE CREDITS · CANCEL ANYTIME</p>
         </div>
 
         {/* Stats */}
-        <div style={{borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,padding:"22px 48px",background:"rgba(255,255,255,.008)"}}>
-          <div style={{maxWidth:760,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,textAlign:"center"}}>
-            {[["60s","listing to video"],["403%","more inquiries with video"],["$49","pro plan / mo"],["1.5M+","US agents to reach"]].map(([n,l],i)=>(
-              <div key={i} style={{animation:`fadeUp .38s ease ${i*.07}s both`}}>
-                <div style={{fontFamily:C.F,fontWeight:800,fontSize:24,color:C.indigoLt}}>{n}</div>
-                <div style={{fontSize:10,color:C.textDim,letterSpacing:.8,fontFamily:C.F,marginTop:3}}>{l}</div>
+        <div style={{borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,padding:"28px 24px",background:"rgba(255,255,255,.012)"}}>
+          <div style={{maxWidth:600,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:16,textAlign:"center"}}>
+            {[["60s","listing to video"],["7×","more listing inquiries"],["$49","pro plan / mo"],["3","free credits to start"]].map(([n,l],i)=>(
+              <div key={i} style={{animation:`fadeUp .4s ease ${i*.06}s both`}}>
+                <div style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:C.text,letterSpacing:"-0.02em"}}>{n}</div>
+                <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:4,lineHeight:1.4}}>{l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Feature table */}
-        <div style={{padding:"72px 48px 0",maxWidth:960,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:36}}>
-            <div style={{fontSize:9,color:C.indigo,letterSpacing:4,fontFamily:C.F,fontWeight:700,marginBottom:10}}>WHAT YOU GET</div>
-            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:30,lineHeight:1.2}}>Every tool an agent needs.<br/><Shimmer>Unlocked by plan.</Shimmer></h2>
+        {/* Feature comparison */}
+        <div style={{padding:"72px 24px 0",maxWidth:760,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:40}}>
+            <div style={{fontSize:10,color:C.indigo,letterSpacing:3,fontFamily:C.F,fontWeight:700,marginBottom:12}}>COMPARE PLANS</div>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(22px,4vw,34px)",lineHeight:1.15,letterSpacing:"-0.02em"}}>
+              Everything unlocked by plan.
+            </h2>
           </div>
-          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,overflow:"hidden",marginBottom:72}}>
-            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",background:C.surfaceUp,borderBottom:`1px solid ${C.border}`,padding:"11px 18px"}}>
-              {["Feature","Agent $29","Pro $49","Team $99"].map((h,i)=>(
-                <div key={i} style={{fontSize:9,fontWeight:700,color:i===0?C.textMd:Object.values(PLANS)[i-1]?.accent,fontFamily:C.F,letterSpacing:1,textAlign:i===0?"left":"center"}}>{h}</div>
+          <div style={{border:`1px solid ${C.border}`,borderRadius:16,overflow:"hidden",marginBottom:72}}>
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",background:C.surfaceHigh,borderBottom:`1px solid ${C.border}`,padding:"12px 20px"}}>
+              {["","Agent","Pro","Team"].map((h,i)=>(
+                <div key={i} style={{fontSize:i===0?0:11,fontWeight:700,color:i===0?"transparent":Object.values(PLANS)[i-1]?.accent,fontFamily:C.F,letterSpacing:.5,textAlign:i===0?"left":"center"}}>{h}</div>
               ))}
             </div>
             {FEATURES.map(([feat,...vals],i)=>(
-              <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"10px 18px",borderBottom:i<FEATURES.length-1?`1px solid ${C.border}`:"none",background:i%2===0?"transparent":"rgba(255,255,255,.008)"}}>
-                <div style={{fontSize:12,color:C.textMd,fontFamily:C.F}}>{feat}</div>
+              <div key={i} className="feature-row" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",padding:"11px 20px",borderBottom:i<FEATURES.length-1?`1px solid ${C.border}`:"none"}}>
+                <div style={{fontSize:13,color:C.textMd,fontFamily:C.F}}>{feat}</div>
                 {vals.map((v,j)=>(
-                  <div key={j} style={{fontSize:12,textAlign:"center",color:v==="✗"?C.textDim:v.includes("✓")?C.emerald:C.text,fontFamily:C.F,fontWeight:v==="✓"||v==="✗"?700:400}}>{v}</div>
+                  <div key={j} style={{fontSize:12,textAlign:"center",color:v==="—"?C.textDim:v==="✓"?C.emerald:C.text,fontFamily:C.F,fontWeight:v==="✓"||v==="—"?600:400}}>{v}</div>
                 ))}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Pricing carousel */}
-        <div style={{padding:"0 48px 96px",maxWidth:960,margin:"0 auto"}}>
-          <div style={{textAlign:"center",marginBottom:38}}>
-            <div style={{fontSize:9,color:C.indigo,letterSpacing:4,fontFamily:C.F,fontWeight:700,marginBottom:10}}>PRICING</div>
-            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:30,lineHeight:1.2}}>Less than one open house print run.<br/><Shimmer>Cancel anytime.</Shimmer></h2>
+        {/* Pricing */}
+        <div style={{padding:"0 24px 96px",maxWidth:760,margin:"0 auto"}}>
+          <div style={{textAlign:"center",marginBottom:40}}>
+            <div style={{fontSize:10,color:C.indigo,letterSpacing:3,fontFamily:C.F,fontWeight:700,marginBottom:12}}>PRICING</div>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(22px,4vw,34px)",lineHeight:1.15,letterSpacing:"-0.02em"}}>
+              Simple pricing. No surprises.
+            </h2>
           </div>
-          <div style={{maxWidth:520,margin:"0 auto"}}>
+          <div style={{maxWidth:540,margin:"0 auto"}}>
             <PlanCarousel mode="landing" onStart={onStart}/>
           </div>
         </div>
+
+        {/* Footer */}
+        <div style={{borderTop:`1px solid ${C.border}`,padding:"28px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+          <Logo small/>
+          <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+            {[["Privacy","https://getspark.app/privacy"],["Terms","https://getspark.app/terms"],["Support","mailto:support@getspark.app"]].map(([l,h])=>(
+              <a key={l} href={h} target="_blank" rel="noreferrer" style={{fontSize:12,color:C.textDim,fontFamily:C.F,textDecoration:"none"}}>{l}</a>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>© 2026 SPARK AI</div>
+        </div>
+
       </div>
     </div>
   );
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTH PAGE
@@ -2033,25 +2079,16 @@ function AuthPage({mode,onAuth,onSwitch}){
   }
 
   return(
-    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F}}>
+      <OrbBg/>
       <ToastContainer/>
-      <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:-1}}>
-        <div style={{position:"absolute",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.10) 0%,transparent 68%)",top:"-10%",left:"-5%"}}/>
-        <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.07) 0%,transparent 68%)",bottom:"5%",right:"-5%"}}/>
-      </div>
-      <div style={{width:"100%",maxWidth:420,padding:"20px",position:"relative",zIndex:1,opacity:mounted?1:0,transition:"opacity .3s ease"}}>
-        <div style={{textAlign:"center",marginBottom:28}}>
-          <div style={{display:"inline-flex",alignItems:"center",gap:10,marginBottom:12}}>
-            <div style={{width:32,height:32,borderRadius:7,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,boxShadow:"0 0 18px rgba(99,102,241,.35)"}}>⚡</div>
-            <div style={{textAlign:"left"}}>
-              <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:800,fontSize:15,color:"rgba(255,255,255,.92)",letterSpacing:.3}}>SPARK</div>
-              <div style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:8,color:"rgba(255,255,255,.26)",letterSpacing:2,marginTop:-1}}>REAL ESTATE AI</div>
-            </div>
-          </div>
-          <p style={{color:"rgba(255,255,255,.56)",fontSize:13,margin:0,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>{mode==="login"?"Welcome back, agent":"Upload photos. Get a viral listing video."}</p>
+      <div style={{width:"100%",maxWidth:400,padding:"20px",position:"relative",zIndex:1,opacity:mounted?1:0,transition:"opacity .35s ease"}}>
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{display:"flex",justifyContent:"center",marginBottom:16}}><Logo/></div>
+          <p style={{color:C.textMd,fontSize:14,margin:0,fontFamily:C.F,fontWeight:400}}>{mode==="login"?"Welcome back":"Start generating viral listing content"}</p>
         </div>
 
-        <div style={{background:"#0d0f17",border:"1px solid rgba(255,255,255,.06)",borderRadius:15,padding:26,boxShadow:"0 40px 80px rgba(0,0,0,.4)"}}>
+        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"28px 24px",boxShadow:"0 40px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04)"}}>
 
           <div style={{marginBottom:14}}>
             <div style={{fontSize:10,color:"rgba(255,255,255,.26)",letterSpacing:1.5,fontFamily:"'Plus Jakarta Sans',sans-serif",fontWeight:700,marginBottom:6}}>EMAIL</div>
