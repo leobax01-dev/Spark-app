@@ -619,7 +619,7 @@ function OnboardingModal({planKey,onClose}){
 // ─────────────────────────────────────────────────────────────────────────────
 // GENERATE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onGoSettings}){
+function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onGoSettings,user}){
   const plan=PLANS[planKey];
   const toast=useToast();
 
@@ -677,7 +677,21 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       setPct(94); setStage("Content ready ✓");
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
-      setCredits(c=>{ const n=c-cost; LS.set("sp_credits",n); return n; });
+
+      // Deduct credits locally and persist to Supabase
+      setCredits(c=>{
+        const n = c - cost;
+        LS.set("sp_credits", n);
+        // Persist to Supabase so credits survive device/browser switches
+        const sb = window.__supabase;
+        if(sb && user?.email){
+          sb.from("users")
+            .update({ credits:n, updated_at: new Date().toISOString() })
+            .eq("email", user.email.toLowerCase())
+            .then(({error})=>{ if(error) console.warn("Credit sync error:", error.message); });
+        }
+        return n;
+      });
       toast("Content package ready ✓");
 
       // Trigger Higgsfield video generation in background
@@ -1089,14 +1103,23 @@ function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
 // ─────────────────────────────────────────────────────────────────────────────
 // BILLING PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail}){
+function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user}){
   const plan=PLANS[planKey];
   const toast=useToast();
   const [confirmKey,setConfirmKey]=useState(null);
 
   function doUpgrade(k){
     if(k===planKey) return;
-    if(planRank(k)<planRank(planKey)){ setPlanKey(k); LS.set("sp_plan",k); const nc=PLANS[k].credits; setCredits(nc); LS.set("sp_credits",nc); toast(`Switched to ${PLANS[k].name} plan`,"info"); }
+    if(planRank(k)<planRank(planKey)){
+      setPlanKey(k); LS.set("sp_plan",k);
+      const nc=PLANS[k].credits; setCredits(nc); LS.set("sp_credits",nc);
+      // Sync plan change to Supabase
+      const sb=window.__supabase;
+      if(sb&&user?.email){
+        sb.from("users").update({plan:k,credits:nc,updated_at:new Date().toISOString()}).eq("email",user.email.toLowerCase());
+      }
+      toast(`Switched to ${PLANS[k].name} plan`,"info");
+    }
     else setConfirmKey(k);
   }
   function confirmUpgrade(){
@@ -1689,7 +1712,7 @@ function MainApp({user,onLogout}){
           <p style={{fontSize:isMobile?11:10,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F,fontWeight:500}}>{SUBTITLES[tab]}</p>
         </div>
 
-        {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+        {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
 
         {tab==="voice"&&(
           <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:isMobile?16:26}}>
@@ -1703,7 +1726,7 @@ function MainApp({user,onLogout}){
           </div>
         )}
 
-        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
+        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user}/>}
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
       </div>
@@ -1770,7 +1793,7 @@ function MainApp({user,onLogout}){
                 <p style={{fontSize:11,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F}}>{SUBTITLES[tab]}</p>
               </div>
 
-              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
               {tab==="voice"&&(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:16}}>
                   {voice.saved&&plan.voiceMemory&&(
@@ -1782,7 +1805,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
@@ -1799,7 +1822,7 @@ function MainApp({user,onLogout}){
                 <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
                 <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
               </div>
-              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings}/>}
+              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
               {tab==="voice"&&(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
                   {voice.saved&&plan.voiceMemory&&(
@@ -1811,7 +1834,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
@@ -2233,6 +2256,6 @@ export default function App(){
 
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
-  if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ const accts=LS.get("sp_accounts",{}); const k=(user?.email||'').toLowerCase(); if(accts[k]){ accts[k].credits=credits; accts[k].plan=planKey; LS.set("sp_accounts",accts); } LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
+  if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
   return <div style={{minHeight:"100vh",background:"#08090e"}}/>;
 }
