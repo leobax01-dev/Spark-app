@@ -1211,7 +1211,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
             </div>
           ))}
         </div>
-        <button className="signout-btn" onClick={doLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 0",borderRadius:9,cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:13}}>
+        <button className="signout-btn" onClick={onLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 0",borderRadius:9,cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:13}}>
           Sign Out
         </button>
       </div>
