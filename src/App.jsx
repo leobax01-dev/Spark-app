@@ -644,7 +644,6 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
   const typeLocked     = !plan.contentTypes.includes(type);
   const platformLocked = !plan.platforms.includes(platform);
   const cost           = CONTENT_TYPES[type]?.cost||2;
-  const hasVidKey      = !!apiKeys.higgsfield;
   const canGen         = credits>=cost && !typeLocked && !platformLocked;
   const showPhotoUpload= type==="listing";
 
@@ -792,20 +791,6 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               <PhotoUploader photos={photos} setPhotos={setPhotos} maxPhotos={plan.maxPhotos} planKey={planKey} onGoUpgrade={onGoUpgrade}/>
             )}
 
-            {/* Video key hint for listing */}
-            {showPhotoUpload&&!hasVidKey&&(
-              <div className="up-tease" onClick={onGoSettings} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 11px",background:"rgba(34,211,238,.04)",border:"1px solid rgba(34,211,238,.13)",borderRadius:7,marginBottom:13}}>
-                <span style={{fontSize:11,color:C.cyan,fontFamily:C.F}}>🎬 Add your Video Engine key in Settings to auto-generate listing videos</span>
-                <Badge color={C.cyan}>Settings →</Badge>
-              </div>
-            )}
-            {showPhotoUpload&&hasVidKey&&(
-              <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 11px",background:"rgba(34,211,238,.05)",border:"1px solid rgba(34,211,238,.14)",borderRadius:7,marginBottom:13}}>
-                <div style={{width:5,height:5,borderRadius:"50%",background:C.cyan,boxShadow:`0 0 7px ${C.cyan}`}}/>
-                <span style={{fontSize:11,color:C.cyan,fontFamily:C.F,fontWeight:600}}>Video engine connected — listing video will auto-render after generation</span>
-              </div>
-            )}
-
             {/* Inputs */}
             <div style={{display:"grid",gridTemplateColumns:type==="listing"?"1fr 1fr":"1fr",gap:11}}>
               {TYPE_INPUTS[type].map(k=>{
@@ -950,7 +935,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     vidState={vidState}
                     higgsfieldPrompt={result.higgsfield_prompt}
                     videoQuality={plan.videoQuality}
-                    hasHiggsfieldKey={hasVidKey}
+                    hasHiggsfieldKey={true}
                     onGoSettings={onGoSettings}
                   />
                   {result.thumbnail&&(
@@ -2048,7 +2033,15 @@ function AuthPage({mode,onAuth,onSwitch}){
             const accounts=LS.get("sp_accounts",{});
             accounts[email.toLowerCase()]={ plan, credits:startCredits, pass };
             LS.set("sp_accounts",accounts);
-            onAuth({ email, plan, credits:startCredits });
+
+            // If email confirmation is required, Supabase returns a user
+            // but session is null — show the verify email screen
+            if(data.session===null){
+              setView("verify_email");
+              setLoading(false);
+            } else {
+              onAuth({ email, plan, credits:startCredits });
+            }
           } else {
             const {data,error}=await sb.auth.signInWithPassword({ email, password:pass });
             if(error) throw new Error(error.message);
@@ -2061,7 +2054,15 @@ function AuthPage({mode,onAuth,onSwitch}){
             onAuth({ email, plan:userData?.plan||"pro", credits:userData?.credits||60 });
           }
         }catch(e){
-          toast(e.message||"Something went wrong — try again","error");
+          // Give a more helpful message for unconfirmed email
+          let msg = e.message||"Something went wrong — try again";
+          if(msg.toLowerCase().includes("email not confirmed")||msg.toLowerCase().includes("not confirmed")){
+            msg = "Please confirm your email first — check your inbox for the confirmation link";
+          }
+          if(msg.toLowerCase().includes("invalid login")){
+            msg = "Incorrect email or password — try again";
+          }
+          toast(msg,"error");
           setLoading(false);
         }
       })();
@@ -2099,6 +2100,36 @@ function AuthPage({mode,onAuth,onSwitch}){
       <OrbBg/>
       <ToastContainer/>
       <div style={{width:"100%",maxWidth:400,padding:"20px",position:"relative",zIndex:1,opacity:mounted?1:0,transition:"opacity .35s ease"}}>
+
+        {/* ── VERIFY EMAIL SCREEN ── */}
+        {view==="verify_email"&&(
+          <div style={{textAlign:"center",animation:"scaleIn .3s ease"}}>
+            <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(99,102,241,.1)",border:"1px solid rgba(99,102,241,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 20px"}}>✉️</div>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:22,marginBottom:10,color:C.text}}>Check your inbox</h2>
+            <p style={{fontFamily:C.F,fontSize:14,color:C.textMd,lineHeight:1.65,marginBottom:6}}>
+              We sent a confirmation link to<br/>
+              <strong style={{color:C.text}}>{email}</strong>
+            </p>
+            <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,lineHeight:1.55,marginBottom:28,maxWidth:300,margin:"0 auto 28px"}}>
+              Click the link in the email to activate your account. Check your spam folder if you don't see it within a minute.
+            </p>
+            <div style={{display:"flex",flexDirection:"column",gap:10,maxWidth:280,margin:"0 auto"}}>
+              <button onClick={async()=>{
+                const sb=window.__supabase;
+                if(!sb){ toast("Auth service unavailable","error"); return; }
+                const {error}=await sb.auth.resend({ type:"signup", email });
+                if(error) toast(error.message,"error");
+                else toast("Confirmation email resent ✓");
+              }} style={{background:"rgba(99,102,241,.1)",border:"1px solid rgba(99,102,241,.25)",color:C.indigoLt,padding:"11px 0",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F,fontWeight:600}}>
+                Resend confirmation email
+              </button>
+              <button onClick={()=>{ setView("auth"); onSwitch(); }}
+                style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,padding:"11px 0",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>
+                Back to sign in
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── FORGOT PASSWORD SENT ── */}
         {view==="forgot_sent"&&(
