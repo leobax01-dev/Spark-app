@@ -298,30 +298,38 @@ async function callHiggsfieldTxt(prompt){
 }
 
 async function pollHiggsfield(jobId, onProgress){
-  const MAX=60, INTERVAL=4000;
+  const MAX=90, INTERVAL=5000; // 90 attempts × 5s = 7.5 minutes max
   for(let i=0;i<MAX;i++){
     await new Promise(r=>setTimeout(r,INTERVAL));
-    const pct = Math.min(92, 20+(i/MAX)*72);
+    const pct = Math.min(95, 10+(i/MAX)*85);
     onProgress(Math.round(pct));
     try{
       const r = await fetch(`/api/higgsfield-poll?jobId=${jobId}`);
       if(!r.ok) continue;
       const d = await r.json();
-      // Handle both v1 and v2 status field names
+
+      // Higgsfield platform.higgsfield.ai status values
       const status = (d?.status||d?.state||"").toLowerCase();
-      if(status==="completed"||status==="succeeded"||status==="success"){
-        // Handle both v1 and v2 URL locations
-        const url = d?.output?.media_url?.[0]
+      console.log("Poll status:", status, "request_id:", d?.request_id);
+
+      if(status==="completed"||status==="complete"||status==="succeeded"||status==="success"){
+        // Higgsfield docs: completed response has video.url
+        const url = d?.video?.url
+          || d?.url
+          || d?.images?.[0]?.url
+          || d?.output?.media_url?.[0]
           || d?.output?.url
           || d?.result?.url
-          || d?.url
-          || d?.video_url
-          || d?.results?.raw?.url
           || null;
         return {done:true, url};
       }
-      if(status==="failed"||status==="error"||status==="cancelled") return {done:true, url:null, failed:true};
-    }catch{}
+      if(status==="failed"||status==="error"||status==="cancelled"){
+        return {done:true, url:null, failed:true};
+      }
+      // queued / processing — keep polling
+    }catch(e){
+      console.warn("Poll error:", e.message);
+    }
   }
   return {done:true, url:null, failed:true};
 }
