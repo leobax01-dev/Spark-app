@@ -1,4 +1,4 @@
-// api/higgsfield-poll.js — polls Higgsfield job status
+// api/higgsfield-poll.js — polls platform.higgsfield.ai job status
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -13,16 +13,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'HIGGSFIELD_API_KEY not configured' });
   }
 
-  // Higgsfield v2 uses "Key YOUR_KEY" for UUID-style keys
-  const authHeader = apiKey.startsWith('hf-')
-    ? `Bearer ${apiKey}`
-    : `Key ${apiKey}`;
-
   try {
+    // Correct status endpoint per docs:
+    // GET https://platform.higgsfield.ai/requests/{request_id}/status
     const response = await fetch(
-      `https://api.higgsfield.ai/v1/requests/${jobId}/status`,
+      `https://platform.higgsfield.ai/requests/${jobId}/status`,
       {
-        headers: { 'Authorization': authHeader },
+        headers: {
+          'Authorization': `Key ${apiKey}`,
+        },
       }
     );
 
