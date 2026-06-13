@@ -1,5 +1,4 @@
-// api/higgsfield.js
-// Higgsfield v2 image-to-video proxy
+// api/higgsfield.js — Higgsfield image-to-video proxy
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -8,36 +7,17 @@ export default async function handler(req, res) {
 
   const apiKey = process.env.HIGGSFIELD_API_KEY;
   if (!apiKey) {
+    console.error('HIGGSFIELD_API_KEY not set');
     return res.status(500).json({ error: 'HIGGSFIELD_API_KEY not configured' });
   }
 
   try {
     const { imageBase64, prompt } = req.body;
 
-    if (!imageBase64 || !prompt) {
-      return res.status(400).json({ error: 'imageBase64 and prompt are required' });
+    if (!prompt) {
+      return res.status(400).json({ error: 'prompt is required' });
     }
 
-    // Upload the image first to get a URL
-    const uploadRes = await fetch('https://api.higgsfield.ai/v1/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        image: `data:image/jpeg;base64,${imageBase64}`,
-      }),
-    });
-
-    let imageUrl = null;
-
-    if (uploadRes.ok) {
-      const uploadData = await uploadRes.json();
-      imageUrl = uploadData.url || uploadData.image_url || null;
-    }
-
-    // Submit image-to-video job
     const body = {
       model: 'dop-turbo',
       prompt: prompt,
@@ -45,12 +25,16 @@ export default async function handler(req, res) {
       duration: 5,
     };
 
-    // Use URL if upload worked, otherwise send base64 directly
-    if (imageUrl) {
-      body.input_images = [{ type: 'image_url', image_url: imageUrl }];
-    } else {
-      body.input_images = [{ type: 'base64', data: imageBase64 }];
+    // Add image if provided
+    if (imageBase64) {
+      body.input_images = [{
+        type: 'base64',
+        data: imageBase64,
+        media_type: 'image/jpeg',
+      }];
     }
+
+    console.log('Sending to Higgsfield:', JSON.stringify({ prompt: prompt.slice(0, 80), hasImage: !!imageBase64 }));
 
     const response = await fetch('https://api.higgsfield.ai/v1/image2video/dop', {
       method: 'POST',
@@ -62,13 +46,15 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
+    console.log('Higgsfield response:', response.status, JSON.stringify(data).slice(0, 200));
 
     if (!response.ok) {
-      console.error('Higgsfield error:', response.status, JSON.stringify(data));
+      console.error('Higgsfield API error:', response.status, JSON.stringify(data));
       return res.status(response.status).json(data);
     }
 
     return res.status(200).json(data);
+
   } catch (error) {
     console.error('Higgsfield proxy error:', error.message);
     return res.status(500).json({ error: error.message });
