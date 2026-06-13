@@ -1,4 +1,4 @@
-// api/higgsfield.js — platform.higgsfield.ai proxy with correct upload flow
+// api/higgsfield.js — restored to version that achieved 21% render
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -13,61 +13,21 @@ export default async function handler(req, res) {
     if (!prompt) return res.status(400).json({ error: 'prompt is required' });
 
     const authHeader = `Key ${apiKey}`;
-    const body = { prompt, duration: 5 };
 
-    // Step 1: Upload image if provided
+    const body = {
+      prompt,
+      aspect_ratio: '9:16',
+      resolution: '720p',
+    };
+
     if (imageBase64) {
-      try {
-        // Convert base64 to binary buffer
-        const buffer = Buffer.from(imageBase64, 'base64');
-        
-        // Build multipart form data manually
-        const boundary = '----HiggsfieldBoundary' + Date.now();
-        const CRLF = '\r\n';
-        
-        const header = `--${boundary}${CRLF}Content-Disposition: form-data; name="file"; filename="listing.jpg"${CRLF}Content-Type: image/jpeg${CRLF}${CRLF}`;
-        const footer = `${CRLF}--${boundary}--${CRLF}`;
-        
-        const headerBuf = Buffer.from(header, 'utf8');
-        const footerBuf = Buffer.from(footer, 'utf8');
-        const multipart = Buffer.concat([headerBuf, buffer, footerBuf]);
-
-        console.log('Uploading image, size:', buffer.length, 'bytes');
-
-        const uploadRes = await fetch('https://platform.higgsfield.ai/upload', {
-          method: 'POST',
-          headers: {
-            'Authorization': authHeader,
-            'Content-Type': `multipart/form-data; boundary=${boundary}`,
-            'Content-Length': multipart.length.toString(),
-          },
-          body: multipart,
-        });
-
-        const uploadText = await uploadRes.text();
-        console.log('Upload status:', uploadRes.status, uploadText.slice(0, 200));
-
-        if (uploadRes.ok) {
-          let uploadData;
-          try { uploadData = JSON.parse(uploadText); } catch {}
-          const imageUrl = uploadData?.url || uploadData?.file_url || uploadData?.data?.url;
-          if (imageUrl) {
-            body.image_url = imageUrl;
-            console.log('Image uploaded successfully:', imageUrl);
-          }
-        } else {
-          console.warn('Upload failed, proceeding without image');
-        }
-      } catch (uploadErr) {
-        console.warn('Upload error:', uploadErr.message, '— proceeding without image');
-      }
+      body.start_image_url = `data:image/jpeg;base64,${imageBase64}`;
     }
 
-    // Step 2: Submit generation request
-    const endpoint = 'https://platform.higgsfield.ai/higgsfield-ai/dop/standard';
-    console.log('Submitting generation, has image_url:', !!body.image_url);
+    console.log('POST to: https://platform.higgsfield.ai/higgsfield-ai/soul/standard');
+    console.log('Has image:', !!imageBase64, 'prompt:', prompt.slice(0, 80));
 
-    const response = await fetch(endpoint, {
+    const response = await fetch('https://platform.higgsfield.ai/higgsfield-ai/soul/standard', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,14 +38,14 @@ export default async function handler(req, res) {
     });
 
     const responseText = await response.text();
-    console.log('Generation status:', response.status);
-    console.log('Generation response:', responseText.slice(0, 500));
+    console.log('Status:', response.status);
+    console.log('Response:', responseText.slice(0, 500));
 
     let data;
     try { data = JSON.parse(responseText); } catch { data = { raw: responseText }; }
 
     if (!response.ok) {
-      console.error('Generation error:', response.status, responseText.slice(0, 400));
+      console.error('Error:', response.status, responseText.slice(0, 400));
       return res.status(response.status).json(data);
     }
 
