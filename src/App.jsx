@@ -701,45 +701,44 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       });
       toast("Content package ready ✓");
 
-      // Trigger Higgsfield video generation in background
+      // Trigger Higgsfield video generation in background — fully isolated
+      // A video error NEVER affects the content package
       if(type==="listing"){
-        setVid({status:"generating",pct:5});
-        const heroB64 = photos[0]?.b64 || null;
-        const prompt  = content.higgsfield_prompt || `Cinematic listing video for ${inputs.address||"the property"}. Slow dolly-in reveal, warm golden hour lighting, luxury real estate aesthetic.`;
-        try{
-          let job;
-          if(heroB64){
-            setStage("Rendering cinematic video...");
-            job = await callHiggsfieldImg(heroB64, prompt);
-          } else {
-            job = await callHiggsfieldTxt(prompt);
-          }
-          const jobId = job?.request_id || job?.id || job?.job_id || job?.data?.id || job?.data?.request_id;
-          if(jobId){
-            // Poll in background without blocking UI
-            pollHiggsfield(jobId, (pct)=>{
-              setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
-            }).then(res=>{
-              // Higgsfield v2 returns output.media_url array
-              const url = res?.url
-                || res?.output?.media_url?.[0]
-                || res?.output?.url
-                || res?.result?.url
-                || res?.media_url?.[0];
-              if(url) setVid({status:"ready",url});
-              else setVid({status:"failed"});
-            }).catch(()=>setVid({status:"prompt"}));
-          } else if(job?.output?.media_url?.[0] || job?.result?.url || job?.url){
-            setVid({status:"ready", url:job?.output?.media_url?.[0] || job?.result?.url || job?.url});
-          } else {
+        (async()=>{
+          setVid({status:"generating",pct:5});
+          const heroB64 = photos[0]?.b64 || null;
+          const prompt  = content.higgsfield_prompt || `Cinematic listing video for ${inputs.address||"the property"}. Slow dolly-in reveal, warm golden hour lighting, luxury real estate aesthetic.`;
+          try{
+            let job;
+            if(heroB64){
+              setStage("Rendering cinematic video...");
+              job = await callHiggsfieldImg(heroB64, prompt);
+            } else {
+              job = await callHiggsfieldTxt(prompt);
+            }
+            const jobId = job?.request_id || job?.id || job?.job_id || job?.data?.id || job?.data?.request_id;
+            if(jobId){
+              pollHiggsfield(jobId, (pct)=>{
+                setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
+              }).then(res=>{
+                const url = res?.url
+                  || res?.output?.media_url?.[0]
+                  || res?.output?.url
+                  || res?.result?.url
+                  || res?.media_url?.[0];
+                if(url) setVid({status:"ready",url});
+                else setVid({status:"failed"});
+              }).catch(()=>setVid({status:"prompt"}));
+            } else if(job?.output?.media_url?.[0] || job?.result?.url || job?.url){
+              setVid({status:"ready", url:job?.output?.media_url?.[0] || job?.result?.url || job?.url});
+            } else {
+              setVid({status:"prompt"});
+            }
+          }catch(e){
+            console.warn("Video generation failed (non-critical):", e.message);
             setVid({status:"prompt"});
           }
-        }catch(e){
-          console.warn("Video gen error:",e);
-          setVid({status:"prompt"});
-        }
-      } else if(type==="listing"){
-        setVid({status:"prompt"});
+        })();
       }
 
     }catch(e){
