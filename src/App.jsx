@@ -297,23 +297,26 @@ async function callHiggsfieldTxt(prompt){
   return r.json();
 }
 
-async function pollHiggsfield(jobId, onProgress){
-  const MAX=90, INTERVAL=5000; // 90 attempts × 5s = 7.5 minutes max
+async function pollHiggsfield(jobId, onProgress, statusUrl){
+  const MAX=90, INTERVAL=5000; // 90 × 5s = 7.5 min max
   for(let i=0;i<MAX;i++){
     await new Promise(r=>setTimeout(r,INTERVAL));
     const pct = Math.min(95, 10+(i/MAX)*85);
     onProgress(Math.round(pct));
     try{
-      const r = await fetch(`/api/higgsfield-poll?jobId=${jobId}`);
+      // Use status_url directly if available, otherwise construct it
+      const pollUrl = statusUrl
+        ? `/api/higgsfield-poll?statusUrl=${encodeURIComponent(statusUrl)}`
+        : `/api/higgsfield-poll?jobId=${jobId}`;
+      const r = await fetch(pollUrl);
+      if(r.status===304) continue; // Not modified — still processing
       if(!r.ok) continue;
       const d = await r.json();
 
-      // Higgsfield platform.higgsfield.ai status values
       const status = (d?.status||d?.state||"").toLowerCase();
-      console.log("Poll status:", status, "request_id:", d?.request_id);
+      console.log(`Poll ${i+1}/${MAX} — status: ${status}`);
 
-      if(status==="completed"||status==="complete"||status==="succeeded"||status==="success"){
-        // Higgsfield docs: completed response has video.url
+      if(status==="completed"||status==="complete"||status==="succeeded"||status==="success"||status==="done"){
         const url = d?.video?.url
           || d?.url
           || d?.images?.[0]?.url
@@ -321,9 +324,11 @@ async function pollHiggsfield(jobId, onProgress){
           || d?.output?.url
           || d?.result?.url
           || null;
+        console.log("Video URL found:", url);
         return {done:true, url};
       }
       if(status==="failed"||status==="error"||status==="cancelled"){
+        console.log("Video failed:", d?.error);
         return {done:true, url:null, failed:true};
       }
       // queued / processing — keep polling
@@ -766,10 +771,13 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               job = await callHiggsfieldTxt(prompt);
             }
             const jobId = job?.request_id || job?.id || job?.job_id || job?.data?.id || job?.data?.request_id;
+            const statusUrl = job?.status_url || null;
+            console.log("Higgsfield job response:", JSON.stringify(job).slice(0,300));
+            console.log("Extracted jobId:", jobId, "statusUrl:", statusUrl);
             if(jobId){
               pollHiggsfield(jobId, (pct)=>{
                 setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
-              }).then(res=>{
+              }, statusUrl).then(res=>{
                 const url = res?.url
                   || res?.video?.url
                   || res?.output?.media_url?.[0]
