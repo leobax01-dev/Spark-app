@@ -317,17 +317,15 @@ async function pollHiggsfield(jobId, onProgress, statusUrl){
       console.log(`Poll ${i+1}/${MAX} — status: ${status}`);
 
       if(status==="completed"||status==="complete"||status==="succeeded"||status==="success"||status==="done"){
-        const url = d?.video?.url
-          || d?.url
-          || d?.images?.[0]?.url
-          || d?.output?.media_url?.[0]
-          || d?.output?.url
-          || d?.result?.url
-          || null;
-        console.log("Video URL found:", url);
-        return {done:true, url};
+        // Real Higgsfield response: { video: { url } } for image2video, { images: [{ url }] } for text2image/soul
+        const videoUrl = d?.video?.url || null;
+        const imageUrl = d?.images?.[0]?.url || null;
+        const url = videoUrl || imageUrl || null;
+        const kind = videoUrl ? "video" : (imageUrl ? "image" : null);
+        console.log("Result found:", kind, url);
+        return {done:true, url, kind};
       }
-      if(status==="failed"||status==="error"||status==="cancelled"){
+      if(status==="failed"||status==="error"||status==="cancelled"||status==="nsfw"){
         console.log("Video failed:", d?.error);
         return {done:true, url:null, failed:true};
       }
@@ -600,20 +598,31 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
   }
 
   if(vidState.status==="ready"&&vidState.url){
+    const isImage = vidState.kind==="image";
     return(
       <div style={{animation:"scaleIn .28s ease"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
           <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 8px ${C.emerald}`}}/>
-          <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700}}>LISTING VIDEO READY · {videoQuality}</span>
+          <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700}}>
+            {isImage ? `HERO IMAGE READY · ${videoQuality}` : `LISTING VIDEO READY · ${videoQuality}`}
+          </span>
         </div>
+        {isImage && (
+          <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.15)",borderRadius:8,padding:"9px 13px",marginBottom:12,fontSize:12,color:"#f59e0b",fontFamily:C.F}}>
+            ⚠ Video render unavailable — showing the generated still image instead.
+          </div>
+        )}
         <div style={{borderRadius:12,overflow:"hidden",background:"#000",marginBottom:12,boxShadow:"0 12px 40px rgba(0,0,0,.5)"}}>
-          <video src={vidState.url} controls playsInline style={{width:"100%",maxHeight:420,display:"block"}}/>
+          {isImage
+            ? <img src={vidState.url} alt="Generated listing visual" style={{width:"100%",maxHeight:420,display:"block",objectFit:"cover"}}/>
+            : <video src={vidState.url} controls playsInline style={{width:"100%",maxHeight:420,display:"block"}}/>
+          }
         </div>
         <div style={{display:"flex",gap:8}}>
-          <a href={vidState.url} download="spark-listing-video.mp4" style={{flex:1,display:"block"}}>
-            <button className="btn-g" style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F}}>⬇ Download Video</button>
+          <a href={vidState.url} download={isImage?"spark-listing-image.jpg":"spark-listing-video.mp4"} style={{flex:1,display:"block"}}>
+            <button className="btn-g" style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F}}>⬇ {isImage?"Download Image":"Download Video"}</button>
           </a>
-          <CopyBtn text={vidState.url} label="Video URL copied"/>
+          <CopyBtn text={vidState.url} label={isImage?"Image URL copied":"Video URL copied"}/>
         </div>
       </div>
     );
@@ -778,17 +787,13 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               pollHiggsfield(jobId, (pct)=>{
                 setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
               }, statusUrl).then(res=>{
-                const url = res?.url
-                  || res?.video?.url
-                  || res?.output?.media_url?.[0]
-                  || res?.output?.url
-                  || res?.result?.url
-                  || res?.media_url?.[0];
-                if(url) setVid({status:"ready",url});
+                if(res?.url) setVid({status:"ready", url:res.url, kind:res.kind||"video"});
                 else setVid({status:"failed"});
               }).catch(()=>setVid({status:"prompt"}));
-            } else if(job?.output?.media_url?.[0] || job?.result?.url || job?.url){
-              setVid({status:"ready", url:job?.output?.media_url?.[0] || job?.result?.url || job?.url});
+            } else if(job?.video?.url || job?.images?.[0]?.url){
+              const videoUrl = job?.video?.url || null;
+              const imageUrl = job?.images?.[0]?.url || null;
+              setVid({status:"ready", url: videoUrl||imageUrl, kind: videoUrl?"video":"image"});
             } else {
               setVid({status:"prompt"});
             }
