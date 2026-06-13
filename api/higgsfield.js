@@ -25,7 +25,6 @@ export default async function handler(req, res) {
       duration: 5,
     };
 
-    // Add image if provided
     if (imageBase64) {
       body.input_images = [{
         type: 'base64',
@@ -34,22 +33,34 @@ export default async function handler(req, res) {
       }];
     }
 
-    console.log('Sending to Higgsfield:', JSON.stringify({ prompt: prompt.slice(0, 80), hasImage: !!imageBase64 }));
+    // Higgsfield v2 uses "Key YOUR_KEY" not "Bearer YOUR_KEY"
+    const authHeader = apiKey.startsWith('hf-')
+      ? `Bearer ${apiKey}`
+      : `Key ${apiKey}`;
+
+    console.log('Higgsfield request — auth type:', apiKey.startsWith('hf-') ? 'Bearer' : 'Key');
+    console.log('Prompt preview:', prompt.slice(0, 80));
+    console.log('Has image:', !!imageBase64);
 
     const response = await fetch('https://api.higgsfield.ai/v1/image2video/dop', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': authHeader,
       },
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
-    console.log('Higgsfield response:', response.status, JSON.stringify(data).slice(0, 200));
+    const responseText = await response.text();
+    console.log('Higgsfield status:', response.status);
+    console.log('Higgsfield response:', responseText.slice(0, 300));
+
+    let data;
+    try { data = JSON.parse(responseText); }
+    catch { data = { raw: responseText }; }
 
     if (!response.ok) {
-      console.error('Higgsfield API error:', response.status, JSON.stringify(data));
+      console.error('Higgsfield API error:', response.status, responseText.slice(0, 300));
       return res.status(response.status).json(data);
     }
 
