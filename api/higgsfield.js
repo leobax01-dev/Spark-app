@@ -63,7 +63,7 @@ export default async function handler(req, res) {
       params: {
         model: 'dop-turbo',
         prompt,
-        input_images: [imageUrl],
+        input_images: [{ type: 'image_url', image_url: imageUrl }],
       },
     };
   } else {
