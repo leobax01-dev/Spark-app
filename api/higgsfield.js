@@ -60,17 +60,21 @@ export default async function handler(req, res) {
   if (imageUrl) {
     endpoint = 'https://platform.higgsfield.ai/v1/image2video/dop';
     genBody = {
-      model: 'dop-turbo',
-      prompt,
-      input_images: [{ type: 'image_url', image_url: imageUrl }],
+      params: {
+        model: 'dop-turbo',
+        prompt,
+        input_images: [imageUrl],
+      },
     };
   } else {
     endpoint = 'https://platform.higgsfield.ai/v1/text2image/soul';
     genBody = {
-      prompt,
-      width_and_height: '1536x1536',
-      quality: 'hd',
-      batch_size: 1,
+      params: {
+        prompt,
+        width_and_height: '1536x1536',
+        quality: 'hd',
+        batch_size: 1,
+      },
     };
   }
 
