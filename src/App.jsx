@@ -216,21 +216,62 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
   });
   if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e?.error?.message||e?.error||`API error ${r.status}`); }
   const d=await r.json();
-  // Extract text from Anthropic response format
   const rawText = d.content?.[0]?.text || d.text || d.response || "";
   if(!rawText) throw new Error("Empty response from AI — please try again");
-  // Strip markdown fences and find JSON object/array
-  const stripped = rawText.replace(/```json\n?|```\n?/g,"").trim();
-  // Find the first { or [ and last } or ] to extract pure JSON
-  const firstBrace = Math.min(
-    stripped.indexOf("{") === -1 ? Infinity : stripped.indexOf("{"),
-    stripped.indexOf("[") === -1 ? Infinity : stripped.indexOf("[")
-  );
-  const lastBrace = Math.max(stripped.lastIndexOf("}"), stripped.lastIndexOf("]"));
-  const jsonStr = firstBrace < Infinity && lastBrace > -1
-    ? stripped.slice(firstBrace, lastBrace+1)
-    : stripped;
-  try{ return JSON.parse(jsonStr); }catch(e){ console.error("JSON parse failed:", jsonStr.slice(0,200)); throw new Error("Failed to parse AI response — please try again"); }
+
+  // Strip markdown fences
+  let cleaned = rawText.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+
+  // Find JSON boundaries
+  const firstBrace = cleaned.indexOf("{");
+  const lastBrace  = cleaned.lastIndexOf("}");
+  if(firstBrace === -1 || lastBrace === -1) throw new Error("Failed to parse AI response — please try again");
+  const jsonStr = cleaned.slice(firstBrace, lastBrace+1);
+
+  // Try direct parse first
+  try{ return JSON.parse(jsonStr); } catch{}
+
+  // Fallback: fix common issues Claude introduces
+  // 1. Unescaped newlines inside string values
+  // 2. Smart quotes
+  // 3. Trailing commas
+  try{
+    const fixed = jsonStr
+      .replace(/[\u2018\u2019]/g,"'")   // smart single quotes
+      .replace(/[\u201C\u201D]/g,'"')   // smart double quotes
+      .replace(/,\s*([}\]])/g,"$1")     // trailing commas
+      .replace(/\n/g,"\\n")             // unescaped newlines
+      .replace(/\r/g,"\\r")             // carriage returns
+      .replace(/\t/g,"\\t");            // tabs
+    return JSON.parse(fixed);
+  }catch{}
+
+  // Last resort: extract just the fields we need with regex
+  try{
+    const get = (key) => {
+      const m = jsonStr.match(new RegExp(`"${key}"\\s*:\\s*"([^"]*(?:\\\\.[^"]*)*)"`, "s"));
+      return m ? m[1].replace(/\\n/g,"\n").replace(/\\"/g,'"') : "";
+    };
+    const getArr = (key) => {
+      const m = jsonStr.match(new RegExp(`"${key}"\\s*:\\s*\\[([^\\]]+)\\]`, "s"));
+      if(!m) return [];
+      return m[1].match(/"([^"]*(?:\\\\.[^"]*)*)"/g)?.map(s=>s.slice(1,-1)) || [];
+    };
+    return {
+      headline: get("headline"),
+      hooks:    getArr("hooks"),
+      script:   get("script"),
+      higgsfield_prompt: get("higgsfield_prompt"),
+      caption:  get("caption"),
+      hashtags: getArr("hashtags"),
+      cta:      get("cta"),
+      shot_list:getArr("shot_list"),
+      thumbnail:get("thumbnail"),
+    };
+  }catch(e){
+    console.error("All parse attempts failed. Raw:", jsonStr.slice(0,300));
+    throw new Error("Failed to parse AI response — please try again");
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
