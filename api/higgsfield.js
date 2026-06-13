@@ -1,79 +1,84 @@
-// api/higgsfield.js — upload image then animate with dop/standard
+// api/higgsfield.js — upload image to Supabase Storage, then animate with /v1/image2video/dop
+
+import { createClient } from '@supabase/supabase-js';
+
+const BUCKET = 'listing-photos';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.HIGGSFIELD_API_KEY;
+  const apiKey = process.env.HIGGSFIELD_API_KEY; // must be "KEY_ID:KEY_SECRET"
   if (!apiKey) return res.status(500).json({ error: 'HIGGSFIELD_API_KEY not configured' });
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return res.status(500).json({ error: 'Supabase env vars not configured' });
+  }
 
   const { imageBase64, prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'prompt required' });
 
   const authHeader = `Key ${apiKey}`;
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Step 1: Upload image to get a hosted URL
-  // Higgsfield requires a real URL in image_url — base64 causes 422
+  // Step 1: Upload image to Supabase Storage to get a public hosted URL
   let imageUrl = null;
   if (imageBase64) {
     try {
       const imageBuffer = Buffer.from(imageBase64, 'base64');
-      const boundary = `----FormBoundary${Date.now()}`;
-      const CRLF = '\r\n';
+      const fileName = `listing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
 
-      const header = Buffer.from(
-        `--${boundary}${CRLF}` +
-        `Content-Disposition: form-data; name="file"; filename="listing.jpg"${CRLF}` +
-        `Content-Type: image/jpeg${CRLF}${CRLF}`,
-        'utf8'
-      );
-      const footer = Buffer.from(`${CRLF}--${boundary}--${CRLF}`, 'utf8');
-      const formData = Buffer.concat([header, imageBuffer, footer]);
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(fileName, imageBuffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
 
-      console.log('Uploading image, bytes:', imageBuffer.length);
-
-      const uploadRes = await fetch('https://platform.higgsfield.ai/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        },
-        body: formData,
-      });
-
-      const uploadText = await uploadRes.text();
-      console.log('Upload status:', uploadRes.status, uploadText.slice(0, 300));
-
-      if (uploadRes.ok) {
-        const uploadJson = JSON.parse(uploadText);
-        imageUrl = uploadJson?.url || uploadJson?.file_url || uploadJson?.data?.url;
-        console.log('Image hosted at:', imageUrl);
+      if (uploadError) {
+        console.warn('Supabase upload error:', uploadError.message);
       } else {
-        console.warn('Upload failed:', uploadRes.status, uploadText.slice(0, 200));
+        const { data: publicData } = supabase.storage
+          .from(BUCKET)
+          .getPublicUrl(fileName);
+        imageUrl = publicData?.publicUrl || null;
+        console.log('Image hosted at:', imageUrl);
       }
     } catch (e) {
       console.warn('Upload error:', e.message);
     }
   }
 
-  // Step 2: Submit to dop/standard (the correct image-to-video model per docs)
-  const genBody = { prompt, duration: 5 };
+  // Step 2: Submit to Higgsfield
+  // image2video/dop requires input_images; without an image, fall back to text2image/soul
+  let endpoint;
+  let genBody;
+
   if (imageUrl) {
-    genBody.image_url = imageUrl; // real hosted URL per docs
+    endpoint = 'https://platform.higgsfield.ai/v1/image2video/dop';
+    genBody = {
+      model: 'dop-turbo',
+      prompt,
+      input_images: [{ type: 'image_url', image_url: imageUrl }],
+    };
+  } else {
+    endpoint = 'https://platform.higgsfield.ai/v1/text2image/soul';
+    genBody = {
+      prompt,
+      width_and_height: '1536x1536',
+      quality: 'hd',
+      batch_size: 1,
+    };
   }
 
-  // Only call dop/standard if we have an image URL — it's the i2v model
-  // Without image, use soul/standard for text-to-video
-  const modelId = imageUrl
-    ? 'higgsfield-ai/dop/standard'
-    : 'higgsfield-ai/soul/standard';
-
-  console.log('Model:', modelId, '| image_url:', imageUrl || 'none');
+  console.log('Endpoint:', endpoint, '| image_url:', imageUrl || 'none');
   console.log('Prompt:', prompt.slice(0, 80));
 
   try {
-    const response = await fetch(`https://platform.higgsfield.ai/${modelId}`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
