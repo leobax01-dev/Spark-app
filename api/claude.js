@@ -4,9 +4,7 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-
   if (!apiKey) {
-    console.error('ANTHROPIC_API_KEY is not set');
     return res.status(500).json({ error: 'API key not configured' });
   }
 
@@ -21,7 +19,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 2000,
-        system: req.body.system || 'You are SPARK, an elite real estate AI. Return ONLY valid JSON.',
+        system: req.body.system || 'You are SPARK, an elite real estate AI. Return ONLY valid JSON, no markdown.',
         messages: req.body.messages || [],
       }),
     });
@@ -29,11 +27,16 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('Anthropic API error:', response.status, JSON.stringify(data));
+      console.error('Anthropic error:', response.status, JSON.stringify(data));
       return res.status(response.status).json(data);
     }
 
+    // Extract the text content and return it directly
+    const text = data?.content?.[0]?.text || '';
+    console.log('Claude response preview:', text.slice(0, 100));
+
     return res.status(200).json(data);
+
   } catch (error) {
     console.error('Claude proxy error:', error.message);
     return res.status(500).json({ error: error.message });
