@@ -250,13 +250,7 @@ async function callHiggsfieldTxt(prompt){
   const r = await fetch("/api/higgsfield",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      endpoint:"https://cloud.higgsfield.ai/api/v1/generate",
-      prompt,
-      model:"soul-v2",
-      aspect_ratio:"9:16",
-      duration:5,
-    }),
+    body:JSON.stringify({ prompt }),
   });
   if(!r.ok) throw new Error(`Video generation error ${r.status}`);
   return r.json();
@@ -272,12 +266,20 @@ async function pollHiggsfield(jobId, onProgress){
       const r = await fetch(`/api/higgsfield-poll?jobId=${jobId}`);
       if(!r.ok) continue;
       const d = await r.json();
-      const status = d?.status||d?.state;
-      if(status==="completed"||status==="succeeded"){
-        const url = d?.output?.media_url?.[0] || d?.output?.url || d?.result?.url || null;
+      // Handle both v1 and v2 status field names
+      const status = (d?.status||d?.state||"").toLowerCase();
+      if(status==="completed"||status==="succeeded"||status==="success"){
+        // Handle both v1 and v2 URL locations
+        const url = d?.output?.media_url?.[0]
+          || d?.output?.url
+          || d?.result?.url
+          || d?.url
+          || d?.video_url
+          || d?.results?.raw?.url
+          || null;
         return {done:true, url};
       }
-      if(status==="failed"||status==="error") return {done:true, url:null, failed:true};
+      if(status==="failed"||status==="error"||status==="cancelled") return {done:true, url:null, failed:true};
     }catch{}
   }
   return {done:true, url:null, failed:true};
@@ -712,17 +714,23 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
           } else {
             job = await callHiggsfieldTxt(prompt);
           }
-          const jobId = job?.id || job?.job_id || job?.data?.id;
+          const jobId = job?.request_id || job?.id || job?.job_id || job?.data?.id || job?.data?.request_id;
           if(jobId){
             // Poll in background without blocking UI
             pollHiggsfield(jobId, (pct)=>{
               setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
             }).then(res=>{
-              if(res.url) setVid({status:"ready",url:res.url});
+              // Higgsfield v2 returns output.media_url array
+              const url = res?.url
+                || res?.output?.media_url?.[0]
+                || res?.output?.url
+                || res?.result?.url
+                || res?.media_url?.[0];
+              if(url) setVid({status:"ready",url});
               else setVid({status:"failed"});
-            });
-          } else if(job?.output?.media_url?.[0]||job?.result?.url){
-            setVid({status:"ready",url:job.output?.media_url?.[0]||job.result?.url});
+            }).catch(()=>setVid({status:"prompt"}));
+          } else if(job?.output?.media_url?.[0] || job?.result?.url || job?.url){
+            setVid({status:"ready", url:job?.output?.media_url?.[0] || job?.result?.url || job?.url});
           } else {
             setVid({status:"prompt"});
           }
