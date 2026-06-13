@@ -1253,7 +1253,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
         {[
           {icon:"📧",label:"Email Support",    sub:"Get help from the SPARK team", href:"mailto:support@getspark.app"},
           {icon:"💳",label:"Manage Billing",   sub:"Update payment method or cancel", href:"https://billing.stripe.com"},
-          {icon:"📖",label:"How to Use SPARK", sub:"Tips, guides and best practices", href:"https://getspark.app/guide"},
+          {icon:"📖",label:"How to Use SPARK", sub:"Tips, guides and best practices", href:"https://usesparkai.app/guide"},
         ].map((s,i)=>(
           <a key={i} href={s.href} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<2?`1px solid ${C.border}`:"none",cursor:"pointer"}}
@@ -1273,7 +1273,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
       {/* App info */}
       <div style={{textAlign:"center",padding:"8px 0 4px"}}>
         <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>SPARK Real Estate AI · v1.0</div>
-        <div style={{fontFamily:C.F,fontSize:10,color:C.textFaint,marginTop:3}}>© 2026 SPARK AI · <a href="https://getspark.app/privacy" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Privacy</a> · <a href="https://getspark.app/terms" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Terms</a></div>
+        <div style={{fontFamily:C.F,fontSize:10,color:C.textFaint,marginTop:3}}>© 2026 SPARK AI · usesparkai.app · <a href="https://usesparkai.app/privacy" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Privacy</a> · <a href="https://usesparkai.app/terms" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Terms</a></div>
       </div>
 
     </div>
@@ -1288,7 +1288,7 @@ function AffiliatePanel({ user, planKey }){
 
   // Derive a stable referral code from the user's email
   const refCode = "SPARK-" + (user.email||"").split("@")[0].toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,8);
-  const refLink = `https://getspark.app/?ref=${refCode}`;
+  const refLink = `https://usesparkai.app/?ref=${refCode}`;
 
   // Simulated affiliate stats — replace with real DB values once Supabase is wired
   const [stats] = useState({
@@ -1964,11 +1964,11 @@ function LandingPage({onStart}){
         <div style={{borderTop:`1px solid ${C.border}`,padding:"28px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
           <Logo small/>
           <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-            {[["Privacy","https://getspark.app/privacy"],["Terms","https://getspark.app/terms"],["Support","mailto:support@getspark.app"]].map(([l,h])=>(
+            {[["Privacy","https://usesparkai.app/privacy"],["Terms","https://usesparkai.app/terms"],["Support","mailto:support@getspark.app"]].map(([l,h])=>(
               <a key={l} href={h} target="_blank" rel="noreferrer" style={{fontSize:12,color:C.textDim,fontFamily:C.F,textDecoration:"none"}}>{l}</a>
             ))}
           </div>
-          <div style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>© 2026 SPARK AI</div>
+          <div style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>© 2026 SPARK AI · usesparkai.app</div>
         </div>
 
       </div>
@@ -2001,7 +2001,7 @@ function AuthPage({mode,onAuth,onSwitch}){
     if(!sb){ toast("Auth service unavailable — please refresh","error"); setResetSending(false); return; }
     try{
       const {error}=await sb.auth.resetPasswordForEmail(resetEmail,{
-        redirectTo: window.location.origin+"/?reset=1",
+        redirectTo: "https://usesparkai.app/?reset=1",
       });
       if(error) throw new Error(error.message);
       setView("forgot_sent");
