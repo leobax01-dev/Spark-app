@@ -209,15 +209,28 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
   const r = await fetch("/api/claude",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:2000,
+    body:JSON.stringify({
       system:`You are SPARK, an elite real estate content strategist for ${platform}. Always write MLS-compliant content. Return ONLY valid JSON, no markdown.`,
       messages:[{role:"user", content:userContent}],
     }),
   });
-  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e?.error?.message||`API error ${r.status}`); }
+  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e?.error?.message||e?.error||`API error ${r.status}`); }
   const d=await r.json();
-  const raw=(d.content?.[0]?.text||"{}").replace(/```json\n?|```\n?/g,"").trim();
-  try{ return JSON.parse(raw); }catch{ throw new Error("Failed to parse AI response — try again"); }
+  // Extract text from Anthropic response format
+  const rawText = d.content?.[0]?.text || d.text || d.response || "";
+  if(!rawText) throw new Error("Empty response from AI — please try again");
+  // Strip markdown fences and find JSON object/array
+  const stripped = rawText.replace(/```json\n?|```\n?/g,"").trim();
+  // Find the first { or [ and last } or ] to extract pure JSON
+  const firstBrace = Math.min(
+    stripped.indexOf("{") === -1 ? Infinity : stripped.indexOf("{"),
+    stripped.indexOf("[") === -1 ? Infinity : stripped.indexOf("[")
+  );
+  const lastBrace = Math.max(stripped.lastIndexOf("}"), stripped.lastIndexOf("]"));
+  const jsonStr = firstBrace < Infinity && lastBrace > -1
+    ? stripped.slice(firstBrace, lastBrace+1)
+    : stripped;
+  try{ return JSON.parse(jsonStr); }catch(e){ console.error("JSON parse failed:", jsonStr.slice(0,200)); throw new Error("Failed to parse AI response — please try again"); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,16 +240,9 @@ async function callHiggsfieldImg(imageBase64, prompt){
   const r = await fetch("/api/higgsfield",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      endpoint:"https://cloud.higgsfield.ai/api/v1/image-to-video",
-      prompt,
-      image:`data:image/jpeg;base64,${imageBase64}`,
-      model:"soul-v2",
-      aspect_ratio:"9:16",
-      duration:5,
-    }),
+    body:JSON.stringify({ imageBase64, prompt }),
   });
-  if(!r.ok) throw new Error(`Video generation error ${r.status}`);
+  if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e?.error||`Video API error ${r.status}`); }
   return r.json();
 }
 
