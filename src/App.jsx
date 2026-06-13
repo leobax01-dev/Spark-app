@@ -763,6 +763,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
               }).then(res=>{
                 const url = res?.url
+                  || res?.video?.url
                   || res?.output?.media_url?.[0]
                   || res?.output?.url
                   || res?.result?.url
