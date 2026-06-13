@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.HIGGSFIELD_API_KEY;
+  const apiKey = process.env.HIGGSFIELD_API_KEY; // must be "KEY_ID:KEY_SECRET"
   if (!apiKey) return res.status(500).json({ error: 'HIGGSFIELD_API_KEY not configured' });
 
   const { jobId, statusUrl } = req.query;
