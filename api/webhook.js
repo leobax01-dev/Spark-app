@@ -1,13 +1,24 @@
-// api/webhook.js — Stripe webhook handler
+// api/webhook.js — Stripe webhook handler with signature verification
 // Vercel serverless function — place this at /api/webhook.js in your project
 
 import { createClient } from '@supabase/supabase-js'
+import Stripe from 'stripe'
 
 // Use service role key here (not publishable) so we can write to DB server-side
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 )
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+
+// IMPORTANT: disable Vercel's automatic body parsing so we can verify the raw payload
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+}
 
 // Plan lookup by Stripe Payment Link URL
 // IMPORTANT: these must exactly match the Payment Link URLs used in src (PLANS[].stripeLink)
@@ -26,12 +37,35 @@ const LINK_TO_CREDITS = {
   'https://buy.stripe.com/14AbJ0gvr9ej537ddY0sU06': 200,
 }
 
+// Helper: read raw request body as a Buffer (needed for signature verification)
+function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  const event = req.body
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET not configured')
+    return res.status(500).json({ error: 'Webhook secret not configured' })
+  }
+
+  let event;
+  try {
+    const rawBody = await getRawBody(req)
+    const signature = req.headers['stripe-signature']
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message)
+    return res.status(400).json({ error: 'Invalid signature' })
+  }
 
   try {
     if (event.type === 'checkout.session.completed') {
