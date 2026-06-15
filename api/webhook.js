@@ -10,6 +10,7 @@ const supabase = createClient(
 )
 
 // Plan lookup by Stripe Payment Link URL
+// IMPORTANT: these must exactly match the Payment Link URLs used in src (PLANS[].stripeLink)
 const LINK_TO_PLAN = {
   'https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00': { plan:'agent', credits:20 },
   'https://buy.stripe.com/7sYcN4gvr4Y37bfddY0sU01': { plan:'pro',   credits:60 },
@@ -17,6 +18,7 @@ const LINK_TO_PLAN = {
 }
 
 // Credit pack lookup by Stripe Payment Link URL
+// IMPORTANT: these must exactly match CREDIT_PACKS[].stripeLink in src
 const LINK_TO_CREDITS = {
   'https://buy.stripe.com/6oUbJ00wtbmrdzD4Hs0sU03': 10,
   'https://buy.stripe.com/7sYcN4cfb2PV9jn2zk0sU04': 30,
@@ -34,14 +36,17 @@ export default async function handler(req, res) {
   try {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object
-      const email = session.customer_details?.email || session.customer_email
+      const rawEmail = session.customer_details?.email || session.customer_email
       const paymentLink = session.payment_link
 
-      if (!email) {
+      if (!rawEmail) {
+        console.warn('Webhook: no email found on session', session.id)
         return res.status(200).json({ received: true, note: 'No email found' })
       }
 
-      // Look up the user in Supabase by email
+      const email = rawEmail.toLowerCase()
+
+      // Look up the user in Supabase by normalized email
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, credits, plan')
@@ -49,14 +54,14 @@ export default async function handler(req, res) {
         .single()
 
       if (userError || !userData) {
-        console.error('User not found for email:', email)
+        console.error('User not found for email:', email, userError?.message)
         return res.status(200).json({ received: true, note: 'User not found' })
       }
 
       // Check if this is a subscription plan purchase
       const planData = LINK_TO_PLAN[paymentLink]
       if (planData) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('users')
           .update({
             plan: planData.plan,
@@ -66,7 +71,12 @@ export default async function handler(req, res) {
           })
           .eq('id', userData.id)
 
-        console.log(`Plan updated: ${email} → ${planData.plan}`)
+        if (updateError) {
+          console.error('Plan update failed:', email, updateError.message)
+          return res.status(200).json({ received: true, note: 'Update failed' })
+        }
+
+        console.log(`Plan updated: ${email} -> ${planData.plan} (${planData.credits} credits)`)
         return res.status(200).json({ received: true })
       }
 
@@ -74,7 +84,7 @@ export default async function handler(req, res) {
       const creditsToAdd = LINK_TO_CREDITS[paymentLink]
       if (creditsToAdd) {
         const newCredits = (userData.credits || 0) + creditsToAdd
-        await supabase
+        const { error: updateError } = await supabase
           .from('users')
           .update({
             credits: newCredits,
@@ -82,22 +92,30 @@ export default async function handler(req, res) {
           })
           .eq('id', userData.id)
 
-        console.log(`Credits added: ${email} → +${creditsToAdd} (total: ${newCredits})`)
+        if (updateError) {
+          console.error('Credit pack update failed:', email, updateError.message)
+          return res.status(200).json({ received: true, note: 'Update failed' })
+        }
+
+        console.log(`Credits added: ${email} -> +${creditsToAdd} (total: ${newCredits})`)
         return res.status(200).json({ received: true })
       }
+
+      // Neither map matched — log so this is debuggable
+      console.warn('Webhook: no plan/credit mapping for payment_link:', paymentLink)
     }
 
     // Handle subscription renewals — top up credits monthly
     if (event.type === 'invoice.paid') {
       const invoice = event.data.object
-      const email = invoice.customer_email
-      if (!email) return res.status(200).json({ received: true })
+      const rawEmail = invoice.customer_email
+      if (!rawEmail) return res.status(200).json({ received: true })
+
+      const email = rawEmail.toLowerCase()
 
       // Find which plan this subscription is for
       const lineItems = invoice.lines?.data || []
       for (const item of lineItems) {
-        const priceId = item.price?.id
-        // Map price IDs to plans if needed — or use amount
         const amount = item.price?.unit_amount
         let planData = null
         if (amount === 2900) planData = { plan:'agent', credits:20 }
@@ -105,7 +123,7 @@ export default async function handler(req, res) {
         else if (amount === 9900) planData = { plan:'team', credits:180 }
 
         if (planData) {
-          await supabase
+          const { error: updateError } = await supabase
             .from('users')
             .update({
               credits: planData.credits,
@@ -113,7 +131,12 @@ export default async function handler(req, res) {
               updated_at: new Date().toISOString(),
             })
             .eq('email', email)
-          console.log(`Monthly renewal: ${email} → ${planData.credits} credits`)
+
+          if (updateError) {
+            console.error('Renewal update failed:', email, updateError.message)
+          } else {
+            console.log(`Monthly renewal: ${email} -> ${planData.credits} credits`)
+          }
         }
       }
     }
