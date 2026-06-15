@@ -748,20 +748,26 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
 
-      // Deduct credits locally and persist to Supabase
-      setCredits(c=>{
-        const n = c - cost;
-        LS.set("sp_credits", n);
-        // Persist to Supabase so credits survive device/browser switches
-        const sb = window.__supabase;
-        if(sb && user?.email){
-          sb.from("users")
-            .update({ credits:n, updated_at: new Date().toISOString() })
-            .eq("email", user.email.toLowerCase())
-            .then(({error})=>{ if(error) console.warn("Credit sync error:", error.message); });
+      // Deduct credits server-side (bypasses RLS, persists reliably)
+      try{
+        const resp = await fetch('/api/deduct-credits', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: user.email, cost })
+        });
+        const data = await resp.json();
+        if(resp.ok && typeof data.credits === 'number'){
+          setCredits(data.credits);
+          LS.set("sp_credits", data.credits);
+        } else {
+          console.warn("Credit deduction failed:", data.error);
+          // Fallback: optimistic local update so UI doesn't desync mid-session
+          setCredits(c=>{ const n=c-cost; LS.set("sp_credits",n); return n; });
         }
-        return n;
-      });
+      }catch(e){
+        console.warn("Credit deduction request failed:", e.message);
+        setCredits(c=>{ const n=c-cost; LS.set("sp_credits",n); return n; });
+      }
       toast("Content package ready ✓");
 
       // Trigger Higgsfield video generation in background — fully isolated
@@ -1172,13 +1178,17 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user}){
   function doUpgrade(k){
     if(k===planKey) return;
     if(planRank(k)<planRank(planKey)){
+      const nc=PLANS[k].credits;
       setPlanKey(k); LS.set("sp_plan",k);
-      const nc=PLANS[k].credits; setCredits(nc); LS.set("sp_credits",nc);
-      // Sync plan change to Supabase
-      const sb=window.__supabase;
-      if(sb&&user?.email){
-        sb.from("users").update({plan:k,credits:nc,updated_at:new Date().toISOString()}).eq("email",user.email.toLowerCase());
-      }
+      setCredits(nc); LS.set("sp_credits",nc);
+      // Persist downgrade server-side (bypasses RLS)
+      fetch('/api/update-plan', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ email: user?.email, plan: k, credits: nc })
+      }).then(r=>r.json()).then(data=>{
+        if(data.error) console.warn("Plan sync error:", data.error);
+      }).catch(e=>console.warn("Plan sync request failed:", e.message));
       toast(`Switched to ${PLANS[k].name} plan`,"info");
     }
     else setConfirmKey(k);
