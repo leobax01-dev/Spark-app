@@ -2112,12 +2112,25 @@ function AuthPage({mode,onAuth,onSwitch}){
             const {data,error}=await sb.auth.signUp({ email, password:pass });
             if(error) throw new Error(error.message);
             const startCredits=PLANS[plan].credits+3;
-            const {error:dbError}=await sb.from("users").insert({
-              email:email.toLowerCase(), plan, credits:startCredits,
-            });
-            if(dbError&&!dbError.message.includes("duplicate")) console.warn("DB insert:",dbError.message);
+
+            // Create user row server-side (bypasses RLS reliably)
+            let finalPlan=plan, finalCredits=startCredits;
+            try{
+              const resp=await fetch('/api/create-user',{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({ email, plan, credits:startCredits })
+              });
+              const cuData=await resp.json();
+              if(resp.ok){
+                finalPlan=cuData.plan; finalCredits=cuData.credits;
+              } else {
+                console.warn("create-user failed:", cuData.error);
+              }
+            }catch(e){ console.warn("create-user request failed:", e.message); }
+
             const accounts=LS.get("sp_accounts",{});
-            accounts[email.toLowerCase()]={ plan, credits:startCredits, pass };
+            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, pass };
             LS.set("sp_accounts",accounts);
 
             // If email confirmation is required, Supabase returns a user
@@ -2126,18 +2139,39 @@ function AuthPage({mode,onAuth,onSwitch}){
               setView("verify_email");
               setLoading(false);
             } else {
-              onAuth({ email, plan, credits:startCredits });
+              onAuth({ email, plan:finalPlan, credits:finalCredits });
             }
           } else {
             const {data,error}=await sb.auth.signInWithPassword({ email, password:pass });
             if(error) throw new Error(error.message);
-            const {data:userData}=await sb.from("users").select("plan,credits").eq("email",email.toLowerCase()).single();
-            if(userData){
-              const accounts=LS.get("sp_accounts",{});
-              accounts[email.toLowerCase()]={ plan:userData.plan, credits:userData.credits, pass };
-              LS.set("sp_accounts",accounts);
+            const {data:userData, error:dbError}=await sb.from("users").select("plan,credits").eq("email",email.toLowerCase()).single();
+
+            let finalPlan, finalCredits;
+            if(dbError||!userData){
+              // No row found (e.g. pre-fix account) — self-heal by creating one
+              console.warn("User row missing on login, self-healing:", dbError?.message);
+              const startCredits=PLANS["pro"].credits+3;
+              try{
+                const resp=await fetch('/api/create-user',{
+                  method:'POST',
+                  headers:{'Content-Type':'application/json'},
+                  body:JSON.stringify({ email, plan:"pro", credits:startCredits })
+                });
+                const cuData=await resp.json();
+                finalPlan = resp.ok ? cuData.plan : "pro";
+                finalCredits = resp.ok ? cuData.credits : startCredits;
+              }catch(e){
+                console.warn("self-heal create-user failed:", e.message);
+                finalPlan="pro"; finalCredits=startCredits;
+              }
+            } else {
+              finalPlan=userData.plan; finalCredits=userData.credits;
             }
-            onAuth({ email, plan:userData?.plan||"pro", credits:userData?.credits||60 });
+
+            const accounts=LS.get("sp_accounts",{});
+            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, pass };
+            LS.set("sp_accounts",accounts);
+            onAuth({ email, plan:finalPlan, credits:finalCredits });
           }
         }catch(e){
           // Give a more helpful message for unconfirmed email
