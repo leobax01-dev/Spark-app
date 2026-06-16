@@ -79,6 +79,14 @@ const GLOBAL_CSS = `
 
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = {
+  trial:{
+    name:"Trial", price:0, credits:3, accent:C.indigo, badge:null,
+    contentTypes:["listing","education","market","lifestyle"],
+    platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
+    hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
+    perks:["3 free credits — no card required","Full Pro-level feature access","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation"],
+    stripeLink:null,
+  },
   agent:{
     name:"Agent", price:29, credits:20, accent:C.emerald, badge:null,
     contentTypes:["listing","education"],
@@ -1170,13 +1178,20 @@ function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
 // ─────────────────────────────────────────────────────────────────────────────
 // BILLING PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user}){
+function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,intendedPlan}){
   const plan=PLANS[planKey];
   const toast=useToast();
   const [confirmKey,setConfirmKey]=useState(null);
+  const isTrial = planKey==="trial";
+  const trialExhausted = isTrial && credits<=0;
 
   function doUpgrade(k){
     if(k===planKey) return;
+    if(isTrial){
+      // Trial users have no real subscription yet — any plan selection goes to Stripe
+      setConfirmKey(k);
+      return;
+    }
     if(planRank(k)<planRank(planKey)){
       const nc=PLANS[k].credits;
       setPlanKey(k); LS.set("sp_plan",k);
@@ -1194,7 +1209,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user}){
     else setConfirmKey(k);
   }
   function confirmUpgrade(){
-    window.location.href = PLANS[confirmKey].stripeLink;
+    goStripe(PLANS[confirmKey].stripeLink, userEmail||"");
     setConfirmKey(null);
   }
 
@@ -1211,6 +1226,18 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user}){
               <button className="btn-o" onClick={()=>setConfirmKey(null)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 18px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>Cancel</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Trial paywall banner */}
+      {trialExhausted&&(
+        <div style={{background:`linear-gradient(135deg,${PLANS[intendedPlan].accent}1a,${C.violet}14)`,border:`1px solid ${PLANS[intendedPlan].accent}40`,borderRadius:13,padding:22,marginBottom:22,textAlign:"center"}}>
+          <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,marginBottom:6}}>Your free credits are used up</div>
+          <p style={{fontSize:13,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>Subscribe to <strong style={{color:PLANS[intendedPlan].accent}}>{PLANS[intendedPlan].name}</strong> (${PLANS[intendedPlan].price}/mo) to keep generating content — {PLANS[intendedPlan].credits} credits every month.</p>
+          <button className="btn-g" onClick={()=>goStripe(PLANS[intendedPlan].stripeLink, userEmail||"")}
+            style={{background:`linear-gradient(135deg,${PLANS[intendedPlan].accent},${C.violet})`,border:"none",color:"#fff",padding:"12px 28px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
+            Subscribe to {PLANS[intendedPlan].name} ⚡
+          </button>
         </div>
       )}
 
@@ -1648,8 +1675,13 @@ function AffiliatePanel({ user, planKey }){
 // ─────────────────────────────────────────────────────────────────────────────
 function MainApp({user,onLogout}){
   const [tab,setTab]        =useState("generate");
-  const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"pro"));
-  const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits||63));
+  const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
+  const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits??3));
+  const [intendedPlan]=useState(()=>{
+    const ip = user.intendedPlan || LS.get("sp_intended_plan","pro");
+    LS.set("sp_intended_plan", ip);
+    return ip;
+  });
   const [voice,setVoice]    =useState(()=>LS.get("sp_voice",{saved:false,name:"",brokerage:"",market:"",specialty:"",tone:"",targetClient:"",cta:""}));
   const [apiKeys,setApiKeys]=useState(()=>LS.get("sp_keys",{anthropic:"",higgsfield:""}));
   const [showOnboard,setOnboard] =useState(()=>LS.get("sp_onboarded",false)===false);
@@ -1676,12 +1708,13 @@ function MainApp({user,onLogout}){
       try{
         const {data} = await sb
           .from("users")
-          .select("plan,credits")
+          .select("plan,credits,intended_plan")
           .eq("email", user.email.toLowerCase())
           .single();
         if(data){
           setPlanKey(data.plan); LS.set("sp_plan",data.plan);
           setCredits(data.credits); LS.set("sp_credits",data.credits);
+          if(data.intended_plan) LS.set("sp_intended_plan",data.intended_plan);
         }
       }catch{}
     }
@@ -1797,7 +1830,7 @@ function MainApp({user,onLogout}){
           </div>
         )}
 
-        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user}/>}
+        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/>}
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
       </div>
@@ -1876,7 +1909,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
@@ -1905,7 +1938,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/>}
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
@@ -2069,7 +2102,7 @@ function LandingPage({onStart}){
 function AuthPage({mode,onAuth,onSwitch}){
   const [email,setEmail]       =useState("");
   const [pass,setPass]         =useState("");
-  const [plan,setPlan]         =useState("pro");
+  const [plan,setPlan]         =useState("trial");
   const [loading,setLoading]   =useState(false);
   const [mounted,setMounted]   =useState(false);
   const [view,setView]         =useState("auth"); // "auth" | "forgot" | "forgot_sent"
@@ -2111,26 +2144,28 @@ function AuthPage({mode,onAuth,onSwitch}){
           if(mode==="signup"){
             const {data,error}=await sb.auth.signUp({ email, password:pass });
             if(error) throw new Error(error.message);
-            const startCredits=PLANS[plan].credits+3;
+            const isTrialChoice = plan==="trial";
+            const startCredits = isTrialChoice ? 3 : 0;
+            const startPlan = "trial"; // always created as trial pre-payment; webhook upgrades on payment success
 
             // Create user row server-side (bypasses RLS reliably)
-            let finalPlan=plan, finalCredits=startCredits;
+            let finalPlan=startPlan, finalCredits=startCredits, finalIntended=plan;
             try{
               const resp=await fetch('/api/create-user',{
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ email, plan, credits:startCredits })
+                body:JSON.stringify({ email, plan:startPlan, credits:startCredits, intendedPlan:plan })
               });
               const cuData=await resp.json();
               if(resp.ok){
-                finalPlan=cuData.plan; finalCredits=cuData.credits;
+                finalPlan=cuData.plan; finalCredits=cuData.credits; finalIntended=cuData.intendedPlan||plan;
               } else {
                 console.warn("create-user failed:", cuData.error);
               }
             }catch(e){ console.warn("create-user request failed:", e.message); }
 
             const accounts=LS.get("sp_accounts",{});
-            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, pass };
+            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, pass };
             LS.set("sp_accounts",accounts);
 
             // If email confirmation is required, Supabase returns a user
@@ -2138,40 +2173,46 @@ function AuthPage({mode,onAuth,onSwitch}){
             if(data.session===null){
               setView("verify_email");
               setLoading(false);
+            } else if(!isTrialChoice && PLANS[plan].stripeLink){
+              // User selected a paid tier — send straight to Stripe checkout, no trial credits.
+              // If they complete payment, the webhook sets plan/credits before they return.
+              // If they cancel, they remain on trial/0 credits until they subscribe.
+              goStripe(PLANS[plan].stripeLink, email);
             } else {
-              onAuth({ email, plan:finalPlan, credits:finalCredits });
+              onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended });
             }
           } else {
             const {data,error}=await sb.auth.signInWithPassword({ email, password:pass });
             if(error) throw new Error(error.message);
-            const {data:userData, error:dbError}=await sb.from("users").select("plan,credits").eq("email",email.toLowerCase()).single();
+            const {data:userData, error:dbError}=await sb.from("users").select("plan,credits,intended_plan").eq("email",email.toLowerCase()).single();
 
-            let finalPlan, finalCredits;
+            let finalPlan, finalCredits, finalIntended;
             if(dbError||!userData){
               // No row found (e.g. pre-fix account) — self-heal by creating one
               console.warn("User row missing on login, self-healing:", dbError?.message);
-              const startCredits=PLANS["pro"].credits+3;
+              const startCredits=3;
               try{
                 const resp=await fetch('/api/create-user',{
                   method:'POST',
                   headers:{'Content-Type':'application/json'},
-                  body:JSON.stringify({ email, plan:"pro", credits:startCredits })
+                  body:JSON.stringify({ email, plan:"trial", credits:startCredits, intendedPlan:"pro" })
                 });
                 const cuData=await resp.json();
-                finalPlan = resp.ok ? cuData.plan : "pro";
+                finalPlan = resp.ok ? cuData.plan : "trial";
                 finalCredits = resp.ok ? cuData.credits : startCredits;
+                finalIntended = resp.ok ? (cuData.intendedPlan||"pro") : "pro";
               }catch(e){
                 console.warn("self-heal create-user failed:", e.message);
-                finalPlan="pro"; finalCredits=startCredits;
+                finalPlan="trial"; finalCredits=startCredits; finalIntended="pro";
               }
             } else {
-              finalPlan=userData.plan; finalCredits=userData.credits;
+              finalPlan=userData.plan; finalCredits=userData.credits; finalIntended=userData.intended_plan||"pro";
             }
 
             const accounts=LS.get("sp_accounts",{});
-            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, pass };
+            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, pass };
             LS.set("sp_accounts",accounts);
-            onAuth({ email, plan:finalPlan, credits:finalCredits });
+            onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended });
           }
         }catch(e){
           // Give a more helpful message for unconfirmed email
@@ -2196,15 +2237,20 @@ function AuthPage({mode,onAuth,onSwitch}){
         const key=email.toLowerCase();
         if(mode==="signup"){
           if(accounts[key]){ toast("Account already exists — sign in","error"); setLoading(false); return; }
-          const startCredits=PLANS[plan].credits+3;
-          accounts[key]={ plan, credits:startCredits, pass };
+          const isTrialChoice = plan==="trial";
+          const startCredits = isTrialChoice ? 3 : 0;
+          accounts[key]={ plan:"trial", credits:startCredits, intendedPlan:plan, pass };
           LS.set("sp_accounts",accounts);
-          onAuth({ email, plan, credits:startCredits });
+          if(!isTrialChoice && PLANS[plan].stripeLink){
+            goStripe(PLANS[plan].stripeLink, email);
+          } else {
+            onAuth({ email, plan:"trial", credits:startCredits, intendedPlan:plan });
+          }
         } else {
           const account=accounts[key];
           if(!account){ toast("No account found — tap Start Free","error"); setLoading(false); return; }
           if(account.pass!==pass){ toast("Incorrect password","error"); setLoading(false); return; }
-          onAuth({ email, plan:account.plan, credits:account.credits });
+          onAuth({ email, plan:account.plan, credits:account.credits, intendedPlan:account.intendedPlan||"pro" });
         }
       }catch(e){
         toast("Something went wrong — try again","error");
@@ -2344,9 +2390,14 @@ function AuthPage({mode,onAuth,onSwitch}){
                     {Object.entries(PLANS).map(([k,p])=>(
                       <button key={k} onClick={()=>setPlan(k)}
                         style={{flex:1,padding:"10px 4px",borderRadius:8,border:`1px solid ${plan===k?p.accent+"60":C.border}`,background:plan===k?p.accent+"14":"transparent",color:plan===k?p.accent:C.textDim,cursor:"pointer",fontSize:10,fontWeight:700,fontFamily:C.F,letterSpacing:.8,transition:"all .14s"}}>
-                        {p.name}<br/><span style={{fontWeight:400,fontSize:9}}>${p.price}/mo</span>
+                        {k==="trial"?"Free Trial":p.name}<br/><span style={{fontWeight:400,fontSize:9}}>{k==="trial"?"3 credits":`$${p.price}/mo`}</span>
                       </button>
                     ))}
+                  </div>
+                  <div style={{marginTop:10,fontSize:11,color:C.textDim,fontFamily:C.F,lineHeight:1.5}}>
+                    {plan==="trial"
+                      ? "Start with 3 free credits — no card required."
+                      : `You'll be taken to secure checkout to subscribe to ${PLANS[plan].name} ($${PLANS[plan].price}/mo).`}
                   </div>
                 </div>
               )}
