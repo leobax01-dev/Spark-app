@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/stitch.js": {
+      "maxDuration": 60
+    },
+    "api/higgsfield.js": {
+      "maxDuration": 60
+    },
+    "api/higgsfield-poll.js": {
+      "maxDuration": 60
+    }
+  }
+}
