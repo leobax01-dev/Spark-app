@@ -1,4 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import posthog from "posthog-js";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYTICS — PostHog
+// ─────────────────────────────────────────────────────────────────────────────
+let _phInitialized = false;
+function initAnalytics(){
+  if(_phInitialized) return;
+  const key = import.meta.env.VITE_POSTHOG_KEY;
+  const host = import.meta.env.VITE_POSTHOG_HOST || "https://us.i.posthog.com";
+  if(!key) return; // no key configured — analytics silently disabled
+  posthog.init(key, { api_host: host, defaults: "2026-01-30", capture_pageview: true });
+  _phInitialized = true;
+}
+function track(event, props={}){
+  try{ if(_phInitialized) posthog.capture(event, props); }catch{}
+}
+function identifyUser(email, props={}){
+  try{ if(_phInitialized) posthog.identify(email, props); }catch{}
+}
+function resetAnalytics(){
+  try{ if(_phInitialized) posthog.reset(); }catch{}
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS & DESIGN TOKENS
@@ -427,6 +450,55 @@ function CopyBtn({text,label}){
     </button>
   );
 }
+
+function isIOS(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+}
+
+function DownloadButton({url, isImage}){
+  const [state,setState]=useState("idle"); // idle | fetching | done | failed
+  const toast=useToast();
+
+  async function handleDownload(){
+    setState("fetching");
+    try{
+      const resp = await fetch(url);
+      if(!resp.ok) throw new Error("Fetch failed");
+      const blob = await resp.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const filename = isImage ? "spark-listing-image.jpg" : "spark-listing-video.mp4";
+
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(blobUrl), 10000);
+
+      setState("done");
+      if(isIOS()){
+        toast("Tap and hold the video above, then 'Save to Photos'","info");
+      } else {
+        toast(isImage?"Image downloaded":"Video downloaded");
+      }
+      setTimeout(()=>setState("idle"),2500);
+    }catch(e){
+      console.warn("Download failed:", e.message);
+      setState("failed");
+      toast("Download failed — tap and hold the media above to save it","error");
+      setTimeout(()=>setState("idle"),2500);
+    }
+  }
+
+  return(
+    <button className="btn-g" onClick={handleDownload} disabled={state==="fetching"}
+      style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:state==="fetching"?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:state==="fetching"?0.7:1}}>
+      {state==="fetching" ? "Preparing download..." : state==="done" ? "✓ Downloaded" : `⬇ ${isImage?"Download Image":"Download Video"}`}
+    </button>
+  );
+}
+
 function Field({label,value,onChange,placeholder,area,rows=2,type="text"}){
   const s={width:"100%",background:"rgba(255,255,255,0.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"border-color .18s, box-shadow .18s",resize:"none"};
   return(
@@ -626,10 +698,8 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
             : <video src={vidState.url} controls playsInline style={{width:"100%",maxHeight:420,display:"block"}}/>
           }
         </div>
-        <div style={{display:"flex",gap:8}}>
-          <a href={vidState.url} download={isImage?"spark-listing-image.jpg":"spark-listing-video.mp4"} style={{flex:1,display:"block"}}>
-            <button className="btn-g" style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:13,fontFamily:C.F}}>⬇ {isImage?"Download Image":"Download Video"}</button>
-          </a>
+        <DownloadButton url={vidState.url} isImage={isImage}/>
+        <div style={{display:"flex",gap:8,marginTop:8}}>
           <CopyBtn text={vidState.url} label={isImage?"Image URL copied":"Video URL copied"}/>
         </div>
       </div>
@@ -737,7 +807,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
 
   async function generate(){
     if(genRef.current) return;
-    if(credits<cost){ onGoUpgrade(); toast("Add credits to generate more content","info"); return; }
+    if(credits<cost){ track("credits_exhausted", { plan:planKey, credits, cost, content_type:type }); onGoUpgrade(); toast("Add credits to generate more content","info"); return; }
     if(typeLocked||platformLocked){ toast("Upgrade your plan to unlock this","error"); return; }
 
     genRef.current=true;
@@ -755,6 +825,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       setPct(94); setStage("Content ready ✓");
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
+      track("generation_completed", { content_type:type, platform, plan:planKey, cost, photo_count:photos.length });
 
       // Deduct credits server-side (bypasses RLS, persists reliably)
       try{
@@ -1298,6 +1369,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
     else setConfirmKey(k);
   }
   function confirmUpgrade(){
+    track("upgrade_clicked", { plan:confirmKey, source:"billing", credits_at_click:credits, current_plan:planKey });
     goStripe(PLANS[confirmKey].stripeLink, userEmail||"");
     setConfirmKey(null);
   }
@@ -1323,7 +1395,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
         <div style={{background:`linear-gradient(135deg,${PLANS[intendedPlan].accent}1a,${C.violet}14)`,border:`1px solid ${PLANS[intendedPlan].accent}40`,borderRadius:13,padding:22,marginBottom:22,textAlign:"center"}}>
           <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,marginBottom:6}}>Your free credits are used up</div>
           <p style={{fontSize:13,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>Subscribe to <strong style={{color:PLANS[intendedPlan].accent}}>{PLANS[intendedPlan].name}</strong> (${PLANS[intendedPlan].price}/mo) to keep generating content — {PLANS[intendedPlan].credits} credits every month.</p>
-          <button className="btn-g" onClick={()=>goStripe(PLANS[intendedPlan].stripeLink, userEmail||"")}
+          <button className="btn-g" onClick={()=>{ track("upgrade_clicked", { plan:intendedPlan, source:"trial_paywall", credits_at_click:0, current_plan:"trial" }); goStripe(PLANS[intendedPlan].stripeLink, userEmail||""); }}
             style={{background:`linear-gradient(135deg,${PLANS[intendedPlan].accent},${C.violet})`,border:"none",color:"#fff",padding:"12px 28px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
             Subscribe to {PLANS[intendedPlan].name} ⚡
           </button>
@@ -1801,6 +1873,11 @@ function MainApp({user,onLogout}){
           .eq("email", user.email.toLowerCase())
           .single();
         if(data){
+          const wasUpgrade = data.plan !== planKey && data.plan !== "trial" && planRank(data.plan) > planRank(planKey);
+          if(wasUpgrade){
+            track("upgrade_completed", { from_plan:planKey, to_plan:data.plan, credits:data.credits });
+            identifyUser(user.email, { plan:data.plan, credits:data.credits });
+          }
           setPlanKey(data.plan); LS.set("sp_plan",data.plan);
           setCredits(data.credits); LS.set("sp_credits",data.credits);
           if(data.intended_plan) LS.set("sp_intended_plan",data.intended_plan);
@@ -1825,6 +1902,8 @@ function MainApp({user,onLogout}){
     if(sb) sb.auth.signOut().catch(()=>{});
     // Clear local plan/credits state so next login starts fresh from DB
     LS.del("sp_plan"); LS.del("sp_credits"); LS.del("sp_intended_plan");
+    track("logout");
+    resetAnalytics();
     onLogout();
   }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
@@ -2265,12 +2344,19 @@ function AuthPage({mode,onAuth,onSwitch}){
             if(data.session===null){
               setView("verify_email");
               setLoading(false);
+              identifyUser(email, { selected_plan: plan });
+              track("signup_completed", { selected_plan: plan, is_trial: isTrialChoice, email_confirmation_required: true });
             } else if(!isTrialChoice && PLANS[plan].stripeLink){
+              identifyUser(email, { selected_plan: plan });
+              track("signup_completed", { selected_plan: plan, is_trial: false });
+              track("upgrade_clicked", { plan, source: "signup", credits_at_click: 0 });
               // User selected a paid tier — send straight to Stripe checkout, no trial credits.
               // If they complete payment, the webhook sets plan/credits before they return.
               // If they cancel, they remain on trial/0 credits until they subscribe.
               goStripe(PLANS[plan].stripeLink, email);
             } else {
+              identifyUser(email, { selected_plan: plan });
+              track("signup_completed", { selected_plan: plan, is_trial: true });
               onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended });
             }
           } else {
@@ -2304,6 +2390,8 @@ function AuthPage({mode,onAuth,onSwitch}){
             const accounts=LS.get("sp_accounts",{});
             accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, pass };
             LS.set("sp_accounts",accounts);
+            identifyUser(email, { plan:finalPlan, credits:finalCredits });
+            track("login_completed", { plan:finalPlan, credits:finalCredits });
             onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended });
           }
         }catch(e){
@@ -2534,6 +2622,11 @@ export default function App(){
   const [screen,setScreen]   =useState("landing");
   const [authMode,setAuthMode]=useState("signup");
   const [user,setUser]       =useState(null);
+
+  // Initialise PostHog analytics once on mount
+  useEffect(()=>{
+    initAnalytics();
+  },[]);
 
   // Initialise Supabase once — stored on window so AuthPage can access it
   // without prop-drilling. Requires VITE_SUPABASE_URL and VITE_SUPABASE_KEY
