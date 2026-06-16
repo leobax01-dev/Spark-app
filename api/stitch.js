@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { writeFileSync, readFileSync, unlinkSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 
 const BUCKET = 'listing-photos'; // reuse existing bucket for final videos too
 
@@ -53,6 +54,7 @@ export default async function handler(req, res) {
     // Step 3: Concat with stream copy — no re-encode, extremely fast
     // -fflags +genpts regenerates timestamps to avoid sync issues between clips
     const ffmpegPath = getFfmpegPath();
+    try { execSync(`chmod +x "${ffmpegPath}"`); } catch {}
     const cmd = `"${ffmpegPath}" -f concat -safe 0 -i "${listPath}" -c copy -fflags +genpts -y "${outPath}"`;
     console.log('Running ffmpeg:', cmd);
     execSync(cmd, { timeout: 30000 }); // 30s timeout for ffmpeg itself
@@ -94,11 +96,5 @@ export default async function handler(req, res) {
 
 // ffmpeg binary path — @ffmpeg-installer/ffmpeg provides a static binary
 function getFfmpegPath() {
-  try {
-    const installer = require('@ffmpeg-installer/ffmpeg');
-    return installer.path;
-  } catch {
-    // Fallback: try system ffmpeg (works locally, not on Vercel)
-    return 'ffmpeg';
-  }
+  return ffmpegInstaller?.path || 'ffmpeg';
 }
