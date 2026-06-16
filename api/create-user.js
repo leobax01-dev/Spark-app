@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Supabase env vars not configured' });
   }
 
-  const { email, plan, credits } = req.body;
+  const { email, plan, credits, intendedPlan } = req.body;
   if (!email || !plan || typeof credits !== 'number') {
     return res.status(400).json({ error: 'email, plan, and numeric credits required' });
   }
@@ -26,38 +26,53 @@ export default async function handler(req, res) {
     // Check if row already exists (e.g. retry, or self-heal for pre-fix accounts)
     const { data: existing } = await supabase
       .from('users')
-      .select('plan,credits')
+      .select('plan,credits,intended_plan')
       .eq('email', normalizedEmail)
       .single();
 
     if (existing) {
       // Row already exists — return current values, don't overwrite
       console.log(`User row already exists: ${normalizedEmail}`);
-      return res.status(200).json({ plan: existing.plan, credits: existing.credits, existed: true });
+      return res.status(200).json({
+        plan: existing.plan,
+        credits: existing.credits,
+        intendedPlan: existing.intended_plan,
+        existed: true,
+      });
     }
 
     const { error: insertError } = await supabase
       .from('users')
-      .insert({ email: normalizedEmail, plan, credits });
+      .insert({
+        email: normalizedEmail,
+        plan,
+        credits,
+        intended_plan: intendedPlan || 'pro',
+      });
 
     if (insertError) {
       // Handle race condition: row created between check and insert
       if (insertError.message?.toLowerCase().includes('duplicate')) {
         const { data: retryData } = await supabase
           .from('users')
-          .select('plan,credits')
+          .select('plan,credits,intended_plan')
           .eq('email', normalizedEmail)
           .single();
         if (retryData) {
-          return res.status(200).json({ plan: retryData.plan, credits: retryData.credits, existed: true });
+          return res.status(200).json({
+            plan: retryData.plan,
+            credits: retryData.credits,
+            intendedPlan: retryData.intended_plan,
+            existed: true,
+          });
         }
       }
       console.error('User insert error:', insertError.message);
       return res.status(500).json({ error: 'Failed to create user record' });
     }
 
-    console.log(`User created: ${normalizedEmail} -> ${plan} (${credits} credits)`);
-    return res.status(200).json({ plan, credits, existed: false });
+    console.log(`User created: ${normalizedEmail} -> ${plan} (${credits} credits, intended: ${intendedPlan || 'pro'})`);
+    return res.status(200).json({ plan, credits, intendedPlan: intendedPlan || 'pro', existed: false });
 
   } catch (error) {
     console.error('Create user error:', error.message);
