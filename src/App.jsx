@@ -778,38 +778,127 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       }
       toast("Content package ready ✓");
 
-      // Trigger Higgsfield video generation in background — fully isolated
+      // Trigger Higgsfield video generation — multi-clip if multiple photos
+      // Each photo generates one 5s clip in parallel; clips are stitched into one final video
       // A video error NEVER affects the content package
       if(type==="listing"){
         (async()=>{
-          setVid({status:"generating",pct:5});
-          const heroB64 = photos[0]?.b64 || null;
-          const prompt  = content.higgsfield_prompt || `Cinematic listing video for ${inputs.address||"the property"}. Slow dolly-in reveal, warm golden hour lighting, luxury real estate aesthetic.`;
           try{
-            let job;
-            if(heroB64){
-              setStage("Rendering cinematic video...");
-              job = await callHiggsfieldImg(heroB64, prompt);
+            const photoList = photos.filter(p=>p?.b64);
+            const basePrompt = content.higgsfield_prompt || `Cinematic listing video for ${inputs.address||"the property"}. Slow dolly-in reveal, warm golden hour lighting, luxury real estate aesthetic.`;
+
+            // Scene-specific prompts per photo (use Claude's array if provided, else reuse base prompt)
+            const scenePrompts = Array.isArray(content.higgsfield_prompts)
+              ? content.higgsfield_prompts
+              : photoList.map((_,i) => `${basePrompt} Scene ${i+1}: ${["slow aerial reveal","ground-level dolly forward","interior wide shot","pool edge dolly-in","detail close-up shot"][i] || "cinematic reveal"}.`);
+
+            if(photoList.length <= 1){
+              // Single photo — original single-clip flow (unchanged)
+              setVid({status:"generating",pct:5});
+              const heroB64 = photoList[0]?.b64 || null;
+              const prompt = scenePrompts[0] || basePrompt;
+              let job;
+              if(heroB64){
+                setStage("Rendering cinematic video...");
+                job = await callHiggsfieldImg(heroB64, prompt);
+              } else {
+                job = await callHiggsfieldTxt(prompt);
+              }
+              const jobId = job?.request_id || job?.id || job?.job_id || job?.data?.id || job?.data?.request_id;
+              const statusUrl = job?.status_url || null;
+              console.log("Single clip job:", jobId);
+              if(jobId){
+                pollHiggsfield(jobId,(pct)=>{
+                  setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
+                }, statusUrl).then(res=>{
+                  if(res?.url) setVid({status:"ready", url:res.url, kind:res.kind||"video"});
+                  else setVid({status:"failed"});
+                }).catch(()=>setVid({status:"prompt"}));
+              } else {
+                setVid({status:"prompt"});
+              }
             } else {
-              job = await callHiggsfieldTxt(prompt);
-            }
-            const jobId = job?.request_id || job?.id || job?.job_id || job?.data?.id || job?.data?.request_id;
-            const statusUrl = job?.status_url || null;
-            console.log("Higgsfield job response:", JSON.stringify(job).slice(0,300));
-            console.log("Extracted jobId:", jobId, "statusUrl:", statusUrl);
-            if(jobId){
-              pollHiggsfield(jobId, (pct)=>{
-                setVid(v=>v?.status==="generating"?{status:"generating",pct}:v);
-              }, statusUrl).then(res=>{
-                if(res?.url) setVid({status:"ready", url:res.url, kind:res.kind||"video"});
-                else setVid({status:"failed"});
-              }).catch(()=>setVid({status:"prompt"}));
-            } else if(job?.video?.url || job?.images?.[0]?.url){
-              const videoUrl = job?.video?.url || null;
-              const imageUrl = job?.images?.[0]?.url || null;
-              setVid({status:"ready", url: videoUrl||imageUrl, kind: videoUrl?"video":"image"});
-            } else {
-              setVid({status:"prompt"});
+              // Multi-photo — fire all clips in parallel, stitch when all complete
+              const clipCount = Math.min(photoList.length, plan.maxPhotos, 6);
+              setVid({status:"generating",pct:5});
+              setStage(`Generating ${clipCount} cinematic clips...`);
+
+              // Fire all generation jobs simultaneously
+              const jobPromises = photoList.slice(0, clipCount).map((photo, i) =>
+                callHiggsfieldImg(photo.b64, scenePrompts[i] || basePrompt)
+                  .catch(e => { console.warn(`Clip ${i} job failed:`, e.message); return null; })
+              );
+              const jobs = await Promise.all(jobPromises);
+              console.log(`Fired ${jobs.length} Higgsfield jobs`);
+
+              // Extract job IDs and status URLs
+              const jobMeta = jobs.map((job,i) => ({
+                idx: i,
+                jobId: job?.request_id || job?.id || job?.job_id || job?.data?.id || null,
+                statusUrl: job?.status_url || null,
+              })).filter(m => m.jobId);
+
+              if(jobMeta.length === 0){
+                setVid({status:"prompt"}); return;
+              }
+
+              setStage(`Rendering ${jobMeta.length} clips — this takes ~2 minutes...`);
+
+              // Poll all jobs in parallel, collecting clip URLs as they complete
+              const clipUrls = new Array(jobMeta.length).fill(null);
+              let completed = 0;
+
+              await Promise.all(jobMeta.map(({idx, jobId, statusUrl}) =>
+                pollHiggsfield(jobId, (pct) => {
+                  // Average progress across all clips
+                  const avgPct = Math.round(10 + (pct * 0.8));
+                  setVid(v => v?.status==="generating" ? {status:"generating", pct:avgPct} : v);
+                }, statusUrl).then(res => {
+                  if(res?.url){
+                    clipUrls[idx] = res.url;
+                    completed++;
+                    console.log(`Clip ${idx} ready (${completed}/${jobMeta.length}): ${res.url}`);
+                    setStage(`${completed} of ${jobMeta.length} clips ready — stitching soon...`);
+                  }
+                }).catch(e => console.warn(`Clip ${idx} poll failed:`, e.message))
+              ));
+
+              const readyUrls = clipUrls.filter(Boolean);
+              console.log(`${readyUrls.length} clips ready for stitching`);
+
+              if(readyUrls.length === 0){
+                setVid({status:"failed"}); return;
+              }
+
+              if(readyUrls.length === 1){
+                // Only one clip succeeded — use it directly, no stitch needed
+                setVid({status:"ready", url:readyUrls[0], kind:"video"});
+                return;
+              }
+
+              // Stitch all clips into one final video
+              setStage("Stitching clips into final listing video...");
+              setVid({status:"generating", pct:92});
+
+              try{
+                const stitchRes = await fetch("/api/stitch", {
+                  method: "POST",
+                  headers: {"Content-Type":"application/json"},
+                  body: JSON.stringify({ clipUrls: readyUrls }),
+                });
+                const stitchData = await stitchRes.json();
+                if(stitchRes.ok && stitchData.url){
+                  console.log(`Final video (${stitchData.clips} clips):`, stitchData.url);
+                  setVid({status:"ready", url:stitchData.url, kind:"video"});
+                } else {
+                  // Stitch failed — serve first clip as fallback
+                  console.warn("Stitch failed, using first clip:", stitchData.error);
+                  setVid({status:"ready", url:readyUrls[0], kind:"video"});
+                }
+              }catch(stitchErr){
+                console.warn("Stitch request failed:", stitchErr.message);
+                setVid({status:"ready", url:readyUrls[0], kind:"video"});
+              }
             }
           }catch(e){
             console.warn("Video generation failed (non-critical):", e.message);
