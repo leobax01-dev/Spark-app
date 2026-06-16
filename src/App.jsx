@@ -1731,9 +1731,12 @@ function MainApp({user,onLogout}){
     const accts = LS.get("sp_accounts",{});
     const k = (user?.email||"").toLowerCase();
     if(accts[k]){ accts[k].credits=credits; accts[k].plan=planKey; LS.set("sp_accounts",accts); }
-    LS.del("sp_onboarded");
-    setUser(null);
-    setScreen("landing");
+    // Also sign out of Supabase Auth session
+    const sb = window.__supabase;
+    if(sb) sb.auth.signOut().catch(()=>{});
+    // Clear local plan/credits state so next login starts fresh from DB
+    LS.del("sp_plan"); LS.del("sp_credits"); LS.del("sp_intended_plan");
+    onLogout();
   }
   function handleGoUpgrade(){ setTab("billing"); toast("Choose your plan below","info"); }
   function handleGoSettings(){ setTab("settings"); }
