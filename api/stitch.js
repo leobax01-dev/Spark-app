@@ -51,13 +51,17 @@ export default async function handler(req, res) {
     writeFileSync(listPath, listContent);
     console.log('Concat list:\n', listContent);
 
-    // Step 3: Concat with stream copy — no re-encode, extremely fast
-    // -fflags +genpts regenerates timestamps to avoid sync issues between clips
+    // Step 3: Concat with re-encode for smooth transitions between clips.
+    // Stream-copy (-c copy) is faster but can produce a stutter/freeze at clip
+    // boundaries since each Higgsfield clip is independently encoded with its
+    // own keyframe placement. Re-encoding normalizes timing across the cut.
+    // Still fast enough for 3-6 short clips (~5-15s total) within the 60s limit.
     const ffmpegPath = getFfmpegPath();
-    try { execSync(`chmod +x "${ffmpegPath}"`); } catch {}
-    const cmd = `"${ffmpegPath}" -f concat -safe 0 -i "${listPath}" -c copy -fflags +genpts -y "${outPath}"`;
+    const cmd = `"${ffmpegPath}" -f concat -safe 0 -i "${listPath}" ` +
+      `-c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -movflags +faststart ` +
+      `-r 30 -vsync cfr -y "${outPath}"`;
     console.log('Running ffmpeg:', cmd);
-    execSync(cmd, { timeout: 30000 }); // 30s timeout for ffmpeg itself
+    execSync(cmd, { timeout: 45000 }); // 45s timeout — re-encoding takes longer than stream-copy
     console.log('ffmpeg concat complete');
 
     // Step 4: Upload stitched video to Supabase Storage
