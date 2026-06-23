@@ -2863,7 +2863,7 @@ function AuthPage({mode,onAuth,onSwitch}){
             }catch(e){ console.warn("create-user request failed:", e.message); }
 
             const accounts=LS.get("sp_accounts",{});
-            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, pass };
+            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended };
             LS.set("sp_accounts",accounts);
 
             // If email confirmation is required, Supabase returns a user
@@ -2915,7 +2915,7 @@ function AuthPage({mode,onAuth,onSwitch}){
             }
 
             const accounts=LS.get("sp_accounts",{});
-            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, pass };
+            accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended };
             LS.set("sp_accounts",accounts);
             identifyUser(email, { plan:finalPlan, credits:finalCredits });
             track("login_completed", { plan:finalPlan, credits:finalCredits });
@@ -2946,7 +2946,7 @@ function AuthPage({mode,onAuth,onSwitch}){
           if(accounts[key]){ toast("Account already exists — sign in","error"); setLoading(false); return; }
           const isTrialChoice = plan==="trial";
           const startCredits = isTrialChoice ? 3 : 0;
-          accounts[key]={ plan:"trial", credits:startCredits, intendedPlan:plan, pass };
+          accounts[key]={ plan:"trial", credits:startCredits, intendedPlan:plan };
           LS.set("sp_accounts",accounts);
           if(!isTrialChoice && PLANS[plan].stripeLink){
             goStripe(PLANS[plan].stripeLink, email);
