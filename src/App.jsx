@@ -287,7 +287,7 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
 
   userContent.push({ type:"text", text:
     `${voiceCtx}\n\n${typeCtx[type]}\n\n`+
-    (showPlatform ? `Platform: ${platform} (${PLATFORMS[platform]?.spec||""}). Generate exactly ${hooks} hook variants.\n\n` : "")+
+    (!isNonSocial ? `Platform: ${platform} (${PLATFORMS[platform]?.spec||""}). Generate exactly ${hooks} hook variants.\n\n` : "")+
     `Return ONLY valid JSON (no markdown fences):\n${jsonSchema}`
   });
 
