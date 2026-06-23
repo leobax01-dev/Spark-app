@@ -1,10 +1,7 @@
 // api/webhook.js — Stripe webhook handler with signature verification
-// Vercel serverless function — place this at /api/webhook.js in your project
-
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
 
-// Use service role key here (not publishable) so we can write to DB server-side
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -13,23 +10,14 @@ const supabase = createClient(
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
-// IMPORTANT: disable Vercel's automatic body parsing so we can verify the raw payload
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+export const config = { api: { bodyParser: false } }
 
-// Plan lookup by Stripe Payment Link URL
-// IMPORTANT: these must exactly match the Payment Link URLs used in src (PLANS[].stripeLink)
 const LINK_TO_PLAN = {
   'https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00': { plan:'agent', credits:20 },
   'https://buy.stripe.com/7sYcN4gvr4Y37bfddY0sU01': { plan:'pro',   credits:60 },
   'https://buy.stripe.com/00waEWgvr0HNfHLei20sU02': { plan:'team',  credits:180 },
 }
 
-// Credit pack lookup by Stripe Payment Link URL
-// IMPORTANT: these must exactly match CREDIT_PACKS[].stripeLink in src
 const LINK_TO_CREDITS = {
   'https://buy.stripe.com/6oUbJ00wtbmrdzD4Hs0sU03': 10,
   'https://buy.stripe.com/7sYcN4cfb2PV9jn2zk0sU04': 30,
@@ -37,7 +25,6 @@ const LINK_TO_CREDITS = {
   'https://buy.stripe.com/14AbJ0gvr9ej537ddY0sU06': 200,
 }
 
-// Helper: read raw request body as a Buffer (needed for signature verification)
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -45,6 +32,20 @@ function getRawBody(req) {
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
+}
+
+// Helper: look up user with one retry (handles timing race on new signups)
+async function findUser(email, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, credits, plan')
+      .eq('email', email)
+      .single()
+    if (data) return data
+    if (i < retries - 1) await new Promise(r => setTimeout(r, 1500)) // wait 1.5s before retry
+  }
+  return null
 }
 
 export default async function handler(req, res) {
@@ -68,6 +69,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // ── CHECKOUT COMPLETED ──────────────────────────────────────────────────
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object
       const rawEmail = session.customer_details?.email || session.customer_email
@@ -79,20 +81,14 @@ export default async function handler(req, res) {
       }
 
       const email = rawEmail.toLowerCase()
+      const userData = await findUser(email) // retries once after 1.5s
 
-      // Look up the user in Supabase by normalized email
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id, credits, plan')
-        .eq('email', email)
-        .single()
-
-      if (userError || !userData) {
-        console.error('User not found for email:', email, userError?.message)
+      if (!userData) {
+        console.error('User not found after retries:', email)
         return res.status(200).json({ received: true, note: 'User not found' })
       }
 
-      // Check if this is a subscription plan purchase
+      // Subscription plan purchase
       const planData = LINK_TO_PLAN[paymentLink]
       if (planData) {
         const { error: updateError } = await supabase
@@ -114,7 +110,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true })
       }
 
-      // Check if this is a credit pack purchase
+      // Credit pack purchase
       const creditsToAdd = LINK_TO_CREDITS[paymentLink]
       if (creditsToAdd) {
         const newCredits = (userData.credits || 0) + creditsToAdd
@@ -135,11 +131,12 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true })
       }
 
-      // Neither map matched — log so this is debuggable
       console.warn('Webhook: no plan/credit mapping for payment_link:', paymentLink)
     }
 
-    // Handle subscription renewals — top up credits monthly
+    // ── MONTHLY RENEWAL ─────────────────────────────────────────────────────
+    // FIX: use MAX(current_credits, plan_credits) so bought credit packs
+    // are never wiped on renewal
     if (event.type === 'invoice.paid') {
       const invoice = event.data.object
       const rawEmail = invoice.customer_email
@@ -147,20 +144,28 @@ export default async function handler(req, res) {
 
       const email = rawEmail.toLowerCase()
 
-      // Find which plan this subscription is for
       const lineItems = invoice.lines?.data || []
       for (const item of lineItems) {
         const amount = item.price?.unit_amount
         let planData = null
-        if (amount === 2900) planData = { plan:'agent', credits:20 }
-        else if (amount === 4900) planData = { plan:'pro', credits:60 }
-        else if (amount === 9900) planData = { plan:'team', credits:180 }
+        if (amount === 2900)      planData = { plan:'agent', credits:20 }
+        else if (amount === 4900) planData = { plan:'pro',   credits:60 }
+        else if (amount === 9900) planData = { plan:'team',  credits:180 }
 
         if (planData) {
+          // Fetch current credits first so we never wipe a credit pack top-up
+          const { data: current } = await supabase
+            .from('users')
+            .select('credits')
+            .eq('email', email)
+            .single()
+
+          const renewedCredits = Math.max(current?.credits || 0, planData.credits)
+
           const { error: updateError } = await supabase
             .from('users')
             .update({
-              credits: planData.credits,
+              credits: renewedCredits,
               plan: planData.plan,
               updated_at: new Date().toISOString(),
             })
@@ -169,9 +174,42 @@ export default async function handler(req, res) {
           if (updateError) {
             console.error('Renewal update failed:', email, updateError.message)
           } else {
-            console.log(`Monthly renewal: ${email} -> ${planData.credits} credits`)
+            console.log(`Monthly renewal: ${email} -> ${planData.plan} (${renewedCredits} credits — was ${current?.credits||0}, plan default ${planData.credits})`)
           }
         }
+      }
+    }
+
+    // ── SUBSCRIPTION CANCELLED ──────────────────────────────────────────────
+    // FIX: downgrade to trial when subscription is cancelled so access is revoked
+    if (event.type === 'customer.subscription.deleted') {
+      const subscription = event.data.object
+      const customerId = subscription.customer
+
+      // Look up user by stripe_customer_id
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id, email, plan')
+        .eq('stripe_customer_id', customerId)
+        .single()
+
+      if (userData) {
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            plan: 'trial',
+            credits: 0,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', userData.id)
+
+        if (updateError) {
+          console.error('Cancellation downgrade failed:', userData.email, updateError.message)
+        } else {
+          console.log(`Subscription cancelled: ${userData.email} downgraded to trial`)
+        }
+      } else {
+        console.warn('Webhook: subscription cancelled but no user found for customer:', customerId)
       }
     }
 
