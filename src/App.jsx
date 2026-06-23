@@ -104,7 +104,7 @@ const GLOBAL_CSS = `
 const PLANS = {
   trial:{
     name:"Trial", price:0, credits:3, accent:C.indigo, badge:null,
-    contentTypes:["listing","mls_desc","open_house","objection","scripts","education","market","lifestyle"],
+    contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
     perks:["3 free credits — no card required","Full Pro-level feature access","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation"],
@@ -112,7 +112,7 @@ const PLANS = {
   },
   agent:{
     name:"Agent", price:29, credits:20, accent:C.emerald, badge:null,
-    contentTypes:["listing","mls_desc","open_house","objection","scripts","education"],
+    contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education"],
     platforms:["TikTok","Reels"],
     hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
     perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","Up to 3 listing photos","MLS-safe captions","Email support"],
@@ -120,7 +120,7 @@ const PLANS = {
   },
   pro:{
     name:"Pro", price:49, credits:60, accent:C.indigo, badge:"Most Popular",
-    contentTypes:["listing","mls_desc","open_house","objection","scripts","education","market","lifestyle"],
+    contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
     perks:["60 credits / month","All 6 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","MLS descriptions","Open house packages","Priority support"],
@@ -128,7 +128,7 @@ const PLANS = {
   },
   team:{
     name:"Team", price:99, credits:180, accent:C.violet, badge:null,
-    contentTypes:["listing","mls_desc","open_house","objection","scripts","education","market","lifestyle"],
+    contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:5, apiAccess:true,
     perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","MLS descriptions","Open house packages","Dedicated support"],
@@ -151,14 +151,15 @@ function goStripe(link, email){
 }
 
 const CONTENT_TYPES = {
-  listing:     {label:"Listing Video",       icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"agent"},
-  mls_desc:    {label:"MLS Description",     icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"agent"},
-  open_house:  {label:"Open House Package",  icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"agent"},
-  objection:   {label:"Objection Handler",   icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"agent"},
-  scripts:     {label:"Scripts & Dialogues", icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"agent"},
-  education:   {label:"Agent Tip",           icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"agent"},
-  market:      {label:"Market Update",       icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
-  lifestyle:   {label:"Neighborhood Story",  icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
+  listing:     {label:"Listing Video",         icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"agent"},
+  mls_desc:    {label:"MLS Description",       icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"agent"},
+  open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"agent"},
+  objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"agent"},
+  scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"agent"},
+  comms:       {label:"Client Communication",  icon:"💬",color:"#f43f5e", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"agent"},
+  education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"agent"},
+  market:      {label:"Market Update",         icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
+  lifestyle:   {label:"Neighborhood Story",    icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
 };
 
 const PLATFORMS = {
@@ -196,6 +197,12 @@ const INPUT_META = {
   situation:      ["Situation",            "Listing appointment / Buyer consultation / Follow-up call"],
   scriptType:     ["Script Type",          "Listing Appointment / Buyer Consultation / FSBO Outreach / Expired Listing / Follow-Up Call"],
   agentExperience:["Agent Experience",     "5 years, luxury market specialist"],
+  commsType:      ["Communication Type",   "Post-Showing Follow-Up / Offer Presentation / Post-Closing Nurture / Buyer Consultation Prep / Price Reduction Conversation"],
+  clientName:     ["Client Name",          "Sarah & Mike"],
+  propertyAddress:["Property Address",     "123 Ocean Drive, Miami Beach"],
+  showingNotes:   ["Showing Notes / Context", "They loved the kitchen and backyard, concerned about price"],
+  offerDetails:   ["Offer Details",        "$850,000 offer, conventional financing, 30-day close, clean terms"],
+  closingDate:    ["Closing Date",         "June 15th"],
 };
 
 const TYPE_INPUTS = {
@@ -204,7 +211,7 @@ const TYPE_INPUTS = {
   open_house: ["address","price","beds","baths","sqft","keyFeatures","neighborhood","openDate","openTime"],
   objection:  ["objection","clientType","situation"],
   scripts:    ["scriptType","agentExperience","city"],
-  market:     ["city","avgPrice","daysOnMarket","inventory","trend"],
+  comms:      ["commsType","clientName","propertyAddress","showingNotes"],
   lifestyle:  ["neighborhood","city","highlights","targetBuyer"],
   education:  ["topic","audience","keyPoint"],
 };
@@ -241,7 +248,7 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
     lifestyle:  `Neighborhood story: ${inputs.neighborhood||""}, ${inputs.city||""}. Highlights: ${inputs.highlights||""}. Target buyer: ${inputs.targetBuyer||""}.`,
     objection:  `Real estate agent needs help responding to this client objection: "${inputs.objection||""}". Client type: ${inputs.clientType||"Buyer/Seller"}. Situation: ${inputs.situation||"consultation"}.`,
     scripts:    `Generate a professional real estate script for: ${inputs.scriptType||"Listing Appointment"}. Agent experience: ${inputs.agentExperience||"experienced agent"}. Market/city: ${inputs.city||"local market"}.`,
-    education:  `Agent tip about: "${inputs.topic||""}" for ${inputs.audience||"buyers and sellers"}. Key point: ${inputs.keyPoint||""}.`,
+    comms:      `Generate client communication for: ${inputs.commsType||"Post-Showing Follow-Up"}. Client: ${inputs.clientName||"the client"}. Property: ${inputs.propertyAddress||"the property"}. Context/notes: ${inputs.showingNotes||""}.`,
   };
 
   // Build message content — include photos for listing type if provided
@@ -253,6 +260,9 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
   }
   // Build JSON schema based on content type
   const jsonSchema = (()=>{
+    if(type==="comms") return(
+      `{"communication_type":"${inputs.commsType||"Post-Showing Follow-Up"}","subject_line":"email subject line — personal, specific, not salesy","email_body":"full email — warm, personal, professional, references specific details from the context, 3-4 short paragraphs","text_version":"SMS/text version under 160 chars — casual, personal, clear CTA","phone_script":"brief phone call script — opening line, 2-3 key points, natural close, under 60 seconds","follow_up_sequence":["3-touch follow-up sequence — Day 1, Day 3, Day 7 — one sentence each describing what to send"],"personal_touch":"one specific personalization tip based on the context provided","timing_tip":"best time and day to send this communication for highest response rate"}`
+    );
     if(type==="objection") return(
       `{"objection_summary":"one-line summary of the core concern behind this objection","response_direct":"direct, confident response — acknowledge then reframe with data/logic, 3-4 sentences","response_empathetic":"empathetic response — lead with understanding, build trust, gentle redirect, 3-4 sentences","response_story":"story-based response — use a brief relevant client story or analogy, 3-4 sentences","follow_up_question":"one powerful follow-up question to ask after handling the objection","body_language_tip":"one tip for non-verbal delivery when handling this objection","email_version":"email/text version of the best response for a written follow-up","key_insight":"the core insight or mindset shift that makes this objection easier to handle"}`
     );
@@ -270,7 +280,7 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
     );
   })();
 
-  const isNonSocial = ["mls_desc","open_house","objection","scripts"].includes(type);
+  const isNonSocial = ["mls_desc","open_house","objection","scripts","comms"].includes(type);
   const systemPrompt = isNonSocial
     ? `You are SPARK, an elite real estate AI assistant. You help agents communicate better, handle objections with confidence, and win more business. Write in a natural, conversational tone — not corporate or robotic. Return ONLY valid JSON, no markdown.`
     : `You are SPARK, an elite real estate content strategist for ${platform}. Always write MLS-compliant content. Return ONLY valid JSON, no markdown.`;
@@ -839,7 +849,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
   const cost           = CONTENT_TYPES[type]?.cost||2;
   const canGen         = credits>=cost && !typeLocked && !platformLocked;
   const showPhotoUpload = type==="listing";
-  const showPlatform    = !["mls_desc","open_house","objection","scripts"].includes(type);
+  const showPlatform    = !["mls_desc","open_house","objection","scripts","comms"].includes(type);
 
   const STAGES=[
     [10,"Analyzing your listing..."],
@@ -1039,6 +1049,8 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
     ? ["responses","followup","email","insight"]
     : type==="scripts"
     ? ["full_script","questions","objections","tips"]
+    : type==="comms"
+    ? ["email","text","phone","sequence"]
     : ["script","hooks","caption","video","shots"];
 
   return(
@@ -1442,6 +1454,58 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                   </RBlock>
                   <RBlock accent={C.emerald} label="VALUE PROPOSITION" action={<CopyBtn text={result.value_proposition||""} label="Value prop copied"/>}>
                     <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.8}}>{result.value_proposition}</p>
+                  </RBlock>
+                </div>
+              )}
+
+              {/* ── CLIENT COMMUNICATION TABS ── */}
+              {tab==="email"&&type==="comms"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={"#f43f5e"} label="SUBJECT LINE" action={<CopyBtn text={result.subject_line||""} label="Subject copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,margin:0}}>{result.subject_line}</p>
+                  </RBlock>
+                  <RBlock accent={C.indigo} label="EMAIL" action={<CopyBtn text={result.email_body||""} label="Email copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.9,whiteSpace:"pre-wrap"}}>{result.email_body}</p>
+                  </RBlock>
+                  {result.timing_tip&&(
+                    <RBlock accent={C.amber} label="TIMING TIP">
+                      <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.6}}>{result.timing_tip}</p>
+                    </RBlock>
+                  )}
+                </div>
+              )}
+              {tab==="text"&&type==="comms"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.emerald} label="TEXT / SMS" action={<CopyBtn text={result.text_version||""} label="Text copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:14,color:C.text,margin:0,lineHeight:1.8,fontWeight:600}}>{result.text_version}</p>
+                    <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:8}}>{(result.text_version||"").length} / 160 chars</div>
+                  </RBlock>
+                  {result.personal_touch&&(
+                    <RBlock accent={"#f43f5e"} label="PERSONALIZATION TIP">
+                      <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.6}}>{result.personal_touch}</p>
+                    </RBlock>
+                  )}
+                </div>
+              )}
+              {tab==="phone"&&type==="comms"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.cyan} label="PHONE SCRIPT" action={<CopyBtn text={result.phone_script||""} label="Script copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.9,whiteSpace:"pre-wrap"}}>{result.phone_script}</p>
+                  </RBlock>
+                </div>
+              )}
+              {tab==="sequence"&&type==="comms"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.violet} label="3-TOUCH FOLLOW-UP SEQUENCE">
+                    {(result.follow_up_sequence||[]).map((touch,i)=>(
+                      <div key={i} style={{display:"flex",gap:12,padding:"13px 0",borderBottom:`1px solid ${C.border}`,animation:`slideR .2s ease ${i*.06}s both`}}>
+                        <div style={{minWidth:52,height:28,borderRadius:6,background:"rgba(139,92,246,.08)",border:"1px solid rgba(139,92,246,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.violet,fontFamily:C.F,fontWeight:700,flexShrink:0,letterSpacing:.5}}>
+                          {["DAY 1","DAY 3","DAY 7"][i]||`DAY ${[1,3,7][i]}`}
+                        </div>
+                        <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.5,alignSelf:"center"}}>{touch}</p>
+                        <CopyBtn text={touch} label="Copied"/>
+                      </div>
+                    ))}
                   </RBlock>
                 </div>
               )}
