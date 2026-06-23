@@ -2134,6 +2134,228 @@ function AffiliatePanel({ user, planKey }){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// COMMISSION CALCULATOR
+// ─────────────────────────────────────────────────────────────────────────────
+function CommissionCalculator({user, planKey}){
+  const toast = useToast();
+  const [mode, setMode] = useState("seller"); // seller | buyer
+  const [inputs, setInputs] = useState({
+    salePrice: "", commissionRate: "3", splitPercent: "70",
+    brokerageFee: "0", eAndO: "0", taxRate: "25",
+    loanAmount: "", interestRate: "7.25", loanTerm: "30",
+    downPercent: "20", propertyTax: "1.2", insurance: "1800",
+    hoa: "0",
+  });
+  const [calc, setCalc]     = useState(null);
+  const [aiExplain, setAiExplain] = useState(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  function num(k){ return parseFloat(inputs[k])||0; }
+
+  function calculate(){
+    if(mode==="seller"){
+      const price        = num("salePrice");
+      if(!price){ toast("Enter a sale price","error"); return; }
+      const grossComm    = price * (num("commissionRate")/100);
+      const afterSplit   = grossComm * (num("splitPercent")/100);
+      const brokerFee    = num("brokerageFee");
+      const eAndO        = num("eAndO");
+      const netBeforeTax = afterSplit - brokerFee - eAndO;
+      const taxAmt       = netBeforeTax * (num("taxRate")/100);
+      const netAfterTax  = netBeforeTax - taxAmt;
+      setCalc({ mode:"seller", price, grossComm, afterSplit, brokerFee, eAndO, netBeforeTax, taxAmt, netAfterTax,
+        commissionRate:num("commissionRate"), splitPercent:num("splitPercent"), taxRate:num("taxRate") });
+    } else {
+      const price        = num("salePrice");
+      const down         = price * (num("downPercent")/100);
+      const loan         = price - down;
+      const monthlyRate  = (num("interestRate")/100)/12;
+      const payments     = num("loanTerm")*12;
+      const mortgagePayment = loan * (monthlyRate*Math.pow(1+monthlyRate,payments))/(Math.pow(1+monthlyRate,payments)-1);
+      const monthlyTax   = (price*(num("propertyTax")/100))/12;
+      const monthlyIns   = num("insurance")/12;
+      const monthlyHoa   = num("hoa");
+      const totalMonthly = mortgagePayment + monthlyTax + monthlyIns + monthlyHoa;
+      const incomeNeeded = totalMonthly*12/0.28; // 28% rule
+      setCalc({ mode:"buyer", price, down, loan, mortgagePayment, monthlyTax, monthlyIns, monthlyHoa, totalMonthly, incomeNeeded,
+        interestRate:num("interestRate"), downPercent:num("downPercent"), loanTerm:num("loanTerm") });
+    }
+    setAiExplain(null);
+  }
+
+  async function generateAiExplainer(){
+    if(!calc) return;
+    setLoadingAi(true);
+    try{
+      const ctx = calc.mode==="seller"
+        ? `Commission breakdown: Sale price $${calc.price.toLocaleString()}, ${calc.commissionRate}% commission = $${calc.grossComm.toLocaleString('en',{maximumFractionDigits:0})} gross, ${calc.splitPercent}% agent split = $${calc.afterSplit.toLocaleString('en',{maximumFractionDigits:0})}, minus brokerage fee $${calc.brokerFee}, E&O $${calc.eAndO}, net before tax $${calc.netBeforeTax.toLocaleString('en',{maximumFractionDigits:0})}, ${calc.taxRate}% tax = $${calc.taxAmt.toLocaleString('en',{maximumFractionDigits:0})}, final net $${calc.netAfterTax.toLocaleString('en',{maximumFractionDigits:0})}.`
+        : `Buyer affordability: Purchase price $${calc.price.toLocaleString()}, ${calc.downPercent}% down = $${calc.down.toLocaleString('en',{maximumFractionDigits:0})}, loan $${calc.loan.toLocaleString('en',{maximumFractionDigits:0})} at ${calc.interestRate}% for ${calc.loanTerm} years, P&I $${calc.mortgagePayment.toLocaleString('en',{maximumFractionDigits:0})}/mo, taxes $${calc.monthlyTax.toLocaleString('en',{maximumFractionDigits:0})}/mo, insurance $${calc.monthlyIns.toLocaleString('en',{maximumFractionDigits:0})}/mo, HOA $${calc.monthlyHoa}/mo, total $${calc.totalMonthly.toLocaleString('en',{maximumFractionDigits:0})}/mo, income needed $${calc.incomeNeeded.toLocaleString('en',{maximumFractionDigits:0})}/yr.`;
+
+      const r = await fetch("/api/claude",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          system:"You are SPARK, a real estate AI assistant. Explain financial calculations in plain English for clients — warm, clear, no jargon. Return ONLY valid JSON.",
+          messages:[{role:"user",content:`${ctx}\n\nReturn ONLY valid JSON:\n{"client_summary":"2-3 sentence plain-English summary an agent can read directly to a client","key_takeaway":"the single most important number or insight","next_steps":["3 specific action items for the agent or client based on these numbers"],"talking_points":["3 conversational talking points the agent can use with their client"],"potential_concern":"one potential concern to address proactively","encouragement":"one positive, motivating statement about these numbers"}`}]
+        })
+      });
+      const d = await r.json();
+      const raw = d.content?.[0]?.text||"";
+      const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
+      if(first!==-1&&last!==-1){ setAiExplain(JSON.parse(cleaned.slice(first,last+1))); }
+    }catch(e){ toast("AI explainer failed — try again","error"); }
+    finally{ setLoadingAi(false); }
+  }
+
+  const fmt = (n,dec=0) => isNaN(n)?"-":"$"+n.toLocaleString("en",{minimumFractionDigits:dec,maximumFractionDigits:dec});
+
+  return(
+    <div style={{paddingBottom:40}}>
+      {/* Mode toggle */}
+      <div style={{display:"flex",background:"rgba(255,255,255,.03)",borderRadius:9,padding:3,marginBottom:20,gap:3}}>
+        {[["seller","🏷️ Net Commission"],["buyer","🏠 Buyer Affordability"]].map(([m,l])=>(
+          <button key={m} onClick={()=>{setMode(m);setCalc(null);setAiExplain(null);}}
+            style={{flex:1,padding:"9px 0",borderRadius:7,border:"none",background:mode===m?C.surfaceUp:"transparent",color:mode===m?C.text:C.textDim,cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* Inputs */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 18px",marginBottom:16}}>
+        <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:14}}>
+          {mode==="seller"?"LISTING DETAILS":"PURCHASE DETAILS"}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          {mode==="seller"&&([
+            ["salePrice","Sale Price ($)","875000"],
+            ["commissionRate","Commission Rate (%)","3"],
+            ["splitPercent","Agent Split (%)","70"],
+            ["brokerageFee","Brokerage Fee ($)","500"],
+            ["eAndO","E&O / Fees ($)","300"],
+            ["taxRate","Tax Rate (%)","25"],
+          ]).map(([k,label,ph])=>(
+            <div key={k}>
+              <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:4}}>{label}</div>
+              <input value={inputs[k]} onChange={e=>setInputs(p=>({...p,[k]:e.target.value}))} placeholder={ph}
+                style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",color:C.text,fontFamily:C.F,fontSize:13,boxSizing:"border-box"}}/>
+            </div>
+          ))}
+          {mode==="buyer"&&([
+            ["salePrice","Purchase Price ($)","500000"],
+            ["downPercent","Down Payment (%)","20"],
+            ["interestRate","Interest Rate (%)","7.25"],
+            ["loanTerm","Loan Term (yrs)","30"],
+            ["propertyTax","Property Tax Rate (%)","1.2"],
+            ["insurance","Annual Insurance ($)","1800"],
+            ["hoa","Monthly HOA ($)","0"],
+          ]).map(([k,label,ph])=>(
+            <div key={k}>
+              <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:4}}>{label}</div>
+              <input value={inputs[k]} onChange={e=>setInputs(p=>({...p,[k]:e.target.value}))} placeholder={ph}
+                style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 10px",color:C.text,fontFamily:C.F,fontSize:13,boxSizing:"border-box"}}/>
+            </div>
+          ))}
+        </div>
+        <button onClick={calculate}
+          style={{width:"100%",marginTop:16,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
+          🧮 Calculate
+        </button>
+      </div>
+
+      {/* Results */}
+      {calc&&(
+        <div style={{animation:"fadeIn .22s ease"}}>
+          {calc.mode==="seller"&&(
+            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 18px",marginBottom:16}}>
+              <div style={{fontSize:10,color:C.emerald,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:16}}>NET COMMISSION BREAKDOWN</div>
+              {[
+                ["Sale Price",fmt(calc.price),C.textMd,false],
+                [`Gross Commission (${calc.commissionRate}%)`,fmt(calc.grossComm),C.amber,false],
+                [`Agent Split (${calc.splitPercent}%)`,fmt(calc.afterSplit),C.indigo,false],
+                ["Brokerage Fee",`-${fmt(calc.brokerFee)}`,C.rose,false],
+                ["E&O / Fees",`-${fmt(calc.eAndO)}`,C.rose,false],
+                ["Net Before Tax",fmt(calc.netBeforeTax),C.cyan,true],
+                [`Tax (${calc.taxRate}%)`,`-${fmt(calc.taxAmt)}`,C.rose,false],
+                ["🏦 NET TAKE-HOME",fmt(calc.netAfterTax),"#10b981",true],
+              ].map(([label,val,color,bold])=>(
+                <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <span style={{fontFamily:C.F,fontSize:bold?14:13,color:bold?C.text:C.textMd,fontWeight:bold?700:400}}>{label}</span>
+                  <span style={{fontFamily:C.F,fontSize:bold?15:13,color,fontWeight:700}}>{val}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {calc.mode==="buyer"&&(
+            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 18px",marginBottom:16}}>
+              <div style={{fontSize:10,color:C.emerald,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:16}}>MONTHLY PAYMENT BREAKDOWN</div>
+              {[
+                ["Purchase Price",fmt(calc.price),C.textMd,false],
+                [`Down Payment (${calc.downPercent}%)`,fmt(calc.down),C.amber,false],
+                ["Loan Amount",fmt(calc.loan),C.indigo,false],
+                [`P&I (${calc.interestRate}% / ${calc.loanTerm}yr)`,`${fmt(calc.mortgagePayment)}/mo`,C.cyan,false],
+                ["Property Tax",`${fmt(calc.monthlyTax)}/mo`,C.textMd,false],
+                ["Homeowners Insurance",`${fmt(calc.monthlyIns)}/mo`,C.textMd,false],
+                ["HOA",`${fmt(calc.monthlyHoa)}/mo`,C.textMd,false],
+                ["💰 TOTAL MONTHLY",`${fmt(calc.totalMonthly)}/mo`,"#10b981",true],
+                ["Income Needed (28% rule)",`${fmt(calc.incomeNeeded)}/yr`,C.violet,true],
+              ].map(([label,val,color,bold])=>(
+                <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                  <span style={{fontFamily:C.F,fontSize:bold?14:13,color:bold?C.text:C.textMd,fontWeight:bold?700:400}}>{label}</span>
+                  <span style={{fontFamily:C.F,fontSize:bold?15:13,color,fontWeight:700}}>{val}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* AI Explainer */}
+          {!aiExplain&&(
+            <button onClick={generateAiExplainer} disabled={loadingAi}
+              style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:loadingAi?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:loadingAi?.7:1,marginBottom:16}}>
+              {loadingAi?"✨ Generating AI Explainer...":"✨ Generate AI Client Explainer"}
+            </button>
+          )}
+
+          {aiExplain&&(
+            <div style={{animation:"fadeIn .22s ease"}}>
+              <RBlock accent={C.emerald} label="CLIENT SUMMARY" action={<CopyBtn text={aiExplain.client_summary||""} label="Summary copied"/>}>
+                <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.8}}>{aiExplain.client_summary}</p>
+              </RBlock>
+              <RBlock accent={C.amber} label="KEY TAKEAWAY">
+                <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,margin:0,lineHeight:1.6}}>{aiExplain.key_takeaway}</p>
+              </RBlock>
+              <RBlock accent={C.indigo} label="TALKING POINTS">
+                {(aiExplain.talking_points||[]).map((t,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <div style={{minWidth:6,height:6,borderRadius:"50%",background:C.indigo,marginTop:6,flexShrink:0}}/>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.5}}>{t}</p>
+                    <CopyBtn text={t} label="Copied"/>
+                  </div>
+                ))}
+              </RBlock>
+              <RBlock accent={C.cyan} label="NEXT STEPS">
+                {(aiExplain.next_steps||[]).map((s,i)=>(
+                  <div key={i} style={{display:"flex",gap:10,padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
+                    <div style={{minWidth:22,height:22,borderRadius:"50%",background:"rgba(6,182,212,.07)",border:"1px solid rgba(6,182,212,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.cyan,fontFamily:C.F,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.5,alignSelf:"center"}}>{s}</p>
+                  </div>
+                ))}
+              </RBlock>
+              <RBlock accent={C.violet} label="POTENTIAL CONCERN">
+                <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7}}>{aiExplain.potential_concern}</p>
+              </RBlock>
+              <RBlock accent={C.emerald} label="CLIENT ENCOURAGEMENT" action={<CopyBtn text={aiExplain.encouragement||""} label="Copied"/>}>
+                <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7,fontStyle:"italic"}}>"{aiExplain.encouragement}"</p>
+              </RBlock>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────────────────────
 function MainApp({user,onLogout}){
@@ -2212,26 +2434,29 @@ function MainApp({user,onLogout}){
   function handleGoSettings(){ setTab("settings"); }
 
   const NAV=[
-    {id:"generate",  icon:"⚡",label:"Generate"},
-    {id:"voice",     icon:"◎", label:"Voice"},
-    {id:"billing",   icon:"◈", label:"Billing"},
-    {id:"affiliate", icon:"🔗",label:"Affiliate"},
-    {id:"settings",  icon:"⚙", label:"Settings"},
+    {id:"generate",   icon:"⚡", label:"Generate"},
+    {id:"calculator", icon:"🧮", label:"Calculator"},
+    {id:"voice",      icon:"◎",  label:"Voice"},
+    {id:"billing",    icon:"◈",  label:"Billing"},
+    {id:"affiliate",  icon:"🔗", label:"Affiliate"},
+    {id:"settings",   icon:"⚙",  label:"Settings"},
   ];
 
   const TITLES={
-    generate:<>Generate <Shimmer>Content</Shimmer></>,
-    voice:   <>Agent <Shimmer>Voice</Shimmer></>,
-    billing: <>Billing & <Shimmer>Credits</Shimmer></>,
-    affiliate:<>Affiliate <Shimmer>Program</Shimmer></>,
-    settings:<Shimmer>Settings</Shimmer>,
+    generate:   <>Generate <Shimmer>Content</Shimmer></>,
+    calculator: <>Commission <Shimmer>Calculator</Shimmer></>,
+    voice:      <>Agent <Shimmer>Voice</Shimmer></>,
+    billing:    <>Billing & <Shimmer>Credits</Shimmer></>,
+    affiliate:  <>Affiliate <Shimmer>Program</Shimmer></>,
+    settings:   <Shimmer>Settings</Shimmer>,
   };
   const SUBTITLES={
-    generate:  voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
-    voice:     plan.voiceMemory?"Saved once · every script sounds like you":"Requires Pro plan",
-    billing:   `${plan.name} · $${plan.price}/mo · ${credits} credits`,
-    affiliate: "20% recurring commission · no cap",
-    settings:  "Account · Plan · Support",
+    generate:   voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
+    calculator: "Net commission, split, taxes & buyer affordability — instant",
+    voice:      plan.voiceMemory?"Saved once · every script sounds like you":"Requires Pro plan",
+    billing:    `${plan.name} · $${plan.price}/mo · ${credits} credits`,
+    affiliate:  "20% recurring commission · no cap",
+    settings:   "Account · Plan · Support",
   };
 
   // ── MOBILE BOTTOM NAV BAR ──────────────────────────────────────────────────
@@ -2303,7 +2528,7 @@ function MainApp({user,onLogout}){
           </div>
         )}
 
-        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/>}
+        {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/> }{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/> }
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
       </div>
@@ -2382,7 +2607,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/> }{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/> }
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
@@ -2411,7 +2636,7 @@ function MainApp({user,onLogout}){
                   <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
                 </div>
               )}
-              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/>}
+              {tab==="billing"&&<BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/> }{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/> }
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/>}
             </div>
