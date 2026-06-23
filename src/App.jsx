@@ -104,7 +104,7 @@ const GLOBAL_CSS = `
 const PLANS = {
   trial:{
     name:"Trial", price:0, credits:3, accent:C.indigo, badge:null,
-    contentTypes:["listing","education","market","lifestyle"],
+    contentTypes:["listing","mls_desc","open_house","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
     perks:["3 free credits — no card required","Full Pro-level feature access","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation"],
@@ -112,7 +112,7 @@ const PLANS = {
   },
   agent:{
     name:"Agent", price:29, credits:20, accent:C.emerald, badge:null,
-    contentTypes:["listing","education"],
+    contentTypes:["listing","mls_desc","open_house","education"],
     platforms:["TikTok","Reels"],
     hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
     perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","Up to 3 listing photos","MLS-safe captions","Email support"],
@@ -120,18 +120,18 @@ const PLANS = {
   },
   pro:{
     name:"Pro", price:49, credits:60, accent:C.indigo, badge:"Most Popular",
-    contentTypes:["listing","education","market","lifestyle"],
+    contentTypes:["listing","mls_desc","open_house","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
-    perks:["60 credits / month","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","Priority support"],
+    perks:["60 credits / month","All 6 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","MLS descriptions","Open house packages","Priority support"],
     stripeLink:"https://buy.stripe.com/7sYcN4gvr4Y37bfddY0sU01",
   },
   team:{
     name:"Team", price:99, credits:180, accent:C.violet, badge:null,
-    contentTypes:["listing","education","market","lifestyle"],
+    contentTypes:["listing","mls_desc","open_house","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:5, apiAccess:true,
-    perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","Dedicated support"],
+    perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","MLS descriptions","Open house packages","Dedicated support"],
     stripeLink:"https://buy.stripe.com/00waEWgvr0HNfHLei20sU02",
   },
 };
@@ -151,10 +151,12 @@ function goStripe(link, email){
 }
 
 const CONTENT_TYPES = {
-  listing:  {label:"Listing Video",      icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video", minPlan:"agent"},
-  education:{label:"Agent Tip",          icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",      minPlan:"agent"},
-  market:   {label:"Market Update",      icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",      minPlan:"pro"},
-  lifestyle:{label:"Neighborhood Story", icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",   minPlan:"pro"},
+  listing:     {label:"Listing Video",       icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",   minPlan:"agent"},
+  mls_desc:    {label:"MLS Description",     icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",   minPlan:"agent"},
+  open_house:  {label:"Open House Package",  icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",        minPlan:"agent"},
+  education:   {label:"Agent Tip",           icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",        minPlan:"agent"},
+  market:      {label:"Market Update",       icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",        minPlan:"pro"},
+  lifestyle:   {label:"Neighborhood Story",  icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",     minPlan:"pro"},
 };
 
 const PLATFORMS = {
@@ -184,13 +186,18 @@ const INPUT_META = {
   topic:        ["Tip Topic",           "How to win a bidding war without overpaying"],
   audience:     ["Audience",            "First-time buyers in Miami"],
   keyPoint:     ["Key Point",           "Pre-approval isn't enough — use an escalation clause"],
+  openDate:     ["Open House Date",     "Saturday, June 28th"],
+  openTime:     ["Open House Time",     "1:00 PM – 4:00 PM"],
+  mlsStyle:     ["Description Style",  "Luxury / Standard / Concise"],
 };
 
 const TYPE_INPUTS = {
-  listing:  ["address","price","beds","baths","sqft","keyFeatures","neighborhood"],
-  market:   ["city","avgPrice","daysOnMarket","inventory","trend"],
-  lifestyle:["neighborhood","city","highlights","targetBuyer"],
-  education:["topic","audience","keyPoint"],
+  listing:    ["address","price","beds","baths","sqft","keyFeatures","neighborhood"],
+  mls_desc:   ["address","price","beds","baths","sqft","keyFeatures","neighborhood","mlsStyle"],
+  open_house: ["address","price","beds","baths","sqft","keyFeatures","neighborhood","openDate","openTime"],
+  market:     ["city","avgPrice","daysOnMarket","inventory","trend"],
+  lifestyle:  ["neighborhood","city","highlights","targetBuyer"],
+  education:  ["topic","audience","keyPoint"],
 };
 
 const PLAN_ORDER = ["agent","pro","team"];
@@ -218,10 +225,12 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
     : "Write as a warm, professional, knowledgeable real estate agent.";
 
   const typeCtx = {
-    listing:  `Listing at ${inputs.address||"the property"}, ${inputs.price||""}, ${inputs.beds||"?"}bd/${inputs.baths||"?"}ba, ${inputs.sqft||"?"}sqft. Features: ${inputs.keyFeatures||""}. Neighborhood: ${inputs.neighborhood||""}. ${photoBase64s?.length?"Photos of the actual property have been provided — reference their visual details in the script.":""}`,
-    market:   `Market update: ${inputs.city||"local market"}. Avg price ${inputs.avgPrice||""}, ${inputs.daysOnMarket||""} DOM, inventory: ${inputs.inventory||""}, trend: ${inputs.trend||""}.`,
-    lifestyle:`Neighborhood story: ${inputs.neighborhood||""}, ${inputs.city||""}. Highlights: ${inputs.highlights||""}. Target buyer: ${inputs.targetBuyer||""}.`,
-    education:`Agent tip about: "${inputs.topic||""}" for ${inputs.audience||"buyers and sellers"}. Key point: ${inputs.keyPoint||""}.`,
+    listing:    `Listing at ${inputs.address||"the property"}, ${inputs.price||""}, ${inputs.beds||"?"}bd/${inputs.baths||"?"}ba, ${inputs.sqft||"?"}sqft. Features: ${inputs.keyFeatures||""}. Neighborhood: ${inputs.neighborhood||""}. ${photoBase64s?.length?"Photos of the actual property have been provided — reference their visual details in the script.":""}`,
+    mls_desc:   `Write an MLS listing description for: ${inputs.address||"the property"}, ${inputs.price||""}, ${inputs.beds||"?"}bd/${inputs.baths||"?"}ba, ${inputs.sqft||"?"}sqft. Features: ${inputs.keyFeatures||""}. Neighborhood: ${inputs.neighborhood||""}. Style: ${inputs.mlsStyle||"Standard"}.`,
+    open_house: `Open house marketing for: ${inputs.address||"the property"}, ${inputs.price||""}, ${inputs.beds||"?"}bd/${inputs.baths||"?"}ba, ${inputs.sqft||"?"}sqft. Features: ${inputs.keyFeatures||""}. Neighborhood: ${inputs.neighborhood||""}. Date: ${inputs.openDate||""}. Time: ${inputs.openTime||""}.`,
+    market:     `Market update: ${inputs.city||"local market"}. Avg price ${inputs.avgPrice||""}, ${inputs.daysOnMarket||""} DOM, inventory: ${inputs.inventory||""}, trend: ${inputs.trend||""}.`,
+    lifestyle:  `Neighborhood story: ${inputs.neighborhood||""}, ${inputs.city||""}. Highlights: ${inputs.highlights||""}. Target buyer: ${inputs.targetBuyer||""}.`,
+    education:  `Agent tip about: "${inputs.topic||""}" for ${inputs.audience||"buyers and sellers"}. Key point: ${inputs.keyPoint||""}.`,
   };
 
   // Build message content — include photos for listing type if provided
@@ -231,10 +240,22 @@ async function callClaude({ type, inputs, platform, voice, planKey, photoBase64s
       userContent.push({ type:"image", source:{ type:"base64", media_type:"image/jpeg", data:b64 }});
     });
   }
+  // Build JSON schema based on content type
+  const jsonSchema = (()=>{
+    if(type==="mls_desc") return(
+      `{"headline":"attention-grabbing property headline","mls_description":"MLS-compliant property description under 500 chars — compelling, specific, no superlatives","public_remarks":"extended public remarks up to 800 chars — paint a picture of the lifestyle","feature_highlights":["5-7 MLS feature bullets — concise, factual"],"agent_remarks":"brief agent-to-agent remarks about showing instructions or highlights","social_caption":"Instagram/Facebook caption version under 220 chars","hashtags":["10 relevant hashtags"],"posting_tip":"one tip for marketing this listing on social"}`
+    );
+    if(type==="open_house") return(
+      `{"headline":"exciting open house headline","social_post":"Instagram/Facebook announcement post — engaging, specific date/time, creates urgency, under 300 chars","story_copy":"Instagram Story text — short punchy lines, 3-4 lines max","email_subject":"email blast subject line","email_body":"email blast body — 3 short paragraphs, personal, creates excitement","sms_text":"SMS text blast under 160 chars — date, time, address, CTA","invite_script":"30-second video invite script with camera cues for a quick phone selfie video","hashtags":["10 relevant hashtags"],"posting_tip":"one tip for maximizing open house attendance from social"}`
+    );
+    return(
+      `{"headline":"best single hook","hooks":["exactly ${hooks} distinct hook variants"],"script":"full timed script [0:00] with (camera cues)","higgsfield_prompt":"detailed Higgsfield AI image-to-video prompt: cinematic camera moves (slow dolly in, aerial reveal, orbit), lighting mood, color grade, focus on hero shots from the uploaded photos — specific enough to render immediately","caption":"MLS-safe caption under 220 chars","hashtags":["15 hashtags"],"cta":"platform-native CTA","shot_list":["5 specific shot/scene descriptions"],"thumbnail":"thumbnail concept: composition + text overlay + color","posting_tip":"one specific ${platform} optimization tip"}`
+    );
+  })();
+
   userContent.push({ type:"text", text:
     `${voiceCtx}\n\n${typeCtx[type]}\n\nPlatform: ${platform} (${PLATFORMS[platform]?.spec||""}). Generate exactly ${hooks} hook variants.\n\n`+
-    `Return ONLY valid JSON (no markdown fences):\n`+
-    `{"headline":"best single hook","hooks":["exactly ${hooks} distinct hook variants"],"script":"full timed script [0:00] with (camera cues)","higgsfield_prompt":"detailed Higgsfield AI image-to-video prompt: cinematic camera moves (slow dolly in, aerial reveal, orbit), lighting mood, color grade, focus on hero shots from the uploaded photos — specific enough to render immediately","caption":"MLS-safe caption under 220 chars","hashtags":["15 hashtags"],"cta":"platform-native CTA","shot_list":["5 specific shot/scene descriptions"],"thumbnail":"thumbnail concept: composition + text overlay + color","posting_tip":"one specific ${platform} optimization tip"}`
+    `Return ONLY valid JSON (no markdown fences):\n${jsonSchema}`
   });
 
   const r = await fetch("/api/claude",{
@@ -986,7 +1007,11 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
     }
   }
 
-  const TABS=["script","hooks","caption","video","shots"];
+  const TABS = type==="mls_desc"
+    ? ["description","remarks","features","social"]
+    : type==="open_house"
+    ? ["social","email","sms","invite"]
+    : ["script","hooks","caption","video","shots"];
 
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
@@ -1206,6 +1231,95 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     </div>
                   ))}
                 </RBlock>
+              )}
+
+              {/* ── MLS DESCRIPTION TABS ── */}
+              {tab==="description"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.amber} label="HEADLINE" action={<CopyBtn text={result.headline||""} label="Headline copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:16,fontWeight:700,color:C.text,margin:0,lineHeight:1.5}}>"{result.headline}"</p>
+                  </RBlock>
+                  <RBlock accent={C.indigo} label="MLS DESCRIPTION" action={<CopyBtn text={result.mls_description||""} label="MLS description copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{result.mls_description}</p>
+                    <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:8}}>{(result.mls_description||"").length} / 500 chars</div>
+                  </RBlock>
+                </div>
+              )}
+              {tab==="remarks"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.cyan} label="PUBLIC REMARKS" action={<CopyBtn text={result.public_remarks||""} label="Remarks copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{result.public_remarks}</p>
+                  </RBlock>
+                  <RBlock accent={C.violet} label="AGENT REMARKS" action={<CopyBtn text={result.agent_remarks||""} label="Agent remarks copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7}}>{result.agent_remarks}</p>
+                  </RBlock>
+                </div>
+              )}
+              {tab==="features"&&(
+                <RBlock accent={C.emerald} label="FEATURE HIGHLIGHTS">
+                  {(result.feature_highlights||[]).map((f,i)=>(
+                    <div key={i} style={{display:"flex",gap:11,padding:"10px 0",borderBottom:`1px solid ${C.border}`,animation:`slideR .2s ease ${i*.04}s both`}}>
+                      <div style={{minWidth:6,height:6,borderRadius:"50%",background:C.emerald,marginTop:7,flexShrink:0}}/>
+                      <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.5}}>{f}</p>
+                      <CopyBtn text={f} label="Copied"/>
+                    </div>
+                  ))}
+                </RBlock>
+              )}
+              {tab==="social"&&type==="mls_desc"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.indigo} label="SOCIAL CAPTION" action={<CopyBtn text={result.social_caption||""} label="Caption copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7}}>{result.social_caption}</p>
+                  </RBlock>
+                  <RBlock accent={C.cyan} label="HASHTAGS" action={<CopyBtn text={(result.hashtags||[]).join(" ")} label="Hashtags copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0,lineHeight:1.8}}>{(result.hashtags||[]).join(" ")}</p>
+                  </RBlock>
+                  {result.posting_tip&&<RBlock accent={C.amber} label="POSTING TIP"><p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.6}}>{result.posting_tip}</p></RBlock>}
+                </div>
+              )}
+
+              {/* ── OPEN HOUSE TABS ── */}
+              {tab==="social"&&type==="open_house"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.indigo} label="HEADLINE" action={<CopyBtn text={result.headline||""} label="Headline copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:16,fontWeight:700,color:C.text,margin:0,lineHeight:1.5}}>"{result.headline}"</p>
+                  </RBlock>
+                  <RBlock accent={C.emerald} label="SOCIAL ANNOUNCEMENT POST" action={<CopyBtn text={result.social_post||""} label="Post copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{result.social_post}</p>
+                  </RBlock>
+                  <RBlock accent={C.violet} label="INSTAGRAM STORY COPY" action={<CopyBtn text={result.story_copy||""} label="Story copy copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{result.story_copy}</p>
+                  </RBlock>
+                  <RBlock accent={C.cyan} label="HASHTAGS" action={<CopyBtn text={(result.hashtags||[]).join(" ")} label="Hashtags copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0,lineHeight:1.8}}>{(result.hashtags||[]).join(" ")}</p>
+                  </RBlock>
+                </div>
+              )}
+              {tab==="email"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.amber} label="EMAIL SUBJECT" action={<CopyBtn text={result.email_subject||""} label="Subject copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,margin:0}}>{result.email_subject}</p>
+                  </RBlock>
+                  <RBlock accent={C.indigo} label="EMAIL BODY" action={<CopyBtn text={result.email_body||""} label="Email copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{result.email_body}</p>
+                  </RBlock>
+                </div>
+              )}
+              {tab==="sms"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.cyan} label="SMS TEXT BLAST" action={<CopyBtn text={result.sms_text||""} label="SMS copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:14,color:C.text,margin:0,lineHeight:1.7,fontWeight:600}}>{result.sms_text}</p>
+                    <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:8}}>{(result.sms_text||"").length} / 160 chars</div>
+                  </RBlock>
+                  {result.posting_tip&&<RBlock accent={C.amber} label="POSTING TIP"><p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.6}}>{result.posting_tip}</p></RBlock>}
+                </div>
+              )}
+              {tab==="invite"&&(
+                <div style={{animation:"scaleIn .22s ease"}}>
+                  <RBlock accent={C.violet} label="30-SECOND INVITE VIDEO SCRIPT" action={<CopyBtn text={result.invite_script||""} label="Script copied"/>}>
+                    <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.8,whiteSpace:"pre-wrap"}}>{result.invite_script}</p>
+                  </RBlock>
+                </div>
               )}
             </div>
           )}
