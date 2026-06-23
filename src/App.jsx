@@ -2150,7 +2150,7 @@ function CommissionCalculator({user, planKey}){
   const [aiExplain, setAiExplain] = useState(null);
   const [loadingAi, setLoadingAi] = useState(false);
 
-  function num(k){ return parseFloat(inputs[k])||0; }
+  function num(k){ return parseFloat((inputs[k]||"").toString().replace(/,/g,""))||0; }
 
   function calculate(){
     if(mode==="seller"){
