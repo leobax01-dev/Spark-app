@@ -1079,6 +1079,19 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
       track("generation_completed", { content_type:type, platform, plan:planKey, cost, photo_count:photos.length });
+
+      // Track usage stats for dashboard
+      const today = new Date().toISOString().slice(0,10);
+      const stats = LS.get("sp_usage_stats", { total:0, thisMonth:0, lastGenDate:"", streak:0, toolCounts:{} });
+      const newTotal = (stats.total||0) + 1;
+      const newThisMonth = (stats.thisMonth||0) + 1;
+      const toolCounts = {...(stats.toolCounts||{})};
+      toolCounts[type] = (toolCounts[type]||0) + 1;
+      // Streak logic
+      const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+      const newStreak = stats.lastGenDate===today ? stats.streak : stats.lastGenDate===yesterday ? (stats.streak||0)+1 : 1;
+      LS.set("sp_usage_stats", { total:newTotal, thisMonth:newThisMonth, lastGenDate:today, streak:newStreak, toolCounts });
+
       // Fire celebration moment
       setJustCompleted(true);
       setTimeout(()=>setJustCompleted(false), 3000);
@@ -2081,82 +2094,220 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
     toast("Video Engine key saved ✓");
   }
 
+  // Load usage stats from localStorage
+  const usageStats = LS.get("sp_usage_stats", { total:0, thisMonth:0, lastGenDate:"", streak:0, toolCounts:{} });
+  const totalGens   = usageStats.total || 0;
+  const monthGens   = usageStats.thisMonth || 0;
+  const streak      = usageStats.streak || 0;
+  const toolCounts  = usageStats.toolCounts || {};
+  const currentCredits = LS.get("sp_credits", plan.credits);
+  const creditsUsed    = plan.credits - currentCredits;
+  const topTool        = Object.entries(toolCounts).sort((a,b)=>b[1]-a[1])[0];
+  const memberSince    = LS.get("sp_member_since", new Date().toISOString().slice(0,7));
+  if(!LS.get("sp_member_since")) LS.set("sp_member_since", memberSince);
+
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
 
-      {/* Account card */}
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:14}}>
-        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:14}}>YOUR ACCOUNT</div>
-        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
-          <div style={{width:48,height:48,borderRadius:"50%",background:`linear-gradient(135deg,${plan.accent},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>
+      {/* ── HERO DASHBOARD CARD ── */}
+      <div style={{
+        background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+        border:`1px solid ${plan.accent}28`,
+        borderRadius:16,padding:22,marginBottom:16,
+        position:"relative",overflow:"hidden"}}>
+
+        {/* Ambient glow */}
+        <div style={{position:"absolute",top:"-30%",right:"-8%",
+          width:220,height:220,borderRadius:"50%",
+          background:`radial-gradient(circle,${plan.accent}18,transparent 70%)`,
+          pointerEvents:"none"}}/>
+        <div style={{position:"absolute",bottom:"-20%",left:"-5%",
+          width:160,height:160,borderRadius:"50%",
+          background:`radial-gradient(circle,${C.violet}0e,transparent 70%)`,
+          pointerEvents:"none"}}/>
+
+        {/* User identity */}
+        <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20,position:"relative"}}>
+          <div style={{
+            width:52,height:52,borderRadius:"50%",flexShrink:0,
+            background:`linear-gradient(135deg,${plan.accent},${C.violet})`,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:22,fontWeight:800,color:"#fff",
+            boxShadow:`0 4px 16px ${plan.accent}40`}}>
             {(user?.email||"?")[0].toUpperCase()}
           </div>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user?.email||""}</div>
-            <div style={{display:"flex",alignItems:"center",gap:7,marginTop:4}}>
-              <span style={{background:plan.accent+"18",border:`1px solid ${plan.accent}40`,color:plan.accent,fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:20,fontFamily:C.F,letterSpacing:1.5}}>{plan.name.toUpperCase()}</span>
-              <span style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>${plan.price}/mo</span>
+            <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {user?.email||""}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginTop:4}}>
+              <span style={{
+                background:plan.accent+"1a",border:`1px solid ${plan.accent}38`,
+                color:plan.accent,fontSize:9,fontWeight:800,
+                padding:"2px 9px",borderRadius:20,fontFamily:C.F,letterSpacing:1.5}}>
+                {plan.name.toUpperCase()}
+              </span>
+              <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>
+                since {memberSince}
+              </span>
             </div>
           </div>
+          <div style={{textAlign:"right",flexShrink:0}}>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,
+              color:currentCredits<5?C.rose:C.text,lineHeight:1,letterSpacing:"-0.02em"}}>
+              {currentCredits}
+            </div>
+            <div style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700}}>CREDITS</div>
+          </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:18}}>
+
+        {/* Credits progress bar */}
+        <div style={{marginBottom:20}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+            <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{currentCredits} remaining this month</span>
+            <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{plan.credits} total</span>
+          </div>
+          <div style={{height:5,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
+            <div style={{
+              height:"100%",
+              width:`${Math.min(100,(currentCredits/Math.max(plan.credits,1))*100)}%`,
+              background:`linear-gradient(90deg,${currentCredits<5?C.rose:plan.accent},${C.indigoLt})`,
+              borderRadius:3,transition:"width .6s ease",
+              boxShadow:`0 0 8px ${currentCredits<5?C.rose:plan.accent}60`}}/>
+          </div>
+        </div>
+
+        {/* Stats grid */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
           {[
-            {label:"PLAN",    value:plan.name,            color:plan.accent},
-            {label:"CREDITS", value:`${LS.get("sp_credits",plan.credits)} left`, color:C.indigoLt},
-            {label:"VIDEO",   value:plan.videoQuality,    color:C.cyan},
+            {label:"TOTAL\nGENS",    value:totalGens,           color:C.indigoLt,  icon:"⚡"},
+            {label:"THIS\nMONTH",    value:monthGens,           color:C.cyan,      icon:"📅"},
+            {label:"DAY\nSTREAK",    value:streak,              color:C.amber,     icon:"🔥"},
+            {label:"CREDITS\nUSED",  value:Math.max(0,creditsUsed), color:C.violet,icon:"💎"},
           ].map((s,i)=>(
-            <div key={i} style={{background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:9,padding:"12px 10px",textAlign:"center"}}>
-              <div style={{fontFamily:C.F,fontWeight:800,fontSize:16,color:s.color}}>{s.value}</div>
-              <div style={{fontSize:8,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginTop:3}}>{s.label}</div>
+            <div key={i} style={{
+              background:"rgba(255,255,255,.025)",
+              border:`1px solid ${C.border}`,
+              borderRadius:10,padding:"12px 8px",textAlign:"center",
+              animation:`fadeUp .3s ease ${i*.06}s both`}}>
+              <div style={{fontSize:14,marginBottom:4}}>{s.icon}</div>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,
+                color:s.color,lineHeight:1,letterSpacing:"-0.02em"}}>
+                {s.value}
+              </div>
+              <div style={{fontSize:7,color:C.textDim,letterSpacing:1.5,
+                fontFamily:C.F,fontWeight:700,marginTop:4,lineHeight:1.4,
+                whiteSpace:"pre-line"}}>{s.label}</div>
             </div>
           ))}
         </div>
-        <button className="signout-btn" onClick={onLogout} style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"12px 0",borderRadius:9,cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:13}}>
+
+        {/* Most used tool + achievement */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
+          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+            borderRadius:9,padding:"11px 13px"}}>
+            <div style={{fontSize:8,color:C.textDim,letterSpacing:1.8,fontFamily:C.F,
+              fontWeight:700,marginBottom:6}}>FAVORITE TOOL</div>
+            {topTool?(
+              <>
+                <div style={{fontSize:13,fontFamily:C.F,fontWeight:700,color:C.text}}>
+                  {CONTENT_TYPES[topTool[0]]?.icon} {CONTENT_TYPES[topTool[0]]?.label||topTool[0]}
+                </div>
+                <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:2}}>
+                  {topTool[1]} generation{topTool[1]!==1?"s":""}
+                </div>
+              </>
+            ):(
+              <div style={{fontSize:12,color:C.textDim,fontFamily:C.F}}>Generate to track</div>
+            )}
+          </div>
+          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+            borderRadius:9,padding:"11px 13px"}}>
+            <div style={{fontSize:8,color:C.textDim,letterSpacing:1.8,fontFamily:C.F,
+              fontWeight:700,marginBottom:6}}>ACHIEVEMENT</div>
+            <div style={{fontSize:13,fontFamily:C.F,fontWeight:700,color:C.amber}}>
+              {totalGens===0?"🌱 Getting Started":
+               totalGens<5?"⚡ First Sparks":
+               totalGens<15?"🔥 On Fire":
+               totalGens<30?"🚀 Power Agent":
+               totalGens<50?"💎 Elite Creator":
+               "🏆 SPARK Legend"}
+            </div>
+            <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:2}}>
+              {totalGens===0?"Make your first generation":
+               totalGens<5?`${5-totalGens} more to reach On Fire`:
+               totalGens<15?`${15-totalGens} more to reach Power Agent`:
+               totalGens<30?`${30-totalGens} more to reach Elite Creator`:
+               totalGens<50?`${50-totalGens} more to reach SPARK Legend`:
+               "You've mastered SPARK 🎉"}
+            </div>
+          </div>
+        </div>
+
+        <button className="signout-btn" onClick={onLogout}
+          style={{width:"100%",background:"transparent",
+            border:`1px solid ${C.border}`,color:C.textMd,
+            padding:"12px 0",borderRadius:9,cursor:"pointer",
+            fontFamily:C.F,fontWeight:600,fontSize:13}}>
           Sign Out
         </button>
       </div>
 
       {/* System status */}
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:14}}>
-        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:14}}>SYSTEM STATUS</div>
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,
+        borderRadius:13,padding:22,marginBottom:14}}>
+        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,
+          fontWeight:700,marginBottom:14}}>SYSTEM STATUS</div>
         {[
           {label:"AI Content Engine", status:"Operational", color:C.emerald, note:"Scripts, hooks & captions"},
           {label:"Payment System",    status:"Operational", color:C.emerald, note:"Stripe — secure checkout"},
-          {label:"Video Engine",      status:"Connected", color:C.emerald, note:"Auto-renders cinematic listing videos"},
+          {label:"Video Engine",      status:"Connected",   color:C.emerald, note:"Auto-renders cinematic listing videos"},
         ].map((s,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"11px 0",borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
+          <div key={i} style={{display:"flex",alignItems:"center",
+            justifyContent:"space-between",padding:"11px 0",
+            borderBottom:i<2?`1px solid ${C.border}`:"none"}}>
             <div>
               <div style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text}}>{s.label}</div>
               <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:2}}>{s.note}</div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-              <div style={{width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 6px ${s.color}`}}/>
+              <div style={{width:6,height:6,borderRadius:"50%",
+                background:s.color,boxShadow:`0 0 6px ${s.color}`}}/>
               <span style={{fontSize:11,color:s.color,fontFamily:C.F,fontWeight:600}}>{s.status}</span>
             </div>
           </div>
         ))}
       </div>
 
-
-
       {/* Support */}
-      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:14}}>
-        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:14}}>SUPPORT</div>
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,
+        borderRadius:13,padding:22,marginBottom:14}}>
+        <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,
+          fontWeight:700,marginBottom:14}}>SUPPORT</div>
         {[
-          {icon:"📧",label:"Email Support",    sub:"Get help from the SPARK team", href:"mailto:support@getspark.app"},
-          {icon:"💳",label:"Manage Billing",   sub:"Update payment method or cancel", href:"https://billing.stripe.com"},
-          {icon:"📖",label:"How to Use SPARK", sub:"Tips, guides and best practices", href:"https://usesparkai.app/guide"},
+          {icon:"📧",label:"Email Support",    sub:"Get help from the SPARK team",    href:"mailto:support@usesparkai.app"},
+          {icon:"💳",label:"Manage Billing",   sub:"Update payment method or cancel",  href:"https://billing.stripe.com"},
+          {icon:"📖",label:"How to Use SPARK", sub:"Tips, guides and best practices",  href:"https://usesparkai.app/guide"},
         ].map((s,i)=>(
           <a key={i} href={s.href} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:i<2?`1px solid ${C.border}`:"none",cursor:"pointer"}}
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",
+              borderBottom:i<2?`1px solid ${C.border}`:"none",cursor:"pointer",
+              transition:"opacity .14s"}}
               onMouseEnter={e=>e.currentTarget.style.opacity=".7"}
               onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
-              <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{s.icon}</div>
+              <div style={{width:36,height:36,borderRadius:9,
+                background:"rgba(255,255,255,.04)",
+                border:`1px solid ${C.border}`,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:16,flexShrink:0}}>
+                {s.icon}
+              </div>
               <div style={{flex:1}}>
                 <div style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text}}>{s.label}</div>
                 <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:1}}>{s.sub}</div>
               </div>
-              <span style={{color:C.textDim,fontSize:14}}>›</span>
+              <span style={{color:C.textDim,fontSize:16}}>›</span>
             </div>
           </a>
         ))}
@@ -2165,7 +2316,13 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
       {/* App info */}
       <div style={{textAlign:"center",padding:"8px 0 4px"}}>
         <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>SPARK Real Estate AI · v1.0</div>
-        <div style={{fontFamily:C.F,fontSize:10,color:C.textFaint,marginTop:3}}>© 2026 SPARK AI · usesparkai.app · <a href="https://usesparkai.app/privacy" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Privacy</a> · <a href="https://usesparkai.app/terms" target="_blank" rel="noreferrer" style={{color:C.textDim,textDecoration:"none"}}>Terms</a></div>
+        <div style={{fontFamily:C.F,fontSize:10,color:C.textFaint,marginTop:3}}>
+          © 2026 SPARK AI · usesparkai.app ·{" "}
+          <a href="https://usesparkai.app/privacy" target="_blank" rel="noreferrer"
+            style={{color:C.textDim,textDecoration:"none"}}>Privacy</a> ·{" "}
+          <a href="https://usesparkai.app/terms" target="_blank" rel="noreferrer"
+            style={{color:C.textDim,textDecoration:"none"}}>Terms</a>
+        </div>
       </div>
 
     </div>
