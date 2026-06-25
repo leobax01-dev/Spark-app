@@ -110,6 +110,18 @@ const GLOBAL_CSS = `
   .gen-btn-animated{background-size:200% 200%;animation:gradientShift 3s ease infinite}
   .card-h:hover:not([data-locked="true"]){transform:translateY(-2px)!important;box-shadow:0 8px 28px rgba(0,0,0,.28)!important}
   input:focus,textarea:focus{border-color:rgba(99,102,241,.45)!important;box-shadow:0 0 0 3px rgba(99,102,241,.09)!important;background:rgba(99,102,241,.02)!important}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(0) scale(1)}70%{opacity:1}100%{opacity:0;transform:translateY(-60px) scale(.7)}}
+  @keyframes celebPop{0%{opacity:0;transform:scale(0.4) translateY(8px)}60%{opacity:1;transform:scale(1.08) translateY(-2px)}80%{transform:scale(.97)}100%{opacity:1;transform:scale(1) translateY(0)}}
+  @keyframes glowRing{0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)}70%{box-shadow:0 0 0 14px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+  @keyframes demoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  @keyframes particle{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0)}}
+  @keyframes badgePop{0%{opacity:0;transform:scale(.6) translateY(6px)}70%{transform:scale(1.12) translateY(-1px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+  @keyframes resultSlide{0%{opacity:0;transform:translateX(-8px)}100%{opacity:1;transform:translateX(0)}}
+  .demo-card{animation:demoFloat 4s ease-in-out infinite}
+  .celebrate-badge{animation:celebPop .5s cubic-bezier(.34,1.56,.64,1) both,glowRing 1s ease .5s both}
+  .result-ready .rblock:nth-child(1){animation:resultSlide .3s ease .05s both}
+  .result-ready .rblock:nth-child(2){animation:resultSlide .3s ease .12s both}
+  .result-ready .rblock:nth-child(3){animation:resultSlide .3s ease .19s both}
 `;
 
 
@@ -848,6 +860,165 @@ function OnboardingModal({planKey,onClose}){
 // ─────────────────────────────────────────────────────────────────────────────
 // GENERATE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFETTI PARTICLES — celebration burst on generation complete
+// ─────────────────────────────────────────────────────────────────────────────
+function ConfettiParticles(){
+  const COLORS=["#6366f1","#8b5cf6","#10b981","#22d3ee","#f59e0b","#f43f5e","#818cf8"];
+  const particles=Array.from({length:22},(_,i)=>{
+    const angle=Math.random()*360;
+    const dist=60+Math.random()*80;
+    const px=Math.cos(angle*Math.PI/180)*dist;
+    const py=-(50+Math.random()*100);
+    return {id:i,color:COLORS[i%COLORS.length],
+      left:`${20+Math.random()*60}%`,
+      size:4+Math.random()*5,
+      delay:Math.random()*.4,
+      dur:.8+Math.random()*.6,
+      px,py};
+  });
+  return(
+    <div style={{position:"absolute",top:0,left:0,right:0,height:0,
+      pointerEvents:"none",zIndex:50,overflow:"visible"}}>
+      {particles.map(p=>(
+        <div key={p.id} style={{
+          position:"absolute",top:0,left:p.left,
+          width:p.size,height:p.size,
+          borderRadius:p.size>6?"50%":"2px",
+          background:p.color,
+          "--px":`${p.px}px`,"--py":`${p.py}px`,
+          animation:`particle ${p.dur}s ease ${p.delay}s both`,
+          boxShadow:`0 0 4px ${p.color}88`}}/>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMPTY STATE CARD — shown before first generation, per content type
+// ─────────────────────────────────────────────────────────────────────────────
+const EMPTY_STATE_DEMOS={
+  listing:{
+    headline:"\"This $4.2M Miami Beach estate just hit the market\"",
+    lines:["[0:00] Slow drone descent over rooftop terrace at golden hour...","[0:08] Ground-level dolly toward the glass entry facade...","[0:15] Interior reveal — floating staircase, ocean views..."],
+    label:"SAMPLE SCRIPT PREVIEW",color:C.indigo,
+    hint:"Upload listing photos and SPARK generates a cinematic video + full script",
+  },
+  mls_desc:{
+    headline:"\"Architectural masterpiece meets coastal living\"",
+    lines:["MLS Description: Perched above Biscayne Bay, this 5BR/7BA...","Public Remarks: Every detail curated for the discerning buyer...","Feature Highlights: Wolf appliances · 40ft rooftop pool · Smart home"],
+    label:"SAMPLE MLS DESCRIPTION",color:C.amber,
+    hint:"Enter listing details and SPARK writes MLS-compliant copy in seconds",
+  },
+  open_house:{
+    headline:"\"Saturday 1-4PM — You need to see this in person\"",
+    lines:["📱 Social: Come see this beauty before it's gone...","📧 Email: Dear [Name], I wanted to personally invite you...","💬 SMS: Open house this Saturday 1-4PM — 123 Ocean Dr. See you there?"],
+    label:"SAMPLE OPEN HOUSE PACKAGE",color:C.emerald,
+    hint:"Enter date and time and SPARK builds your full marketing kit instantly",
+  },
+  objection:{
+    headline:"\"The market is too uncertain, I want to wait\"",
+    lines:["Direct: I understand completely — here's what the data shows...","Empathetic: That concern makes total sense given what you're seeing...","Story: A client told me the exact same thing last spring, and here's what happened..."],
+    label:"SAMPLE OBJECTION RESPONSES",color:C.violet,
+    hint:"Enter any client objection and get 3 tailored responses instantly",
+  },
+  scripts:{
+    headline:"Listing Appointment Script",
+    lines:["Opening: \"Thank you so much for having me in your home today...\"","Discovery: \"What's most important to you in the agent you choose?\"","Close: \"I'd love the opportunity to earn your trust — can we move forward?\""],
+    label:"SAMPLE LISTING APPOINTMENT SCRIPT",color:C.cyan,
+    hint:"Select a script type and SPARK generates a full word-for-word dialogue",
+  },
+  comms:{
+    headline:"Post-Showing Follow-Up",
+    lines:["Subject: Great to show you 123 Ocean Drive today, [Name]","Body: It was wonderful walking through the property with you...","Text: Hey [Name]! Thanks for the tour today — any questions? 🏡"],
+    label:"SAMPLE CLIENT COMMUNICATION",color:"#f43f5e",
+    hint:"Enter context and SPARK writes personalized email, text, and phone scripts",
+  },
+  education:{
+    headline:"\"3 things every buyer should know before making an offer\"",
+    lines:["Hook: Most agents won't tell you this...","Script: The #1 mistake buyers make in a competitive market is...","CTA: Save this for your clients — they need to hear it"],
+    label:"SAMPLE AGENT TIP",color:C.amber,
+    hint:"Enter your topic and SPARK creates an authority-building tip for social",
+  },
+  market:{
+    headline:"\"Miami Beach real estate just shifted — here's what it means\"",
+    lines:["Avg days on market dropped 18% this month","New listings up 12% — buyers finally have options","Hook: The market just changed and most agents don't know it yet"],
+    label:"SAMPLE MARKET UPDATE",color:C.cyan,
+    hint:"Enter local market stats and SPARK turns them into viral social content",
+  },
+  lifestyle:{
+    headline:"\"Why Brickell is the most underrated neighborhood in Miami\"",
+    lines:["Hook: Nobody talks about this, but Brickell has secretly become...","Script: For the buyer who wants walkability, culture, and luxury...","CTA: DM me if you want to see what's available right now"],
+    label:"SAMPLE NEIGHBORHOOD STORY",color:C.emerald,
+    hint:"Enter neighborhood details and SPARK creates relocator-focused content",
+  },
+};
+
+function EmptyStateCard({type, contentTypes}){
+  const demo = EMPTY_STATE_DEMOS[type] || EMPTY_STATE_DEMOS.listing;
+  const ct   = contentTypes[type];
+  return(
+    <div style={{marginTop:16,borderRadius:14,overflow:"hidden",
+      border:`1px solid ${demo.color}22`,
+      background:`linear-gradient(160deg,${demo.color}08,${demo.color}03,transparent)`,
+      animation:"fadeUp .4s ease .1s both",position:"relative"}}>
+
+      {/* Top label */}
+      <div style={{padding:"11px 16px",borderBottom:`1px solid ${demo.color}18`,
+        display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:3,height:12,borderRadius:2,
+          background:`linear-gradient(180deg,${demo.color},${demo.color}60)`,
+          boxShadow:`0 0 6px ${demo.color}80`}}/>
+        <span style={{fontSize:8,color:demo.color,fontFamily:C.F,
+          fontWeight:700,letterSpacing:2.5}}>{demo.label}</span>
+        <span style={{marginLeft:"auto",fontSize:9,color:C.textDim,
+          fontFamily:C.F,fontStyle:"italic"}}>example output</span>
+      </div>
+
+      {/* Demo content */}
+      <div className="demo-card" style={{padding:"16px 16px 14px"}}>
+        {/* Headline */}
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,
+          color:C.text,marginBottom:12,lineHeight:1.4,
+          opacity:.9}}>
+          {demo.headline}
+        </div>
+
+        {/* Preview lines */}
+        <div style={{display:"flex",flexDirection:"column",gap:7}}>
+          {demo.lines.map((line,i)=>(
+            <div key={i} style={{
+              display:"flex",alignItems:"flex-start",gap:8,
+              animation:`fadeUp .35s ease ${.08+i*.1}s both`}}>
+              <div style={{minWidth:3,height:3,borderRadius:"50%",
+                background:demo.color,marginTop:7,flexShrink:0,opacity:.6}}/>
+              <span style={{fontFamily:C.F,fontSize:11,color:C.textMd,
+                lineHeight:1.55,opacity:.85}}>{line}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Bottom hint */}
+      <div style={{padding:"10px 16px",
+        background:"rgba(255,255,255,.018)",
+        borderTop:`1px solid ${C.border}`,
+        display:"flex",alignItems:"center",gap:6}}>
+        <span style={{fontSize:10,fontFamily:C.F,fontWeight:600,
+          color:demo.color,opacity:.7}}>⚡</span>
+        <span style={{fontSize:10,color:C.textDim,fontFamily:C.F,
+          lineHeight:1.4}}>{demo.hint}</span>
+      </div>
+
+      {/* Blur overlay — makes it look like a teaser/preview */}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,height:60,
+        background:`linear-gradient(transparent,${C.bg}cc)`,
+        pointerEvents:"none"}}/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onGoSettings,user}){
   const plan=PLANS[planKey];
   const toast=useToast();
@@ -862,6 +1033,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
   const [result,setResult]  =useState(null);
   const [vidState,setVid]   =useState(null);
   const [tab,setTab]        =useState("script");
+  const [justCompleted,setJustCompleted]=useState(false);
   const genRef              =useRef(false);
 
   useEffect(()=>LS.set("sp_type",type),[type]);
@@ -907,6 +1079,9 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
       track("generation_completed", { content_type:type, platform, plan:planKey, cost, photo_count:photos.length });
+      // Fire celebration moment
+      setJustCompleted(true);
+      setTimeout(()=>setJustCompleted(false), 3000);
 
       // Deduct credits server-side (bypasses RLS, persists reliably)
       try{
@@ -1259,15 +1434,45 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
             </div>
           )}
 
+          {/* Empty state — shown before first generation */}
+          {!result&&!gen&&(
+            <EmptyStateCard type={type} contentTypes={CONTENT_TYPES}/>
+          )}
+
           {/* Results */}
           {result&&(
-            <div style={{marginTop:26}}>
-              <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:14,animation:"fadeUp .28s ease",flexWrap:"wrap"}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 7px ${C.emerald}`}}/>
-                <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700}}>PACKAGE READY</span>
-                <Badge color={PLATFORMS[platform].color}>{platform}</Badge>
+            <div style={{marginTop:22,position:"relative"}}>
+
+              {/* Confetti burst on completion */}
+              {justCompleted&&<ConfettiParticles/>}
+
+              {/* PACKAGE READY header */}
+              <div style={{
+                display:"flex",alignItems:"center",gap:9,
+                marginBottom:14,flexWrap:"wrap",
+                animation:justCompleted?"celebPop .5s cubic-bezier(.34,1.56,.64,1) both":"fadeUp .28s ease"}}>
+                <div style={{
+                  display:"flex",alignItems:"center",gap:7,
+                  background:justCompleted
+                    ?"linear-gradient(135deg,rgba(16,185,129,.15),rgba(16,185,129,.06))"
+                    :"rgba(16,185,129,.06)",
+                  border:`1px solid ${justCompleted?"rgba(16,185,129,.5)":"rgba(16,185,129,.2)"}`,
+                  borderRadius:8,padding:"5px 11px",
+                  boxShadow:justCompleted?"0 0 0 0 rgba(16,185,129,.6)":"none",
+                  animation:justCompleted?"glowRing 1s ease .3s both":"none",
+                  transition:"all .3s ease"}}>
+                  <div style={{width:6,height:6,borderRadius:"50%",
+                    background:C.emerald,
+                    boxShadow:`0 0 ${justCompleted?"10px":"6px"} ${C.emerald}`,
+                    animation:justCompleted?"pulse .6s ease infinite":"none"}}/>
+                  <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,
+                    fontWeight:800,letterSpacing:.5}}>
+                    {justCompleted?"✦ PACKAGE READY":"PACKAGE READY"}
+                  </span>
+                </div>
+                {showPlatform&&<Badge color={PLATFORMS[platform]?.color||C.indigo}>{platform}</Badge>}
                 <Badge color={CONTENT_TYPES[type].color}>{CONTENT_TYPES[type].label}</Badge>
-                {vidState?.status==="generating"&&<Badge color={C.cyan}>🎬 VIDEO RENDERING…</Badge>}
+                {vidState?.status==="generating"&&<Badge color={C.cyan}>🎬 RENDERING…</Badge>}
                 {vidState?.status==="ready"&&<Badge color={C.emerald}>🎬 VIDEO READY</Badge>}
               </div>
 
