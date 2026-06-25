@@ -982,31 +982,361 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
 // ─────────────────────────────────────────────────────────────────────────────
 function OnboardingModal({planKey,onClose}){
   const [step,setStep]=useState(0);
-  const steps=[
-    {icon:"⚡",title:"Welcome to SPARK",body:`You are on the ${PLANS[planKey].name} plan with ${PLANS[planKey].credits} credits. Turn any listing into a viral video in under 60 seconds.`},
-    {icon:"📸",title:"Upload Listing Photos",body:"Go to Generate, tap Listing Video, and upload your property photos. The first photo becomes the hero frame for your cinematic listing video."},
-    {icon:"⚡",title:"Generate Everything",body:"Hit Generate — SPARK writes your script, hooks, captions, and automatically renders your animated listing video. One click, everything done."},
-    {icon:"📤",title:"Post and Get Leads",body:"Copy your script, caption, and hashtags. Download your animated listing video with one tap. Most agents see their first lead inquiry within 48 hours."},
+  const [selectedTools,setSelectedTools]=useState([]);
+  const [launched,setLaunched]=useState(false);
+  const plan=PLANS[planKey];
+
+  const TOOL_LIST=[
+    {key:"listing",   icon:"🎬",label:"Listing Video",   desc:"Cinematic video from photos"},
+    {key:"mls_desc",  icon:"📝",label:"MLS Description", desc:"MLS-compliant copy instantly"},
+    {key:"open_house",icon:"🚪",label:"Open House Kit",  desc:"Full marketing package"},
+    {key:"objection", icon:"🎯",label:"Objection Handler",desc:"3 responses for any objection"},
+    {key:"scripts",   icon:"🗣️",label:"Scripts",         desc:"Word-for-word dialogues"},
+    {key:"comms",     icon:"💬",label:"Client Comms",    desc:"Emails, texts, phone scripts"},
   ];
-  const s=steps[step];
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}}>
-      <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:18,padding:"36px 30px",maxWidth:440,width:"90%",boxShadow:"0 48px 96px rgba(0,0,0,.55)",animation:"scaleIn .25s ease"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}}>
-          <Logo/>
-          <div style={{display:"flex",gap:5}}>
-            {steps.map((_,i)=><div key={i} style={{width:i===step?18:6,height:6,borderRadius:3,background:i===step?C.indigo:"rgba(255,255,255,.1)",transition:"all .2s"}}/>)}
+
+  function toggleTool(k){
+    setSelectedTools(prev=>prev.includes(k)?prev.filter(t=>t!==k):[...prev,k]);
+  }
+
+  function handleLaunch(){
+    setLaunched(true);
+    setTimeout(onClose, 900);
+  }
+
+  const STEPS=[
+    {
+      id:"welcome",
+      render:()=>(
+        <div style={{textAlign:"center"}}>
+          {/* Animated orb behind logo */}
+          <div style={{position:"relative",display:"inline-block",marginBottom:24}}>
+            <div style={{position:"absolute",inset:"-20px",borderRadius:"50%",
+              background:`radial-gradient(circle,${C.indigo}28,transparent 70%)`,
+              animation:"orb1 4s ease-in-out infinite"}}/>
+            <div style={{position:"relative",width:72,height:72,borderRadius:"50%",
+              background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:`0 8px 32px ${C.indigo}50`,margin:"0 auto"}}>
+              <span style={{fontSize:32}}>⚡</span>
+            </div>
+          </div>
+
+          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,
+            margin:"0 0 8px",letterSpacing:"-0.02em"}}>
+            Welcome to <span style={{background:`linear-gradient(135deg,${C.indigoLt},${C.violet})`,
+              WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SPARK AI</span>
+          </h1>
+          <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
+            lineHeight:1.7,margin:"0 0 24px",maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>
+            The complete AI platform for real estate agents. Turn any listing into content in under 60 seconds.
+          </p>
+
+          {/* Plan activation card */}
+          <div style={{
+            background:`linear-gradient(135deg,${plan.accent}12,${C.violet}08)`,
+            border:`1px solid ${plan.accent}30`,
+            borderRadius:12,padding:"14px 18px",marginBottom:8,textAlign:"left"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{width:36,height:36,borderRadius:"50%",
+                background:`linear-gradient(135deg,${plan.accent},${C.violet})`,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:15,fontWeight:800,color:"#fff",flexShrink:0}}>
+                ✦
+              </div>
+              <div>
+                <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>
+                  {plan.name} Plan Activated
+                </div>
+                <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:1}}>
+                  {plan.credits} credits · {plan.videoQuality} video · {plan.maxPhotos} photos per listing
+                </div>
+              </div>
+              <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:6,height:6,borderRadius:"50%",
+                  background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`}}/>
+                <span style={{fontSize:10,color:C.emerald,fontFamily:C.F,fontWeight:700}}>ACTIVE</span>
+              </div>
+            </div>
+          </div>
+
+          {planKey==="trial"&&(
+            <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"8px 0 0",textAlign:"center"}}>
+              3 free credits — no card required. Upgrade anytime in Settings.
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      id:"tools",
+      render:()=>(
+        <div>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{fontSize:28,marginBottom:8}}>🛠</div>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:20,margin:"0 0 6px",
+              letterSpacing:"-0.01em"}}>8 tools, one platform</h2>
+            <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0}}>
+              Tap the ones you'll use most — we'll start you there.
+            </p>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+            {TOOL_LIST.map((t,i)=>{
+              const sel=selectedTools.includes(t.key);
+              const ct=CONTENT_TYPES[t.key];
+              const color=ct?.color||C.indigo;
+              return(
+                <div key={t.key} onClick={()=>toggleTool(t.key)}
+                  style={{
+                    padding:"12px 13px",borderRadius:11,cursor:"pointer",
+                    border:`1px solid ${sel?color+"55":C.border}`,
+                    background:sel?`${color}0e`:"rgba(255,255,255,.015)",
+                    transition:"all .16s ease",
+                    animation:`fadeUp .3s ease ${i*.05}s both`,
+                    display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{
+                    width:32,height:32,borderRadius:8,flexShrink:0,
+                    background:sel?`${color}20`:"rgba(255,255,255,.05)",
+                    border:`1px solid ${sel?color+"40":C.border}`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:14,transition:"all .16s"}}>
+                    {t.icon}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:C.F,fontWeight:700,fontSize:11,
+                      color:sel?color:C.textMd}}>{t.label}</div>
+                    <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,
+                      marginTop:1,lineHeight:1.3}}>{t.desc}</div>
+                  </div>
+                  {sel&&<div style={{width:16,height:16,borderRadius:"50%",
+                    background:color,display:"flex",alignItems:"center",
+                    justifyContent:"center",fontSize:9,color:"#fff",flexShrink:0,
+                    fontWeight:800}}>✓</div>}
+                </div>
+              );
+            })}
+          </div>
+          <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,textAlign:"center",margin:0}}>
+            {selectedTools.length===0?"Select the tools you're most excited about"
+             :`${selectedTools.length} tool${selectedTools.length>1?"s":""} selected — great choices`}
+          </p>
+        </div>
+      ),
+    },
+    {
+      id:"howit",
+      render:()=>(
+        <div>
+          <div style={{textAlign:"center",marginBottom:18}}>
+            <div style={{fontSize:28,marginBottom:8}}>⚡</div>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:20,margin:"0 0 6px",
+              letterSpacing:"-0.01em"}}>How it works</h2>
+            <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0}}>
+              Three steps. Under 60 seconds.
+            </p>
+          </div>
+
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {[
+              {n:"1",color:C.indigo,icon:"📸",title:"Upload listing photos",
+               body:"Drop your property photos. The first one becomes the hero frame for your cinematic video."},
+              {n:"2",color:C.violet,icon:"⚡",title:"Hit Generate",
+               body:"SPARK writes your script, hooks, captions, MLS copy — and renders your listing video automatically."},
+              {n:"3",color:C.emerald,icon:"📲",title:"Copy, download & post",
+               body:"Copy any section with one tap. Download your video. Post directly to TikTok, Reels, and more."},
+            ].map((s,i)=>(
+              <div key={i} style={{
+                display:"flex",gap:14,alignItems:"flex-start",
+                background:`linear-gradient(135deg,${s.color}08,transparent)`,
+                border:`1px solid ${s.color}20`,
+                borderRadius:12,padding:"14px 16px",
+                animation:`fadeUp .35s ease ${i*.1}s both`}}>
+                <div style={{
+                  width:32,height:32,borderRadius:"50%",flexShrink:0,
+                  background:`linear-gradient(135deg,${s.color},${s.color}90)`,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:16,boxShadow:`0 4px 12px ${s.color}40`}}>
+                  {s.icon}
+                </div>
+                <div>
+                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,
+                    color:C.text,marginBottom:3}}>{s.title}</div>
+                  <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,lineHeight:1.55}}>
+                    {s.body}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{marginTop:14,background:"rgba(16,185,129,.06)",
+            border:"1px solid rgba(16,185,129,.15)",
+            borderRadius:9,padding:"10px 14px",
+            display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:14}}>💡</span>
+            <span style={{fontFamily:C.F,fontSize:11,color:C.emerald,lineHeight:1.5}}>
+              Pro tip: Upload 3-6 photos for a 15-30 second cinematic listing video — longer videos get more replays.
+            </span>
           </div>
         </div>
-        <div style={{fontSize:36,marginBottom:12}}>{s.icon}</div>
-        <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:10,color:C.text}}>{s.title}</div>
-        <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,lineHeight:1.7,marginBottom:28}}>{s.body}</p>
-        <div style={{display:"flex",gap:10}}>
-          {step>0&&<button className="btn-o" onClick={()=>setStep(s=>s-1)} style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textMd,padding:"11px 18px",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F}}>← Back</button>}
-          <button className="btn-g" onClick={()=>step<steps.length-1?setStep(s=>s+1):onClose()} style={{flex:1,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 18px rgba(99,102,241,.25)"}}>
-            {step<steps.length-1?"Next →":"Start Generating ⚡"}
+      ),
+    },
+    {
+      id:"launch",
+      render:()=>(
+        <div style={{textAlign:"center"}}>
+          {/* Launch animation */}
+          <div style={{position:"relative",display:"inline-block",marginBottom:20}}>
+            <div style={{position:"absolute",inset:"-28px",borderRadius:"50%",
+              background:`radial-gradient(circle,${C.emerald}22,transparent 70%)`,
+              animation:launched?"none":"orb2 3s ease-in-out infinite"}}/>
+            <div style={{position:"relative",width:80,height:80,borderRadius:"50%",
+              background:`linear-gradient(135deg,${C.emerald},${C.indigo})`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              boxShadow:`0 8px 32px ${C.emerald}40`,margin:"0 auto",
+              transform:launched?"scale(1.2)":"scale(1)",
+              transition:"transform .4s cubic-bezier(.34,1.56,.64,1)"}}>
+              <span style={{fontSize:36}}>{launched?"🚀":"✦"}</span>
+            </div>
+          </div>
+
+          <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:24,
+            margin:"0 0 8px",letterSpacing:"-0.02em"}}>
+            You're all set.
+          </h2>
+          <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
+            lineHeight:1.7,margin:"0 0 22px"}}>
+            Your first generation is waiting. Let's turn your next listing into content that gets leads.
+          </p>
+
+          {/* Credits display */}
+          <div style={{
+            background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+            border:`1px solid ${C.border}`,
+            borderRadius:12,padding:"14px 18px",marginBottom:20,
+            display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:"50%",
+                background:C.indigoLt,boxShadow:`0 0 8px ${C.indigoLt}`}}/>
+              <span style={{fontFamily:C.F,fontSize:12,color:C.textMd}}>Credits ready</span>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontFamily:C.F,fontWeight:800,fontSize:22,
+                color:C.text,letterSpacing:"-0.02em"}}>{plan.credits}</span>
+              <span style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700}}>CR</span>
+            </div>
+          </div>
+
+          {/* Feature unlocks */}
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:8,textAlign:"left"}}>
+            {[
+              `🎬 ${plan.videoQuality} cinematic listing videos`,
+              `📸 Up to ${plan.maxPhotos} photos per generation`,
+              `⚡ ${plan.hooks} hook variants per listing`,
+              plan.voiceMemory?"🎙 Agent voice memory enabled":"🎙 Agent voice memory (upgrade to Pro)",
+            ].map((f,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,
+                animation:`slideR .3s ease ${i*.07}s both`}}>
+                <div style={{fontSize:12}}>{f.split(" ")[0]}</div>
+                <span style={{fontFamily:C.F,fontSize:11,color:C.textMd}}>{f.slice(f.indexOf(" ")+1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+  ];
+
+  const totalSteps=STEPS.length;
+  const isLast=step===totalSteps-1;
+
+  return(
+    <div style={{position:"fixed",inset:0,
+      background:"rgba(4,4,10,.92)",
+      display:"flex",alignItems:"center",justifyContent:"center",
+      zIndex:1000,backdropFilter:"blur(16px)",
+      WebkitBackdropFilter:"blur(16px)",
+      animation:"fadeIn .25s ease"}}>
+
+      <div style={{
+        background:`linear-gradient(160deg,${C.surface},${C.surfaceUp})`,
+        border:`1px solid ${C.borderMd}`,
+        borderRadius:20,padding:"32px 28px",
+        maxWidth:460,width:"92%",
+        boxShadow:"0 48px 96px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04)",
+        animation:"scaleIn .28s cubic-bezier(.34,1.56,.64,1)",
+        position:"relative",overflow:"hidden",maxHeight:"90vh",overflowY:"auto"}}>
+
+        {/* Ambient background glow */}
+        <div style={{position:"absolute",top:"-20%",right:"-10%",
+          width:200,height:200,borderRadius:"50%",
+          background:`radial-gradient(circle,${C.indigo}14,transparent 70%)`,
+          pointerEvents:"none"}}/>
+
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",
+          alignItems:"center",marginBottom:24,position:"relative"}}>
+          <Logo/>
+          {/* Step progress pills */}
+          <div style={{display:"flex",gap:4,alignItems:"center"}}>
+            {STEPS.map((_,i)=>(
+              <div key={i} style={{
+                height:4,
+                width:i===step?24:8,
+                borderRadius:2,
+                background:i<step?C.emerald:i===step?C.indigoLt:"rgba(255,255,255,.1)",
+                transition:"all .28s ease",
+                boxShadow:i===step?`0 0 6px ${C.indigoLt}80`:"none"}}/>
+            ))}
+          </div>
+        </div>
+
+        {/* Step content */}
+        <div key={step} style={{animation:"scaleIn .22s ease"}}>
+          {STEPS[step].render()}
+        </div>
+
+        {/* Navigation */}
+        <div style={{display:"flex",gap:10,marginTop:22,position:"relative"}}>
+          {step>0&&(
+            <button className="btn-o" onClick={()=>setStep(s=>s-1)}
+              style={{background:"transparent",border:`1px solid ${C.border}`,
+                color:C.textMd,padding:"12px 18px",borderRadius:10,
+                cursor:"pointer",fontSize:13,fontFamily:C.F,fontWeight:500}}>
+              ← Back
+            </button>
+          )}
+          <button className="btn-g" onClick={isLast?handleLaunch:()=>setStep(s=>s+1)}
+            style={{flex:1,
+              background:isLast
+                ?"linear-gradient(135deg,#10b981,#6366f1)"
+                :"linear-gradient(135deg,#6366f1,#8b5cf6)",
+              border:"none",color:"#fff",padding:"13px 0",borderRadius:10,
+              cursor:"pointer",fontWeight:800,fontSize:14,fontFamily:C.F,
+              letterSpacing:.2,
+              boxShadow:isLast
+                ?"0 6px 24px rgba(16,185,129,.3)"
+                :"0 6px 24px rgba(99,102,241,.28)",
+              transition:"all .22s ease"}}>
+            {isLast
+              ?"🚀 Start Generating"
+              :step===1&&selectedTools.length===0
+              ?"Skip →"
+              :"Next →"}
           </button>
         </div>
+
+        {/* Skip link on first step */}
+        {step===0&&(
+          <p onClick={onClose}
+            style={{textAlign:"center",fontFamily:C.F,fontSize:11,
+              color:C.textDim,marginTop:12,cursor:"pointer",
+              transition:"color .14s"}}
+            onMouseEnter={e=>e.currentTarget.style.color=C.textMd}
+            onMouseLeave={e=>e.currentTarget.style.color=C.textDim}>
+            Skip intro →
+          </p>
+        )}
       </div>
     </div>
   );
