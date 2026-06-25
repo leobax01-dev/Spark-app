@@ -641,16 +641,17 @@ function RBlock({accent,label,children,action,delay=0}){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PHOTO UPLOADER COMPONENT
+// PHOTO UPLOADER COMPONENT — premium cinematic design
 // ─────────────────────────────────────────────────────────────────────────────
 function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
   const inputRef = useRef(null);
   const toast = useToast();
   const [dragging, setDragging] = useState(false);
+  const [hoverId, setHoverId]   = useState(null);
 
   async function processFiles(files){
     const remaining = maxPhotos - photos.length;
-    if(remaining <= 0){ toast(`Plan limit is ${maxPhotos} photos. Upgrade for more.`,"error"); return; }
+    if(remaining <= 0){ toast(`Plan limit is ${maxPhotos} photos — upgrade for more`,"error"); return; }
     const toAdd = Array.from(files).slice(0, remaining);
     const results = [];
     for(const file of toAdd){
@@ -678,59 +679,213 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
   function removePhoto(id){ setPhotos(p=>p.filter(x=>x.id!==id)); }
   function moveHero(id){ setPhotos(p=>{ const i=p.findIndex(x=>x.id===id); if(i<=0) return p; const a=[...p]; const [item]=a.splice(i,1); return [item,...a]; }); }
 
+  const videoEstimate = photos.length===0?"" :
+    photos.length===1?"~5s clip" :
+    `~${photos.length*5}s video`;
+
   return(
     <div style={{marginBottom:16}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:9}}>
-        <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700}}>
-          LISTING PHOTOS <span style={{color:C.indigo,fontWeight:400}}>({photos.length}/{maxPhotos})</span>
+
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",
+        alignItems:"center",marginBottom:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{fontSize:9,color:C.textDim,letterSpacing:1.5,
+            fontFamily:C.F,fontWeight:700}}>
+            LISTING PHOTOS
+          </div>
+          <span style={{fontSize:9,color:C.indigo,fontFamily:C.F,fontWeight:600,
+            background:"rgba(99,102,241,.1)",border:"1px solid rgba(99,102,241,.2)",
+            borderRadius:10,padding:"1px 7px"}}>
+            {photos.length}/{maxPhotos}
+          </span>
+          {videoEstimate&&(
+            <span style={{fontSize:9,color:C.emerald,fontFamily:C.F,fontWeight:700,
+              background:"rgba(16,185,129,.08)",border:"1px solid rgba(16,185,129,.2)",
+              borderRadius:10,padding:"1px 8px",animation:"fadeIn .3s ease"}}>
+              🎬 {videoEstimate}
+            </span>
+          )}
         </div>
-        {photos.length>0&&<span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Tap ⭐ to set hero frame</span>}
+        {photos.length>0&&(
+          <span style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>
+            First photo = hero frame
+          </span>
+        )}
       </div>
 
-      {/* Photo thumbnails */}
+      {/* Photo grid */}
       {photos.length>0&&(
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
-          {photos.map((ph,i)=>(
-            <div key={ph.id} className="photo-thumb" style={{position:"relative",width:72,height:72,borderRadius:8,overflow:"hidden",border:`2px solid ${i===0?C.indigo:C.border}`,animation:"photoIn .22s ease both",flexShrink:0}}>
-              <img src={ph.preview} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-              {i===0&&<div style={{position:"absolute",top:2,left:2,background:"rgba(99,102,241,.88)",borderRadius:4,padding:"1px 4px",fontSize:8,color:"#fff",fontWeight:700,fontFamily:C.F}}>HERO</div>}
-              <div style={{position:"absolute",top:2,right:2,display:"flex",gap:3}}>
-                {i>0&&(
-                  <button onClick={()=>moveHero(ph.id)} title="Set as hero" style={{width:18,height:18,borderRadius:3,background:"rgba(0,0,0,.7)",border:"none",cursor:"pointer",fontSize:9,display:"flex",alignItems:"center",justifyContent:"center",color:"#fbbf24"}}>⭐</button>
+          {photos.map((ph,i)=>{
+            const isHero = i===0;
+            const hovered = hoverId===ph.id;
+            return(
+              <div key={ph.id} className="photo-thumb"
+                onMouseEnter={()=>setHoverId(ph.id)}
+                onMouseLeave={()=>setHoverId(null)}
+                style={{
+                  position:"relative",width:88,height:88,
+                  borderRadius:10,overflow:"hidden",flexShrink:0,
+                  border:`2px solid ${isHero?"#f59e0b":hovered?C.indigo+"80":C.border}`,
+                  boxShadow:isHero?`0 0 16px rgba(245,158,11,.28)`:
+                    hovered?`0 4px 16px rgba(99,102,241,.2)`:"none",
+                  animation:"photoIn .22s ease both",
+                  transition:"border-color .16s, box-shadow .16s"}}>
+
+                {/* Photo */}
+                <img src={ph.preview} alt="" style={{width:"100%",height:"100%",objectFit:"cover",
+                  transition:"transform .3s ease",
+                  transform:hovered?"scale(1.06)":"scale(1)"}}/>
+
+                {/* Dark overlay on hover */}
+                <div style={{position:"absolute",inset:0,
+                  background:"rgba(0,0,0,.5)",
+                  opacity:hovered?1:0,transition:"opacity .16s ease"}}/>
+
+                {/* Hero crown badge */}
+                {isHero&&(
+                  <div style={{position:"absolute",top:5,left:5,
+                    background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                    borderRadius:5,padding:"2px 6px",
+                    fontSize:8,color:"#fff",fontWeight:800,
+                    fontFamily:C.F,letterSpacing:.5,
+                    boxShadow:"0 2px 6px rgba(245,158,11,.5)",
+                    display:"flex",alignItems:"center",gap:3}}>
+                    ★ HERO
+                  </div>
                 )}
-                <button onClick={()=>removePhoto(ph.id)} title="Remove" style={{width:18,height:18,borderRadius:3,background:"rgba(0,0,0,.7)",border:"none",cursor:"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",color:C.rose}}>✕</button>
+
+                {/* Sequence number for non-hero */}
+                {!isHero&&!hovered&&(
+                  <div style={{position:"absolute",top:5,left:5,
+                    width:16,height:16,borderRadius:"50%",
+                    background:"rgba(0,0,0,.65)",
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:8,color:"rgba(255,255,255,.7)",fontFamily:C.F,fontWeight:700}}>
+                    {i+1}
+                  </div>
+                )}
+
+                {/* Action buttons — slide in on hover */}
+                <div style={{position:"absolute",inset:0,
+                  display:"flex",flexDirection:"column",
+                  alignItems:"center",justifyContent:"center",gap:5,
+                  opacity:hovered?1:0,transition:"opacity .16s ease"}}>
+                  {i>0&&(
+                    <button onClick={()=>moveHero(ph.id)}
+                      style={{background:"rgba(245,158,11,.9)",border:"none",
+                        borderRadius:6,padding:"4px 8px",cursor:"pointer",
+                        fontSize:8,color:"#fff",fontWeight:700,fontFamily:C.F,
+                        letterSpacing:.4,whiteSpace:"nowrap"}}>
+                      ★ Set Hero
+                    </button>
+                  )}
+                  <button onClick={()=>removePhoto(ph.id)}
+                    style={{background:"rgba(244,63,94,.85)",border:"none",
+                      borderRadius:6,padding:"4px 8px",cursor:"pointer",
+                      fontSize:8,color:"#fff",fontWeight:700,fontFamily:C.F,
+                      letterSpacing:.4}}>
+                    ✕ Remove
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+
+          {/* Add more button */}
           {photos.length<maxPhotos&&(
-            <button onClick={()=>inputRef.current?.click()} style={{width:72,height:72,borderRadius:8,border:`2px dashed ${C.border}`,background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,color:C.textDim,flexShrink:0,transition:"all .18s"}} onMouseEnter={e=>{e.currentTarget.style.borderColor=C.indigo+"88";e.currentTarget.style.color=C.indigoLt;}} onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.color=C.textDim;}}>
-              <span style={{fontSize:18}}>+</span>
-              <span style={{fontSize:8,fontFamily:C.F,fontWeight:600}}>ADD</span>
+            <button onClick={()=>inputRef.current?.click()}
+              style={{width:88,height:88,borderRadius:10,
+                border:`2px dashed rgba(99,102,241,.3)`,
+                background:"rgba(99,102,241,.04)",
+                cursor:"pointer",display:"flex",flexDirection:"column",
+                alignItems:"center",justifyContent:"center",gap:5,
+                color:C.indigoLt,flexShrink:0,transition:"all .18s"}}
+              onMouseEnter={e=>{
+                e.currentTarget.style.borderColor="rgba(99,102,241,.6)";
+                e.currentTarget.style.background="rgba(99,102,241,.08)";
+              }}
+              onMouseLeave={e=>{
+                e.currentTarget.style.borderColor="rgba(99,102,241,.3)";
+                e.currentTarget.style.background="rgba(99,102,241,.04)";
+              }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              <span style={{fontSize:8,fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>ADD</span>
             </button>
           )}
         </div>
       )}
 
-      {/* Drop zone — shown when no photos yet */}
+      {/* Drop zone — cinematic treatment when no photos */}
       {photos.length===0&&(
-        <div className={`drop-zone${dragging?" drag-over":""}`}
-          onDrop={handleDrop} onDragOver={handleDrag} onDragLeave={handleDragLeave}
+        <div onDrop={handleDrop} onDragOver={handleDrag}
+          onDragLeave={handleDragLeave}
           onClick={()=>inputRef.current?.click()}
-          style={{border:`2px dashed ${dragging?C.indigo:C.border}`,borderRadius:10,padding:"28px 16px",textAlign:"center",cursor:"pointer",background:dragging?"rgba(99,102,241,.06)":"rgba(255,255,255,.01)",transition:"all .22s"}}>
-          <div style={{fontSize:28,marginBottom:8}}>📸</div>
-          <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.textMd,marginBottom:4}}>Drop listing photos here</div>
-          <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:8}}>or tap to browse · up to {maxPhotos} photos · JPG/PNG/WEBP</div>
-          <div style={{display:"inline-flex",gap:6,alignItems:"center",background:"rgba(99,102,241,.08)",border:"1px solid rgba(99,102,241,.2)",borderRadius:6,padding:"4px 10px"}}>
-            <span style={{fontSize:10,color:C.indigoLt,fontFamily:C.F,fontWeight:600}}>Hero photo → animates into cinematic video ✨</span>
+          style={{
+            borderRadius:14,padding:"32px 20px",textAlign:"center",
+            cursor:"pointer",position:"relative",overflow:"hidden",
+            border:`1.5px dashed ${dragging?C.indigo:C.border}`,
+            background:dragging?"rgba(99,102,241,.06)":"rgba(255,255,255,.01)",
+            transition:"all .22s"}}>
+
+          {/* Film frame corners */}
+          {[["0","0"],["0","auto"],["auto","0"],["auto","auto"]].map(([t,b],i)=>(
+            <div key={i} style={{
+              position:"absolute",
+              top:t==="0"?"8px":"auto",bottom:b==="auto"?"8px":"auto",
+              left:i<2?"8px":"auto",right:i>=2?"8px":"auto",
+              width:12,height:12,
+              borderTop:t==="0"?`2px solid ${dragging?C.indigo:C.textDim}`:"none",
+              borderBottom:b==="auto"?`2px solid ${dragging?C.indigo:C.textDim}`:"none",
+              borderLeft:i<2?`2px solid ${dragging?C.indigo:C.textDim}`:"none",
+              borderRight:i>=2?`2px solid ${dragging?C.indigo:C.textDim}`:"none",
+              opacity:.4,transition:"all .22s"}}/>
+          ))}
+
+          <div style={{fontSize:32,marginBottom:10}}>
+            {dragging?"✨":"🎬"}
+          </div>
+          <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,
+            color:dragging?C.indigoLt:C.textMd,marginBottom:6,
+            transition:"color .22s"}}>
+            {dragging?"Drop to add photos":"Drop listing photos here"}
+          </div>
+          <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:14}}>
+            or tap to browse · up to {maxPhotos} photos · JPG/PNG/WEBP
+          </div>
+
+          {/* Cinematic video pill */}
+          <div style={{display:"inline-flex",gap:6,alignItems:"center",
+            background:`linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.06))`,
+            border:"1px solid rgba(99,102,241,.22)",
+            borderRadius:20,padding:"5px 14px"}}>
+            <span style={{width:5,height:5,borderRadius:"50%",
+              background:C.indigoLt,flexShrink:0,
+              animation:"pulse 2s ease infinite",display:"block"}}/>
+            <span style={{fontSize:10,color:C.indigoLt,fontFamily:C.F,fontWeight:600}}>
+              Each photo → 5s cinematic clip · stitched into one video
+            </span>
           </div>
         </div>
       )}
 
-      <input ref={inputRef} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>processFiles(e.target.files)}/>
+      <input ref={inputRef} type="file" accept="image/*" multiple
+        style={{display:"none"}} onChange={e=>processFiles(e.target.files)}/>
 
       {photos.length===0&&planKey==="agent"&&(
         <div style={{marginTop:8,fontSize:10,color:C.textDim,fontFamily:C.F}}>
-          Agent plan: up to 3 photos. <span className="up-tease" onClick={onGoUpgrade} style={{color:C.amber,textDecoration:"underline",cursor:"pointer"}}>Upgrade to Pro for 8 photos →</span>
+          Agent plan: up to 3 photos.{" "}
+          <span className="up-tease" onClick={onGoUpgrade}
+            style={{color:C.amber,textDecoration:"underline",cursor:"pointer"}}>
+            Upgrade to Pro for 8 photos →
+          </span>
         </div>
       )}
     </div>
