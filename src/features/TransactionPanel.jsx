@@ -2,7 +2,42 @@
 // Transaction Intelligence Layer — Timeline Generator, Listing Presentation, CMA Analyzer
 // Standalone feature file — imported into App.jsx, zero changes to existing code
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMP FETCHER — shared by Presentation and CMA tools
+// ─────────────────────────────────────────────────────────────────────────────
+function useCompFetcher() {
+  const [compsLoading, setCompsLoading] = useState(false);
+  const [compsError,   setCompsError]   = useState(null);
+  const [compsData,    setCompsData]    = useState(null);
+  const debounceRef = useRef(null);
+
+  const fetchComps = useCallback((address) => {
+    setCompsError(null);
+    if (!address || address.length < 10) { setCompsData(null); return; }
+    // Debounce — wait 800ms after user stops typing
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setCompsLoading(true);
+      try {
+        const r = await fetch("/api/comps", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address }),
+        });
+        const d = await r.json();
+        if (!r.ok) { setCompsError(d.error || "Could not find comps for this address"); setCompsData(null); }
+        else { setCompsData(d); }
+      } catch(e) {
+        setCompsError("Connection error — comps unavailable");
+      }
+      setCompsLoading(false);
+    }, 800);
+  }, []);
+
+  return { compsLoading, compsError, compsData, fetchComps };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS — mirrors App.jsx C object
@@ -133,6 +168,134 @@ function ResultList({label, items, color=C.indigo}){
             lineHeight:1.5,alignSelf:"center"}}>{item}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPS PANEL — shows auto-fetched comps with edit override
+// ─────────────────────────────────────────────────────────────────────────────
+function CompsPanel({ compsLoading, compsError, compsData, overrides, setOverrides }){
+  if(compsLoading) return(
+    <div style={{background:`${C.indigo}08`,border:`1px solid ${C.indigo}20`,
+      borderRadius:11,padding:"14px 16px",marginBottom:14,
+      display:"flex",alignItems:"center",gap:10}}>
+      <div style={{width:14,height:14,borderRadius:"50%",border:`2px solid ${C.indigo}`,
+        borderTopColor:"transparent",animation:"spin 0.7s linear infinite"}}/>
+      <span style={{fontFamily:C.F,fontSize:12,color:C.indigoLt}}>
+        Fetching recent comparable sales...
+      </span>
+    </div>
+  );
+
+  if(compsError) return(
+    <div style={{background:"rgba(244,63,94,.06)",border:"1px solid rgba(244,63,94,.2)",
+      borderRadius:11,padding:"12px 14px",marginBottom:14}}>
+      <span style={{fontFamily:C.F,fontSize:12,color:C.rose}}>⚠ {compsError}</span>
+      <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,display:"block",marginTop:4}}>
+        Enter comps manually below.
+      </span>
+    </div>
+  );
+
+  if(!compsData) return null;
+
+  return(
+    <div style={{background:`${C.emerald}06`,border:`1px solid ${C.emerald}22`,
+      borderRadius:13,padding:"16px 16px",marginBottom:14}}>
+      {/* Header */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:7}}>
+          <div style={{width:3,height:13,borderRadius:2,
+            background:`linear-gradient(180deg,${C.emerald},${C.emerald}60)`,
+            boxShadow:`0 0 7px ${C.emerald}80`}}/>
+          <span style={{fontSize:9,color:C.emerald,fontFamily:C.F,
+            fontWeight:700,letterSpacing:2.2}}>COMPS AUTO-FETCHED</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          {compsData.avgPricePerSqft&&(
+            <span style={{fontSize:9,color:C.cyan,fontFamily:C.F,fontWeight:700,
+              background:"rgba(34,211,238,.08)",border:"1px solid rgba(34,211,238,.2)",
+              borderRadius:6,padding:"2px 8px"}}>
+              avg {compsData.avgPricePerSqft}
+            </span>
+          )}
+          <span style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>
+            {compsData.count} comps found
+          </span>
+        </div>
+      </div>
+
+      {/* Comp cards */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {compsData.comps.map((comp,i)=>{
+          const override = overrides[i] || {};
+          const isEditing = override.editing;
+          return(
+            <div key={i} style={{background:C.surface,border:`1px solid ${C.border}`,
+              borderRadius:10,padding:"11px 13px",
+              animation:`slideR .22s ease ${i*.06}s both`}}>
+              {!isEditing ? (
+                <div style={{display:"flex",alignItems:"center",
+                  justifyContent:"space-between",gap:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,
+                      color:C.text,marginBottom:2,overflow:"hidden",
+                      textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {override.address||comp.address}
+                    </div>
+                    <div style={{fontFamily:C.F,fontSize:10,color:C.textDim}}>
+                      {override.details||comp.details}
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,
+                      color:C.emerald}}>{override.price||comp.price}</div>
+                    {comp.daysAgo&&(
+                      <div style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>
+                        {comp.daysAgo}d ago
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={()=>setOverrides(p=>({...p,[i]:{...override,editing:true}}))}
+                    style={{background:"transparent",border:`1px solid ${C.border}`,
+                      color:C.textDim,borderRadius:6,padding:"3px 8px",
+                      cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700,
+                      letterSpacing:1,flexShrink:0}}>
+                    EDIT
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                    <TField label="PRICE" value={override.price||comp.price}
+                      onChange={v=>setOverrides(p=>({...p,[i]:{...p[i],price:v}}))}
+                      placeholder="$1,850,000"/>
+                    <TField label="DETAILS" value={override.details||comp.details}
+                      onChange={v=>setOverrides(p=>({...p,[i]:{...p[i],details:v}}))}
+                      placeholder="4bd/3ba, 2,600sqft..."/>
+                  </div>
+                  <button onClick={()=>setOverrides(p=>({...p,[i]:{...p[i],editing:false}}))}
+                    style={{background:`${C.emerald}18`,border:`1px solid ${C.emerald}30`,
+                      color:C.emerald,borderRadius:6,padding:"4px 12px",
+                      cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700}}>
+                    ✓ Done
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {compsData.subject&&(
+        <div style={{marginTop:10,fontSize:10,color:C.textDim,fontFamily:C.F,
+          textAlign:"center"}}>
+          Subject: {compsData.subject.beds}bd / {compsData.subject.baths}ba
+          {compsData.subject.sqft&&` · ${compsData.subject.sqft.toLocaleString()}sqft`}
+          {compsData.subject.yearBuilt&&` · Built ${compsData.subject.yearBuilt}`}
+        </div>
+      )}
     </div>
   );
 }
@@ -303,14 +466,26 @@ function ListingPresentation(){
   const [inputs,setInputs]=useState({
     address:"", askingPrice:"", beds:"", baths:"", sqft:"",
     keyFeatures:"", neighborhood:"",
-    comp1:"", comp2:"", comp3:"",
     agentName:"", agentYears:"", agentSales:"", agentDom:"",
     agentMarket:"", sellerGoal:""
   });
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
+  const [compOverrides,setCompOverrides]=useState({});
+  const { compsLoading, compsError, compsData, fetchComps } = useCompFetcher();
 
-  function set(k){ return v=>setInputs(p=>({...p,[k]:v})); }
+  function set(k){ return v=>{
+    setInputs(p=>({...p,[k]:v}));
+    if(k==="address") fetchComps(v);
+  }; }
+
+  function buildCompsString(){
+    if(!compsData) return "No comps available — agent to provide";
+    return compsData.comps.map((c,i)=>{
+      const ov = compOverrides[i]||{};
+      return `${ov.address||c.address} — ${ov.price||c.price}, ${ov.details||c.details}`;
+    }).join(". ");
+  }
 
   async function generate(){
     if(!inputs.address||!inputs.askingPrice){
@@ -318,13 +493,14 @@ function ListingPresentation(){
     }
     setLoading(true);
     try{
+      const compsString = buildCompsString();
       const r = await fetch("/api/claude",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           system:"You are SPARK, an elite real estate AI. Generate a compelling, data-driven listing presentation. Return ONLY valid JSON, no markdown.",
           messages:[{role:"user",content:
-            `Create a full listing presentation for: ${inputs.address}, asking ${inputs.askingPrice}, ${inputs.beds}bd/${inputs.baths}ba, ${inputs.sqft}sqft. Features: ${inputs.keyFeatures}. Neighborhood: ${inputs.neighborhood}. Comps: ${inputs.comp1}, ${inputs.comp2}, ${inputs.comp3}. Agent: ${inputs.agentName}, ${inputs.agentYears} years experience, ${inputs.agentSales} listings sold, avg ${inputs.agentDom} days on market, specializes in ${inputs.agentMarket}. Seller goal: ${inputs.sellerGoal}.
+            `Create a full listing presentation for: ${inputs.address}, asking ${inputs.askingPrice}, ${inputs.beds}bd/${inputs.baths}ba, ${inputs.sqft}sqft. Features: ${inputs.keyFeatures}. Neighborhood: ${inputs.neighborhood}. Comparable sales: ${compsString}. Agent: ${inputs.agentName}, ${inputs.agentYears} years experience, ${inputs.agentSales} listings sold, avg ${inputs.agentDom} days on market, specializes in ${inputs.agentMarket}. Seller goal: ${inputs.sellerGoal}.
 
 Return ONLY valid JSON:
 {"pricing_recommendation":"specific price recommendation with reasoning in 2-3 sentences","pricing_scenarios":[{"scenario":"Aggressive","price":"$X","rationale":"why","expected_dom":"X days"},{"scenario":"Market Rate","price":"$X","rationale":"why","expected_dom":"X days"},{"scenario":"Conservative","price":"$X","rationale":"why","expected_dom":"X days"}],"market_positioning":"2-3 sentences on how to position this listing","marketing_plan":["8 specific marketing actions SPARK AI will execute for this listing"],"why_hire_me":"compelling 3-4 sentence paragraph why this agent should be hired, based on their stats","opening_statement":"powerful 2-3 sentence opening for the listing appointment","seller_talking_points":["5 key talking points to address common seller concerns"],"listing_timeline":["5 key steps from signed listing agreement to closing"],"competitive_advantage":"2-3 sentences on what makes this agent different from competitors"}`
@@ -344,34 +520,36 @@ Return ONLY valid JSON:
     <div style={{animation:"fadeUp .35s ease"}}>
       <TCard accent={C.violet}>
         <TLabel color={C.violet}>PROPERTY DETAILS</TLabel>
+        <TField label="PROPERTY ADDRESS" value={inputs.address} onChange={set("address")} placeholder="456 Palm Ave, Miami Beach, FL"/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <TField label="PROPERTY ADDRESS" value={inputs.address} onChange={set("address")} placeholder="456 Palm Ave, Miami Beach"/>
           <TField label="ASKING PRICE" value={inputs.askingPrice} onChange={set("askingPrice")} placeholder="$2,450,000"/>
+          <TField label="NEIGHBORHOOD" value={inputs.neighborhood} onChange={set("neighborhood")} placeholder="South Beach"/>
           <TField label="BEDS" value={inputs.beds} onChange={set("beds")} placeholder="4"/>
           <TField label="BATHS" value={inputs.baths} onChange={set("baths")} placeholder="3.5"/>
           <TField label="SQ FT" value={inputs.sqft} onChange={set("sqft")} placeholder="3,200"/>
-          <TField label="NEIGHBORHOOD" value={inputs.neighborhood} onChange={set("neighborhood")} placeholder="South Beach"/>
+          <TField label="SELLER'S GOAL" value={inputs.sellerGoal} onChange={set("sellerGoal")} placeholder="Close in 45 days, relocating..."/>
         </div>
-        <TField label="KEY FEATURES" value={inputs.keyFeatures} onChange={set("keyFeatures")} placeholder="Pool, ocean views, renovated kitchen, smart home..." area rows={2}/>
-        <TField label="SELLER'S GOAL" value={inputs.sellerGoal} onChange={set("sellerGoal")} placeholder="Needs to close in 45 days, relocating for work..."/>
+        <TField label="KEY FEATURES" value={inputs.keyFeatures} onChange={set("keyFeatures")} placeholder="Pool, ocean views, renovated kitchen..." area rows={2}/>
       </TCard>
 
-      <TCard accent={C.cyan}>
-        <TLabel color={C.cyan}>COMPARABLE SALES (last 90 days)</TLabel>
-        <TField label="COMP 1" value={inputs.comp1} onChange={set("comp1")} placeholder="123 Main St — $2.1M, 3bd/3ba, 2,900sqft, sold in 18 days"/>
-        <TField label="COMP 2" value={inputs.comp2} onChange={set("comp2")} placeholder="789 Bay Dr — $2.6M, 4bd/4ba, 3,400sqft, sold in 32 days"/>
-        <TField label="COMP 3" value={inputs.comp3} onChange={set("comp3")} placeholder="321 Shore Rd — $2.2M, 4bd/3ba, 3,100sqft, sold in 24 days"/>
-      </TCard>
+      {/* Auto-fetched comps */}
+      <CompsPanel
+        compsLoading={compsLoading}
+        compsError={compsError}
+        compsData={compsData}
+        overrides={compOverrides}
+        setOverrides={setCompOverrides}
+      />
 
       <TCard accent={C.emerald}>
-        <TLabel color={C.emerald}>YOUR STATS (builds the Why Hire Me section)</TLabel>
+        <TLabel color={C.emerald}>YOUR STATS</TLabel>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <TField label="YOUR NAME" value={inputs.agentName} onChange={set("agentName")} placeholder="Sarah Williams"/>
           <TField label="YEARS EXPERIENCE" value={inputs.agentYears} onChange={set("agentYears")} placeholder="12"/>
           <TField label="LISTINGS SOLD (12mo)" value={inputs.agentSales} onChange={set("agentSales")} placeholder="34"/>
           <TField label="AVG DAYS ON MARKET" value={inputs.agentDom} onChange={set("agentDom")} placeholder="21"/>
         </div>
-        <TField label="YOUR MARKET SPECIALTY" value={inputs.agentMarket} onChange={set("agentMarket")} placeholder="Luxury waterfront, South Beach, Miami Beach"/>
+        <TField label="YOUR MARKET SPECIALTY" value={inputs.agentMarket} onChange={set("agentMarket")} placeholder="Luxury waterfront, South Beach"/>
       </TCard>
 
       <TBtn onClick={generate} loading={loading} color={C.violet}>
@@ -447,37 +625,43 @@ function CMAAnalyzer(){
   const [inputs,setInputs]=useState({
     address:"", beds:"", baths:"", sqft:"", condition:"",
     lotSize:"", yearBuilt:"", features:"", neighborhood:"",
-    comp1Price:"", comp1Details:"",
-    comp2Price:"", comp2Details:"",
-    comp3Price:"", comp3Details:"",
-    comp4Price:"", comp4Details:"",
     marketTrend:"", daysOnMarket:""
   });
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
+  const [compOverrides,setCompOverrides]=useState({});
+  const { compsLoading, compsError, compsData, fetchComps } = useCompFetcher();
 
-  function set(k){ return v=>setInputs(p=>({...p,[k]:v})); }
+  function set(k){ return v=>{
+    setInputs(p=>({...p,[k]:v}));
+    if(k==="address") fetchComps(v);
+  }; }
+
+  function buildCompsString(){
+    if(!compsData) return "";
+    return compsData.comps.map((c,i)=>{
+      const ov = compOverrides[i]||{};
+      return `Comp ${i+1}: ${ov.price||c.price} — ${ov.details||c.details}`;
+    }).join(". ");
+  }
 
   async function generate(){
-    if(!inputs.address||!inputs.comp1Price){
-      alert("Please enter property details and at least one comparable sale"); return;
+    if(!inputs.address){
+      alert("Please enter the property address"); return;
+    }
+    const compsString = buildCompsString();
+    if(!compsString && !compsData){
+      alert("Waiting for comps to load — try again in a moment"); return;
     }
     setLoading(true);
     try{
-      const comps = [
-        inputs.comp1Price&&`Comp 1: ${inputs.comp1Price} — ${inputs.comp1Details}`,
-        inputs.comp2Price&&`Comp 2: ${inputs.comp2Price} — ${inputs.comp2Details}`,
-        inputs.comp3Price&&`Comp 3: ${inputs.comp3Price} — ${inputs.comp3Details}`,
-        inputs.comp4Price&&`Comp 4: ${inputs.comp4Price} — ${inputs.comp4Details}`,
-      ].filter(Boolean).join(". ");
-
       const r = await fetch("/api/claude",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           system:"You are SPARK, an expert real estate pricing strategist. Analyze comps and generate a comprehensive CMA. Return ONLY valid JSON, no markdown.",
           messages:[{role:"user",content:
-            `Analyze this CMA: Subject property: ${inputs.address}, ${inputs.beds}bd/${inputs.baths}ba, ${inputs.sqft}sqft, built ${inputs.yearBuilt}, condition: ${inputs.condition}, features: ${inputs.features}, neighborhood: ${inputs.neighborhood}, lot: ${inputs.lotSize}. Comparable sales: ${comps}. Market trend: ${inputs.marketTrend}. Avg days on market: ${inputs.daysOnMarket}.
+            `Analyze this CMA: Subject property: ${inputs.address}, ${inputs.beds}bd/${inputs.baths}ba, ${inputs.sqft}sqft, built ${inputs.yearBuilt}, condition: ${inputs.condition}, features: ${inputs.features}, neighborhood: ${inputs.neighborhood}, lot: ${inputs.lotSize}. Comparable sales: ${compsString}. Market trend: ${inputs.marketTrend}. Avg days on market: ${inputs.daysOnMarket}.
 
 Return ONLY valid JSON:
 {"recommended_price":"specific price recommendation with dollar amount","price_range":{"low":"$X","mid":"$X","high":"$X"},"price_per_sqft":"$X/sqft","value_adjustments":["4-5 specific adjustments made vs comps — e.g. +$15,000 for pool, -$8,000 for year built"],"days_on_market_prediction":"X-Y days at recommended price","market_summary":"2-3 sentence market context","pricing_rationale":"3-4 sentences explaining the recommended price","seller_presentation_script":"what to say when presenting this price to the seller — 3-4 natural sentences","price_reduction_trigger":"specific market signals that would indicate a price reduction is needed","negotiation_range":"the lowest price that would still make sense to accept and why"}`
@@ -497,41 +681,29 @@ Return ONLY valid JSON:
     <div style={{animation:"fadeUp .35s ease"}}>
       <TCard accent={C.cyan}>
         <TLabel color={C.cyan}>SUBJECT PROPERTY</TLabel>
+        <TField label="ADDRESS" value={inputs.address} onChange={set("address")} placeholder="789 Bayview Dr, Miami, FL"/>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <TField label="ADDRESS" value={inputs.address} onChange={set("address")} placeholder="789 Bayview Dr, Miami"/>
-          <TField label="CONDITION" value={inputs.condition} onChange={set("condition")} placeholder="Excellent / Good / Average / Fair"/>
+          <TField label="CONDITION" value={inputs.condition} onChange={set("condition")} placeholder="Excellent / Good / Average"/>
+          <TField label="NEIGHBORHOOD" value={inputs.neighborhood} onChange={set("neighborhood")} placeholder="Coconut Grove"/>
           <TField label="BEDS" value={inputs.beds} onChange={set("beds")} placeholder="4"/>
           <TField label="BATHS" value={inputs.baths} onChange={set("baths")} placeholder="3"/>
           <TField label="SQ FT" value={inputs.sqft} onChange={set("sqft")} placeholder="2,800"/>
           <TField label="YEAR BUILT" value={inputs.yearBuilt} onChange={set("yearBuilt")} placeholder="2018"/>
           <TField label="LOT SIZE" value={inputs.lotSize} onChange={set("lotSize")} placeholder="8,500 sqft"/>
-          <TField label="NEIGHBORHOOD" value={inputs.neighborhood} onChange={set("neighborhood")} placeholder="Coconut Grove"/>
-        </div>
-        <TField label="KEY FEATURES" value={inputs.features} onChange={set("features")} placeholder="Pool, renovated kitchen, 2-car garage, smart home..." area rows={2}/>
-      </TCard>
-
-      <TCard accent={C.emerald}>
-        <TLabel color={C.emerald}>COMPARABLE SALES</TLabel>
-        {[
-          {pKey:"comp1Price",dKey:"comp1Details",label:"COMP 1"},
-          {pKey:"comp2Price",dKey:"comp2Details",label:"COMP 2"},
-          {pKey:"comp3Price",dKey:"comp3Details",label:"COMP 3"},
-          {pKey:"comp4Price",dKey:"comp4Details",label:"COMP 4"},
-        ].map(c=>(
-          <div key={c.label} style={{display:"grid",gridTemplateColumns:"120px 1fr",gap:8,marginBottom:8}}>
-            <TField label={c.label+" PRICE"} value={inputs[c.pKey]} onChange={set(c.pKey)} placeholder="$1,850,000"/>
-            <TField label="DETAILS" value={inputs[c.dKey]} onChange={set(c.dKey)} placeholder="4bd/3ba, 2,600sqft, sold 22 days ago, pool"/>
-          </div>
-        ))}
-      </TCard>
-
-      <TCard accent={C.amber}>
-        <TLabel color={C.amber}>MARKET CONDITIONS</TLabel>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <TField label="MARKET TREND" value={inputs.marketTrend} onChange={set("marketTrend")} placeholder="Hot / Balanced / Cooling / Slow"/>
           <TField label="AVG DAYS ON MARKET" value={inputs.daysOnMarket} onChange={set("daysOnMarket")} placeholder="28"/>
         </div>
+        <TField label="KEY FEATURES" value={inputs.features} onChange={set("features")} placeholder="Pool, renovated kitchen, 2-car garage..." area rows={2}/>
+        <TField label="MARKET TREND" value={inputs.marketTrend} onChange={set("marketTrend")} placeholder="Hot / Balanced / Cooling / Slow"/>
       </TCard>
+
+      {/* Auto-fetched comps */}
+      <CompsPanel
+        compsLoading={compsLoading}
+        compsError={compsError}
+        compsData={compsData}
+        overrides={compOverrides}
+        setOverrides={setCompOverrides}
+      />
 
       <TBtn onClick={generate} loading={loading} color={C.cyan}>
         📊 Analyze & Generate CMA
