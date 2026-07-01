@@ -140,4 +140,85 @@ const CREDIT_PACKS = [
 ];
 
 // Stripe redirect — prepends user email so checkout is pre-filled
+const CONTENT_TYPES = {
+  listing:     {label:"Listing Video",         icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"agent"},
+  mls_desc:    {label:"MLS Description",       icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"agent"},
+  open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"agent"},
+  objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"agent"},
+  scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"agent"},
+  comms:       {label:"Client Communication",  icon:"💬",color:"#f43f5e", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"agent"},
+  education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"agent"},
+  market:      {label:"Market Update",         icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
+  lifestyle:   {label:"Neighborhood Story",    icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
+};
+
+const PLATFORMS = {
+  TikTok:  {color:"#FF004F",spec:"9:16 · 30–90s",  minPlan:"agent"},
+  Reels:   {color:"#E1306C",spec:"9:16 · 15–90s",  minPlan:"agent"},
+  YouTube: {color:"#FF0000",spec:"Shorts · 15–60s",minPlan:"pro"},
+  Facebook:{color:"#1877F2",spec:"16:9 · 60–180s", minPlan:"pro"},
+  LinkedIn:{color:"#0A66C2",spec:"1:1 · pro tone",  minPlan:"pro"},
+};
+
+
+const INPUT_META = {
+  address:      ["Address",              "123 Ocean Drive, Miami Beach, FL 33139"],
+  price:        ["List Price",           "$875,000"],
+  beds:         ["Beds",                 "4"],
+  baths:        ["Baths",               "3"],
+  sqft:         ["Sq Ft",               "2,400"],
+  keyFeatures:  ["Key Features",        "Pool, chef's kitchen, water views, renovated 2024"],
+  neighborhood: ["Neighborhood",        "Miami Beach"],
+  city:         ["City / Area",         "Miami, FL"],
+  avgPrice:     ["Avg Sale Price",      "$650,000"],
+  daysOnMarket: ["Avg Days on Market",  "22 days"],
+  inventory:    ["Inventory Level",     "Low — 1.8 months supply"],
+  trend:        ["Market Trend",        "Sellers market, up 8% YoY"],
+  highlights:   ["Neighborhood Highlights","Top schools, walkable, bayfront parks"],
+  targetBuyer:  ["Target Buyer",        "NYC professionals relocating with families"],
+  topic:        ["Tip Topic",           "How to win a bidding war without overpaying"],
+  audience:     ["Audience",            "First-time buyers in Miami"],
+  keyPoint:     ["Key Point",           "Pre-approval isn't enough — use an escalation clause"],
+  openDate:       ["Open House Date",       "Saturday, June 28th"],
+  openTime:       ["Open House Time",       "1:00 PM – 4:00 PM"],
+  mlsStyle:       ["Description Style",    "Luxury / Standard / Concise"],
+  objection:      ["Client Objection",     "The market is too uncertain right now, I want to wait"],
+  clientType:     ["Client Type",          "Seller / Buyer / Both"],
+  situation:      ["Situation",            "Listing appointment / Buyer consultation / Follow-up call"],
+  scriptType:     ["Script Type",          "Listing Appointment / Buyer Consultation / FSBO Outreach / Expired Listing / Follow-Up Call"],
+  agentExperience:["Agent Experience",     "5 years, luxury market specialist"],
+  commsType:      ["Communication Type",   "Post-Showing Follow-Up / Offer Presentation / Post-Closing Nurture / Buyer Consultation Prep / Price Reduction Conversation"],
+  clientName:     ["Client Name",          "Sarah & Mike"],
+  propertyAddress:["Property Address",     "123 Ocean Drive, Miami Beach"],
+  showingNotes:   ["Showing Notes / Context", "They loved the kitchen and backyard, concerned about price"],
+  offerDetails:   ["Offer Details",        "$850,000 offer, conventional financing, 30-day close, clean terms"],
+  closingDate:    ["Closing Date",         "June 15th"],
+};
+
+const TYPE_INPUTS = {
+  listing:    ["address","price","beds","baths","sqft","keyFeatures","neighborhood"],
+  mls_desc:   ["address","price","beds","baths","sqft","keyFeatures","neighborhood","mlsStyle"],
+  open_house: ["address","price","beds","baths","sqft","keyFeatures","neighborhood","openDate","openTime"],
+  objection:  ["objection","clientType","situation"],
+  scripts:    ["scriptType","agentExperience","city"],
+  comms:      ["commsType","clientName","propertyAddress","showingNotes"],
+  lifestyle:  ["neighborhood","city","highlights","targetBuyer"],
+  education:  ["topic","audience","keyPoint"],
+};
+
+const PLAN_ORDER = ["agent","pro","team"];
+const planRank = p => PLAN_ORDER.indexOf(p);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOCALSTORAGE
+// ─────────────────────────────────────────────────────────────────────────────
+const LS = {
+  get:(k,def)=>{ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch{ return def; }},
+  set:(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{}},
+  del:(k)=>{ try{ localStorage.removeItem(k); }catch{}},
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// API — CLAUDE
+// ─────────────────────────────────────────────────────────────────────────────
 export { C, GLOBAL_CSS, PLANS, CREDIT_PACKS, CONTENT_TYPES, PLATFORMS, INPUT_META, TYPE_INPUTS, PLAN_ORDER, LS };
