@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { C, GLOBAL_CSS, LS } from './lib/constants.js';
-import { initAnalytics } from './lib/analytics.js';
-import { ToastContainer } from './components/ui/Toast.jsx';
-import LandingPage from './pages/LandingPage.jsx';
-import AuthPage from './pages/AuthPage.jsx';
-import MainApp from './pages/MainApp.jsx';
+import { C, GLOBAL_CSS, LS } from './lib/constants';
+import { initAnalytics } from './lib/analytics';
+import { ToastContainer } from './components/ui/Toast';
+import LandingPage from './pages/LandingPage';
+import AuthPage from './pages/AuthPage';
+import MainApp from './pages/MainApp';
 
 const FONTS_URL = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
 
