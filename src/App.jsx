@@ -1770,24 +1770,24 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       <div style={{display:"flex",background:"rgba(255,255,255,.03)",
         borderRadius:10,padding:3,marginBottom:18,gap:2}}>
         <button onClick={()=>setGenView("generate")}
-          style={{flex:1,padding:"9px 0",borderRadius:7,border:"none",
+          style={{flex:1,padding:"9px 0",borderRadius:7,
             background:genView==="generate"
               ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
               :"transparent",
+            border:genView==="generate"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
             color:genView==="generate"?C.indigoLt:C.textDim,
             cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F,
-            border:genView==="generate"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
             transition:"all .16s ease"}}>
           ⚡ Generate
         </button>
         <button onClick={()=>setGenView("history")}
-          style={{flex:1,padding:"9px 0",borderRadius:7,border:"none",
+          style={{flex:1,padding:"9px 0",borderRadius:7,
             background:genView==="history"
               ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
               :"transparent",
+            border:genView==="history"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
             color:genView==="history"?C.indigoLt:C.textDim,
             cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F,
-            border:genView==="history"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
             transition:"all .16s ease",
             display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
           📂 History
@@ -2631,6 +2631,143 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
 // ─────────────────────────────────────────────────────────────────────────────
 // SETTINGS PANEL — real user settings
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// GOOGLE INTEGRATION COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+function GoogleIntegration({ user }){
+  const toast = useToast();
+  const [connected,     setConnected]     = useState(()=>LS.get("spark_google_connected",false));
+  const [googleEmail,   setGoogleEmail]   = useState(()=>LS.get("spark_google_email",""));
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  // Check for Google OAuth callback result in URL
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    if(params.get("google_connected")==="true"){
+      const gEmail = params.get("google_email")||"";
+      setConnected(true);
+      setGoogleEmail(gEmail);
+      LS.set("spark_google_connected", true);
+      LS.set("spark_google_email", gEmail);
+      toast("Google connected ✓ — SPARK Assistant can now see your calendar and emails");
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if(params.get("google_error")){
+      toast(`Google connection failed: ${params.get("google_error")}`, "error");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  function connectGoogle(){
+    if(!user?.email) return;
+    window.location.href = `/api/google-auth?email=${encodeURIComponent(user.email)}`;
+  }
+
+  async function disconnectGoogle(){
+    setDisconnecting(true);
+    try{
+      await fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ email:user.email, action:"disconnect" }),
+      });
+      setConnected(false);
+      setGoogleEmail("");
+      LS.set("spark_google_connected", false);
+      LS.del("spark_google_email");
+      toast("Google disconnected");
+    }catch(e){ toast("Disconnect failed — try again","error"); }
+    setDisconnecting(false);
+  }
+
+  return(
+    <div style={{background:C.surface,border:`1px solid ${C.border}`,
+      borderRadius:13,padding:22,marginBottom:14}}>
+      <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,
+        fontWeight:700,marginBottom:16}}>GOOGLE INTEGRATION</div>
+
+      {/* Connection status */}
+      <div style={{display:"flex",alignItems:"center",
+        justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          {/* Google G icon */}
+          <div style={{width:40,height:40,borderRadius:10,flexShrink:0,
+            background:"rgba(255,255,255,.05)",border:`1px solid ${C.border}`,
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>
+            G
+          </div>
+          <div>
+            <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:2}}>
+              Gmail + Google Calendar
+            </div>
+            {connected&&googleEmail?(
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:5,height:5,borderRadius:"50%",
+                  background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+                <span style={{fontFamily:C.F,fontSize:11,color:C.emerald}}>
+                  Connected · {googleEmail}
+                </span>
+              </div>
+            ):(
+              <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>
+                Connect to give SPARK your calendar and inbox context
+              </div>
+            )}
+          </div>
+        </div>
+
+        {connected?(
+          <button onClick={disconnectGoogle} disabled={disconnecting}
+            style={{background:"transparent",border:`1px solid ${C.border}`,
+              color:C.textDim,borderRadius:8,padding:"8px 16px",cursor:"pointer",
+              fontFamily:C.F,fontWeight:600,fontSize:12,flexShrink:0}}>
+            {disconnecting?"Disconnecting...":"Disconnect"}
+          </button>
+        ):(
+          <button onClick={connectGoogle}
+            style={{background:"linear-gradient(135deg,#4285f4,#34a853)",
+              border:"none",color:"#fff",borderRadius:8,padding:"8px 18px",
+              cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:12,
+              boxShadow:"0 4px 14px rgba(66,133,244,.28)",flexShrink:0}}>
+            Connect Google →
+          </button>
+        )}
+      </div>
+
+      {/* Feature bullets */}
+      {!connected&&(
+        <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:6}}>
+          {[
+            "SPARK Assistant sees your calendar and preps you before every appointment",
+            "Reads your Gmail inbox so SPARK knows what clients are saying",
+            "Auto-generates meeting prep, follow-ups, and responses from real context",
+          ].map((f,i)=>(
+            <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+              <div style={{width:14,height:14,borderRadius:"50%",flexShrink:0,
+                marginTop:2,background:"rgba(99,102,241,.12)",
+                border:"1px solid rgba(99,102,241,.2)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:7,color:C.indigoLt}}>✓</div>
+              <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,lineHeight:1.5}}>{f}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {connected&&(
+        <div style={{marginTop:12,background:"rgba(16,185,129,.06)",
+          border:"1px solid rgba(16,185,129,.15)",borderRadius:8,
+          padding:"10px 13px"}}>
+          <p style={{fontFamily:C.F,fontSize:11,color:C.emerald,margin:0,lineHeight:1.6}}>
+            ✓ SPARK Assistant now has access to your calendar events and recent emails.
+            Open the Assistant tab and ask "What's on my calendar today?" or "Prep me for my next appointment."
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
   const toast = useToast();
   const plan  = PLANS[planKey];
@@ -2803,6 +2940,9 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
           Sign Out
         </button>
       </div>
+
+      {/* Google Integration */}
+      <GoogleIntegration user={user}/>
 
       {/* System status */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,
