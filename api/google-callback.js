@@ -6,29 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 export default async function handler(req, res) {
   const { code, state, error } = req.query;
 
-  const appUrl = "https://usesparkai.app";
-
-  if (error) {
-    console.error("Google OAuth error:", error);
-    return res.redirect(302, `${appUrl}?google_error=${encodeURIComponent(error)}`);
-  }
-
-  if (!code || !state) {
-    return res.redirect(302, `${appUrl}?google_error=missing_params`);
-  }
-
-  // Decode state to get user email
-  let userEmail = "";
-  try {
-    const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
-    userEmail = decoded.email || "";
-  } catch {
-    return res.redirect(302, `${appUrl}?google_error=invalid_state`);
-  }
-
-  const clientId     = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri  = `${appUrl}/api/google-callback`;
+  const appUrl      = "https://usesparkai.app";
+  const redirectUri = "https://usesparkai.app/api/google-callback";
 
   if (!clientId || !clientSecret) {
     return res.redirect(302, `${appUrl}?google_error=not_configured`);
