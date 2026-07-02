@@ -2573,13 +2573,41 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
 
       {/* Trial paywall banner */}
       {trialExhausted&&(
-        <div style={{background:`linear-gradient(135deg,${PLANS[intendedPlan].accent}1a,${C.violet}14)`,border:`1px solid ${PLANS[intendedPlan].accent}40`,borderRadius:13,padding:22,marginBottom:22,textAlign:"center"}}>
-          <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,marginBottom:6}}>Your free credits are used up</div>
-          <p style={{fontSize:13,color:C.textMd,marginBottom:16,fontFamily:C.F,lineHeight:1.6}}>Subscribe to <strong style={{color:PLANS[intendedPlan].accent}}>{PLANS[intendedPlan].name}</strong> (${PLANS[intendedPlan].price}/mo) to keep generating content — {PLANS[intendedPlan].credits} credits every month.</p>
-          <button className="btn-g" onClick={()=>{ track("upgrade_clicked", { plan:intendedPlan, source:"trial_paywall", credits_at_click:0, current_plan:"trial" }); goStripe(PLANS[intendedPlan].stripeLink, userEmail||""); }}
-            style={{background:`linear-gradient(135deg,${PLANS[intendedPlan].accent},${C.violet})`,border:"none",color:"#fff",padding:"12px 28px",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
-            Subscribe to {PLANS[intendedPlan].name} ⚡
-          </button>
+        <div style={{background:`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`,
+          border:`1px solid ${C.indigo}30`,borderRadius:14,padding:"24px 22px",
+          marginBottom:22,textAlign:"center",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",
+            width:200,height:200,borderRadius:"50%",pointerEvents:"none",
+            background:"radial-gradient(circle,rgba(99,102,241,.12),transparent 70%)"}}/>
+          <div style={{position:"relative"}}>
+            <div style={{fontSize:32,marginBottom:10}}>⚡</div>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,marginBottom:8,
+              letterSpacing:"-0.01em"}}>
+              Your 3 free credits are used up.
+            </div>
+            <p style={{fontSize:13,color:C.textMd,marginBottom:18,fontFamily:C.F,
+              lineHeight:1.7,maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>
+              Upgrade to <strong style={{color:C.indigoLt}}>Pro</strong> for 60 credits every month, 1080p listing videos, agent voice memory, and the complete SPARK platform.
+            </p>
+            <div style={{display:"flex",gap:8,justifyContent:"center",
+              flexWrap:"wrap",marginBottom:14}}>
+              {["60 credits/month","1080p video","Voice memory","All tools"].map((f,i)=>(
+                <span key={i} style={{fontSize:10,color:C.indigoLt,fontFamily:C.F,
+                  fontWeight:700,background:`${C.indigo}12`,border:`1px solid ${C.indigo}24`,
+                  borderRadius:10,padding:"3px 10px"}}>✓ {f}</span>
+              ))}
+            </div>
+            <button className="btn-g" onClick={()=>{ track("upgrade_clicked",{ plan:intendedPlan, source:"trial_paywall", credits_at_click:0, current_plan:"trial" }); goStripe(PLANS[intendedPlan].stripeLink, userEmail||""); }}
+              style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",
+                color:"#fff",padding:"13px 32px",borderRadius:10,cursor:"pointer",
+                fontWeight:800,fontSize:14,fontFamily:C.F,
+                boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 6px 22px rgba(99,102,241,.3)"}}>
+              Upgrade to Pro — $49/month ⚡
+            </button>
+            <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"10px 0 0"}}>
+              Cancel anytime · No contracts · Instant access
+            </p>
+          </div>
         </div>
       )}
 
@@ -3727,6 +3755,171 @@ function NotificationBar({ credits, planKey, onNavigate }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// UPGRADE MODAL — fires when agent hits credit limit
+// Shows what they've accomplished + what they unlock
+// ─────────────────────────────────────────────────────────────────────────────
+function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
+  const isTrial   = planKey === "trial";
+  const targetPlan = isTrial ? "pro" : "pro";
+  const plan       = PLANS[targetPlan];
+  const usedCount  = usage?.total || 0;
+  const topTool    = usage?.toolCounts
+    ? Object.entries(usage.toolCounts).sort((a,b)=>b[1]-a[1])[0]
+    : null;
+
+  const UNLOCKS = [
+    { icon:"⚡", text:`${plan.credits} credits every month — never run out` },
+    { icon:"🎬", text:`${plan.videoQuality} cinematic listing videos` },
+    { icon:"📸", text:`Up to ${plan.maxPhotos} photos per listing` },
+    { icon:"🧠", text:"Agent voice memory — every script sounds like you" },
+    { icon:"📊", text:"Neighborhood reports + business dashboard" },
+    { icon:"💬", text:"SPARK Assistant with full business context" },
+  ];
+
+  return(
+    <div style={{position:"fixed",inset:0,
+      background:"rgba(4,4,10,.94)",
+      display:"flex",alignItems:"center",justifyContent:"center",
+      zIndex:1000,backdropFilter:"blur(20px)",
+      WebkitBackdropFilter:"blur(20px)",
+      animation:"fadeIn .22s ease"}}
+      onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
+
+      <div style={{
+        background:`linear-gradient(160deg,${C.surface},${C.surfaceUp})`,
+        border:`1px solid ${C.borderMd}`,
+        borderRadius:22,padding:"36px 28px",
+        maxWidth:460,width:"92%",
+        boxShadow:"0 48px 96px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",
+        animation:"scaleIn .28s cubic-bezier(.34,1.56,.64,1)",
+        position:"relative",overflow:"hidden",maxHeight:"92vh",overflowY:"auto"}}>
+
+        {/* Ambient glow */}
+        <div style={{position:"absolute",top:"-20%",right:"-10%",width:280,height:280,
+          borderRadius:"50%",pointerEvents:"none",
+          background:`radial-gradient(circle,${C.indigo}18,transparent 70%)`}}/>
+        <div style={{position:"absolute",bottom:"-10%",left:"-5%",width:200,height:200,
+          borderRadius:"50%",pointerEvents:"none",
+          background:`radial-gradient(circle,${C.violet}12,transparent 70%)`}}/>
+
+        {/* Close */}
+        <button onClick={onClose}
+          style={{position:"absolute",top:16,right:16,background:"transparent",
+            border:`1px solid ${C.border}`,color:C.textDim,borderRadius:8,
+            width:32,height:32,cursor:"pointer",fontSize:14,
+            display:"flex",alignItems:"center",justifyContent:"center"}}>
+          ✕
+        </button>
+
+        {/* Header — what they've done */}
+        <div style={{textAlign:"center",marginBottom:24,position:"relative"}}>
+          <div style={{fontSize:42,marginBottom:10}}>⚡</div>
+          {usedCount > 0 ? (
+            <>
+              <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:22,
+                margin:"0 0 8px",letterSpacing:"-0.02em"}}>
+                You've generated {usedCount} piece{usedCount!==1?"s":""} of content.
+              </h2>
+              <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
+                margin:0,lineHeight:1.7}}>
+                {topTool
+                  ? `Your most-used tool is ${topTool[0].replace(/_/g," ")}. `
+                  : ""}
+                {isTrial
+                  ? "Your 3 free credits are used up. Upgrade to Pro and keep going — 60 credits every month."
+                  : `You're out of credits for this cycle. Add more or upgrade for ${plan.credits} credits/month.`}
+              </p>
+            </>
+          ):(
+            <>
+              <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:22,
+                margin:"0 0 8px",letterSpacing:"-0.02em"}}>
+                {isTrial ? "Your free trial is complete." : "You're out of credits."}
+              </h2>
+              <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
+                margin:0,lineHeight:1.7}}>
+                {isTrial
+                  ? "Upgrade to Pro and unlock 60 credits every month plus everything SPARK has to offer."
+                  : `Upgrade to ${plan.name} for ${plan.credits} credits/month and never run out again.`}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* What they unlock */}
+        <div style={{background:`${C.indigo}08`,border:`1px solid ${C.indigo}20`,
+          borderRadius:14,padding:"16px 18px",marginBottom:20}}>
+          <div style={{fontSize:9,color:C.indigoLt,letterSpacing:2.5,fontFamily:C.F,
+            fontWeight:700,marginBottom:12}}>WHAT YOU UNLOCK ON PRO</div>
+          <div style={{display:"flex",flexDirection:"column",gap:9}}>
+            {UNLOCKS.map((u,i)=>(
+              <div key={i} style={{display:"flex",gap:10,alignItems:"center",
+                animation:`slideR .25s ease ${i*.05}s both`}}>
+                <span style={{fontSize:14,flexShrink:0}}>{u.icon}</span>
+                <span style={{fontFamily:C.F,fontSize:12,color:C.textMd,lineHeight:1.4}}>
+                  {u.text}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pricing */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",
+          gap:8,marginBottom:20}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:36,
+              color:C.text,letterSpacing:"-0.03em"}}>
+              ${plan.price}
+            </div>
+            <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>/month</div>
+          </div>
+          <div style={{width:1,height:40,background:C.border}}/>
+          <div style={{fontFamily:C.F,fontSize:12,color:C.textMd,maxWidth:160,lineHeight:1.5}}>
+            Cancel anytime. No contracts. No hidden fees.
+          </div>
+        </div>
+
+        {/* CTA */}
+        <button onClick={onUpgrade}
+          style={{width:"100%",
+            background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
+            border:"none",color:"#fff",padding:"15px 0",borderRadius:12,
+            cursor:"pointer",fontWeight:800,fontSize:15,fontFamily:C.F,
+            letterSpacing:.3,marginBottom:10,
+            boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 8px 28px rgba(99,102,241,.35)",
+            transition:"all .2s ease"}}>
+          Upgrade to Pro — ${plan.price}/month ⚡
+        </button>
+
+        {/* Credit packs as alternative */}
+        <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,
+          textAlign:"center",margin:"0 0 12px"}}>
+          Not ready to subscribe?
+        </p>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+          {CREDIT_PACKS.slice(0,2).map((pack,i)=>(
+            <button key={i} onClick={()=>{ track("credit_pack_clicked",{pack:pack.label,source:"upgrade_modal"}); goStripe(pack.stripeLink,""); }}
+              style={{background:C.surface,border:`1px solid ${C.border}`,
+                borderRadius:10,padding:"10px 12px",cursor:"pointer",
+                textAlign:"center",transition:"all .16s"}}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(99,102,241,.3)"}
+              onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,color:C.text}}>
+                {pack.credits} credits
+              </div>
+              <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:2}}>
+                ${pack.price} one-time
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MainApp({user,onLogout}){
   const [tab,setTab]        =useState("generate");
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
@@ -3799,7 +3992,11 @@ function MainApp({user,onLogout}){
     resetAnalytics();
     onLogout();
   }
-  function handleGoUpgrade(){ setTab("settings"); toast("Manage your plan below","info"); }
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  function handleGoUpgrade(){
+    setShowUpgradeModal(true);
+    track("upgrade_modal_shown", { plan:planKey, credits, source:"credit_limit" });
+  }
   function handleGoSettings(){ setTab("settings"); }
 
   const NAV=[
@@ -4075,6 +4272,21 @@ function MainApp({user,onLogout}){
       <OrbBg/>
       <ToastContainer/>
       {showOnboard&&<OnboardingModal planKey={planKey} onClose={handleOnboardClose}/>}
+      {showUpgradeModal&&(
+        <UpgradeModal
+          planKey={planKey}
+          credits={credits}
+          usage={LS.get("sp_usage_stats",{})}
+          onClose={()=>setShowUpgradeModal(false)}
+          onUpgrade={()=>{
+            const intendedPlan = LS.get("sp_intended_plan","pro");
+            const p = PLANS[intendedPlan]||PLANS.pro;
+            track("upgrade_clicked",{ plan:intendedPlan, source:"upgrade_modal", credits_at_click:credits, current_plan:planKey });
+            goStripe(p.stripeLink, user?.email||"");
+            setShowUpgradeModal(false);
+          }}
+        />
+      )}
 
       {isMobile?(
         // ── MOBILE LAYOUT ──
