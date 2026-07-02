@@ -8,6 +8,26 @@ export default async function handler(req, res) {
 
   const appUrl      = "https://usesparkai.app";
   const redirectUri = "https://usesparkai.app/api/google-callback";
+  const clientId     = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (error) {
+    console.error("Google OAuth error:", error);
+    return res.redirect(302, `${appUrl}?google_error=${encodeURIComponent(error)}`);
+  }
+
+  if (!code || !state) {
+    return res.redirect(302, `${appUrl}?google_error=missing_params`);
+  }
+
+  // Decode state to get SPARK user email
+  let userEmail = "";
+  try {
+    const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
+    userEmail = decoded.email || "";
+  } catch {
+    return res.redirect(302, `${appUrl}?google_error=invalid_state`);
+  }
 
   if (!clientId || !clientSecret) {
     return res.redirect(302, `${appUrl}?google_error=not_configured`);
@@ -37,7 +57,7 @@ export default async function handler(req, res) {
     const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
-    const userInfo = await userInfoRes.json();
+    const userInfo    = await userInfoRes.json();
     const googleEmail = userInfo.email || "";
 
     // Store tokens in Supabase
@@ -53,7 +73,6 @@ export default async function handler(req, res) {
       scope:         tokens.scope || "",
     };
 
-    // Update by SPARK user email
     const { error: dbError } = await sb
       .from("users")
       .update({
@@ -68,7 +87,6 @@ export default async function handler(req, res) {
       return res.redirect(302, `${appUrl}?google_error=db_update_failed`);
     }
 
-    // Redirect back to app with success signal
     res.redirect(302, `${appUrl}?google_connected=true&google_email=${encodeURIComponent(googleEmail)}`);
 
   } catch (err) {
