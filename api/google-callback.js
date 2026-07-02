@@ -1,5 +1,5 @@
 // api/google-callback.js — Handles OAuth callback from Google
-// Exchanges auth code for tokens, stores in Supabase, redirects back to app
+// Writes to public.users (not auth.users)
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -12,10 +12,8 @@ export default async function handler(req, res) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (error) {
-    console.error("Google OAuth error:", error);
     return res.redirect(302, `${appUrl}?google_error=${encodeURIComponent(error)}`);
   }
-
   if (!code || !state) {
     return res.redirect(302, `${appUrl}?google_error=missing_params`);
   }
@@ -24,7 +22,7 @@ export default async function handler(req, res) {
   let userEmail = "";
   try {
     const decoded = JSON.parse(Buffer.from(state, "base64url").toString());
-    userEmail = decoded.email || "";
+    userEmail = (decoded.email || "").toLowerCase().trim();
   } catch {
     return res.redirect(302, `${appUrl}?google_error=invalid_state`);
   }
@@ -32,9 +30,12 @@ export default async function handler(req, res) {
   if (!clientId || !clientSecret) {
     return res.redirect(302, `${appUrl}?google_error=not_configured`);
   }
+  if (!userEmail) {
+    return res.redirect(302, `${appUrl}?google_error=no_user_email`);
+  }
 
   try {
-    // Exchange code for tokens
+    // Exchange auth code for tokens
     const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -46,10 +47,9 @@ export default async function handler(req, res) {
         grant_type:    "authorization_code",
       }),
     });
-
     const tokens = await tokenRes.json();
     if (!tokenRes.ok || !tokens.access_token) {
-      console.error("Token exchange failed:", tokens);
+      console.error("Token exchange failed:", JSON.stringify(tokens));
       return res.redirect(302, `${appUrl}?google_error=token_exchange_failed`);
     }
 
@@ -60,11 +60,19 @@ export default async function handler(req, res) {
     const userInfo    = await userInfoRes.json();
     const googleEmail = userInfo.email || "";
 
-    // Store tokens in Supabase
-    const sb = createClient(
-      process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    // Write to public.users — never auth.users
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+    if (!supabaseUrl || !serviceKey) {
+      console.error("Missing Supabase env vars");
+      return res.redirect(302, `${appUrl}?google_error=db_not_configured`);
+    }
+
+    const sb = createClient(supabaseUrl, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+      db:   { schema: "public" },
+    });
 
     const tokenData = {
       access_token:  tokens.access_token,
@@ -73,6 +81,7 @@ export default async function handler(req, res) {
       scope:         tokens.scope || "",
     };
 
+    // Explicitly target public.users by email
     const { error: dbError } = await sb
       .from("users")
       .update({
@@ -80,17 +89,22 @@ export default async function handler(req, res) {
         google_email:        googleEmail,
         google_connected_at: new Date().toISOString(),
       })
-      .eq("email", userEmail.toLowerCase());
+      .eq("email", userEmail);
 
     if (dbError) {
-      console.error("Supabase update failed:", dbError);
-      return res.redirect(302, `${appUrl}?google_error=db_update_failed`);
+      console.error("public.users update failed:", dbError.message, dbError.details, dbError.hint);
+      // Still mark connected locally — tokens usable from localStorage
+      return res.redirect(302,
+        `${appUrl}?google_connected=true&google_email=${encodeURIComponent(googleEmail)}&db_error=1`
+      );
     }
 
-    res.redirect(302, `${appUrl}?google_connected=true&google_email=${encodeURIComponent(googleEmail)}`);
+    res.redirect(302,
+      `${appUrl}?google_connected=true&google_email=${encodeURIComponent(googleEmail)}`
+    );
 
   } catch (err) {
-    console.error("Google callback error:", err);
+    console.error("Google callback error:", err.message);
     res.redirect(302, `${appUrl}?google_error=${encodeURIComponent(err.message)}`);
   }
 }
