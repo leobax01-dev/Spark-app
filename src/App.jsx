@@ -2640,7 +2640,7 @@ function GoogleIntegration({ user }){
   const [googleEmail,   setGoogleEmail]   = useState(()=>LS.get("spark_google_email",""));
   const [disconnecting, setDisconnecting] = useState(false);
 
-  // Check for Google OAuth callback result in URL
+  // Check for Google OAuth callback result in URL — works even if on landing page
   useEffect(()=>{
     const params = new URLSearchParams(window.location.search);
     if(params.get("google_connected")==="true"){
@@ -2649,12 +2649,17 @@ function GoogleIntegration({ user }){
       setGoogleEmail(gEmail);
       LS.set("spark_google_connected", true);
       LS.set("spark_google_email", gEmail);
-      toast("Google connected ✓ — SPARK Assistant can now see your calendar and emails");
-      // Clean URL
+      // Clean URL without reload
       window.history.replaceState({}, "", window.location.pathname);
+      if(params.get("db_error")==="1"){
+        toast("Google connected (stored locally) ✓","success");
+      } else {
+        toast("Google connected ✓ — SPARK Assistant can now see your calendar and emails");
+      }
     }
     if(params.get("google_error")){
-      toast(`Google connection failed: ${params.get("google_error")}`, "error");
+      const errMsg = params.get("google_error");
+      toast(`Google connection failed: ${errMsg}`, "error");
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
@@ -4553,6 +4558,11 @@ function AuthPage({mode,onAuth,onSwitch}){
   const [resetSending,setResetSending]=useState(false);
   const toast=useToast();
 
+  // Detect Google OAuth return
+  const params = new URLSearchParams(window.location.search);
+  const googleJustConnected = params.get("google_connected")==="true";
+  const googleEmail = params.get("google_email")||"";
+
   useEffect(()=>{ setMounted(true); },[]);
 
   // ── Forgot password send ────────────────────────────────────────────────────
@@ -4803,9 +4813,30 @@ function AuthPage({mode,onAuth,onSwitch}){
             <div style={{textAlign:"center",marginBottom:32}}>
               <div style={{display:"flex",justifyContent:"center",marginBottom:16}}><Logo/></div>
               <p style={{color:C.textMd,fontSize:14,margin:0,fontFamily:C.F,fontWeight:400}}>
-                {mode==="login"?"Welcome back":"Start generating viral listing content"}
+                {googleJustConnected?"Google connected — sign in to continue":mode==="login"?"Welcome back":"Start generating viral listing content"}
               </p>
             </div>
+
+            {/* Google connected banner */}
+            {googleJustConnected&&(
+              <div style={{background:"rgba(16,185,129,.08)",border:"1px solid rgba(16,185,129,.2)",
+                borderRadius:10,padding:"12px 16px",marginBottom:16,
+                display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,
+                  boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>
+                <div>
+                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.emerald}}>
+                    Google connected successfully ✓
+                  </div>
+                  {googleEmail&&<div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>
+                    {googleEmail}
+                  </div>}
+                  <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,marginTop:3}}>
+                    Sign in to activate calendar and email context in SPARK Assistant.
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"28px 24px",boxShadow:"0 40px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04)"}}>
 
@@ -4891,23 +4922,23 @@ function AuthPage({mode,onAuth,onSwitch}){
 // ─────────────────────────────────────────────────────────────────────────────
 export default function App(){
   useStyles();
-  const [screen,setScreen]   =useState("landing");
-  const [authMode,setAuthMode]=useState("signup");
+  const [screen,setScreen]   =useState(()=>{
+    const params = new URLSearchParams(window.location.search);
+    if(params.get("google_connected")||params.get("google_error")||params.get("screen")==="login") return "auth";
+    return "landing";
+  });
+  const [authMode,setAuthMode]=useState("login");
   const [user,setUser]       =useState(null);
 
   // Initialise PostHog analytics once on mount
-  useEffect(()=>{
-    initAnalytics();
-  },[]);
+  useEffect(()=>{ initAnalytics(); },[]);
 
-  // Initialise Supabase once — stored on window so AuthPage can access it
-  // without prop-drilling. Requires VITE_SUPABASE_URL and VITE_SUPABASE_KEY
-  // to be set as Vercel environment variables.
+  // Initialise Supabase once
   useEffect(()=>{
-    if(window.__supabase) return; // already initialised
+    if(window.__supabase) return;
     const url = import.meta.env.VITE_SUPABASE_URL;
     const key = import.meta.env.VITE_SUPABASE_KEY;
-    if(!url||!key) return; // env vars not set yet — auth falls back gracefully
+    if(!url||!key) return;
     import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm").then(({createClient})=>{
       window.__supabase = createClient(url, key);
     }).catch(()=>{});
