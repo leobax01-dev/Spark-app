@@ -102,7 +102,7 @@ export default async function handler(req, res) {
     }
 
     res.redirect(302,
-      `${appUrl}?google_connected=true&google_email=${encodeURIComponent(googleEmail)}`
+      `${appUrl}?google_connected=true&google_email=${encodeURIComponent(googleEmail)}&screen=login`
     );
 
   } catch (err) {
