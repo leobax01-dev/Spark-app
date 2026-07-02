@@ -1,5 +1,5 @@
-// api/create-user.js — server-side user row creation, bypasses RLS via service role
-// Called immediately after sb.auth.signUp() succeeds
+// api/create-user.js — server-side user row creation in public.users
+// Fetches the auth.users id first, then inserts with correct FK
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -8,8 +8,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+  const supabaseUrl     = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
   if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Supabase env vars not configured' });
   }
@@ -19,11 +20,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'email, plan, and numeric credits required' });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const normalizedEmail = email.toLowerCase();
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    db:   { schema: 'public' },
+  });
+
+  const normalizedEmail = email.toLowerCase().trim();
 
   try {
-    // Check if row already exists (e.g. retry, or self-heal for pre-fix accounts)
+    // Check if public.users row already exists
     const { data: existing } = await supabase
       .from('users')
       .select('plan,credits,intended_plan')
@@ -31,8 +36,6 @@ export default async function handler(req, res) {
       .single();
 
     if (existing) {
-      // Row already exists — return current values, don't overwrite
-      console.log(`User row already exists: ${normalizedEmail}`);
       return res.status(200).json({
         plan: existing.plan,
         credits: existing.credits,
@@ -41,18 +44,51 @@ export default async function handler(req, res) {
       });
     }
 
-    const { error: insertError } = await supabase
-      .from('users')
-      .insert({
-        email: normalizedEmail,
+    // Get the auth.users id for this email — required for FK
+    const sbAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const { data: authUsers, error: authError } = await sbAdmin.auth.admin.listUsers();
+    const authUser = authUsers?.users?.find(u => u.email?.toLowerCase() === normalizedEmail);
+
+    if (!authUser) {
+      // Auth user doesn't exist yet — retry after short delay (race condition)
+      await new Promise(r => setTimeout(r, 1500));
+      const { data: retryAuth } = await sbAdmin.auth.admin.listUsers();
+      const retryUser = retryAuth?.users?.find(u => u.email?.toLowerCase() === normalizedEmail);
+      if (!retryUser) {
+        console.error('Auth user not found for:', normalizedEmail);
+        return res.status(404).json({ error: 'Auth user not found' });
+      }
+      // Insert with correct auth id
+      const { error: insertErr } = await supabase.from('users').insert({
+        id:            retryUser.id,
+        email:         normalizedEmail,
         plan,
         credits,
         intended_plan: intendedPlan || 'pro',
       });
+      if (insertErr) {
+        console.error('User insert error (retry):', insertErr.message);
+        return res.status(500).json({ error: insertErr.message });
+      }
+      return res.status(200).json({ plan, credits, intendedPlan: intendedPlan || 'pro', existed: false });
+    }
+
+    // Insert with correct auth id
+    const { error: insertError } = await supabase.from('users').insert({
+      id:            authUser.id,
+      email:         normalizedEmail,
+      plan,
+      credits,
+      intended_plan: intendedPlan || 'pro',
+    });
 
     if (insertError) {
-      // Handle race condition: row created between check and insert
-      if (insertError.message?.toLowerCase().includes('duplicate')) {
+      // Handle race condition duplicate
+      if (insertError.message?.toLowerCase().includes('duplicate') ||
+          insertError.code === '23505') {
         const { data: retryData } = await supabase
           .from('users')
           .select('plan,credits,intended_plan')
@@ -67,11 +103,11 @@ export default async function handler(req, res) {
           });
         }
       }
-      console.error('User insert error:', insertError.message);
-      return res.status(500).json({ error: 'Failed to create user record' });
+      console.error('User insert error:', insertError.message, insertError.details);
+      return res.status(500).json({ error: insertError.message });
     }
 
-    console.log(`User created: ${normalizedEmail} -> ${plan} (${credits} credits, intended: ${intendedPlan || 'pro'})`);
+    console.log(`User created: ${normalizedEmail} -> ${plan} (${credits} credits)`);
     return res.status(200).json({ plan, credits, intendedPlan: intendedPlan || 'pro', existed: false });
 
   } catch (error) {
