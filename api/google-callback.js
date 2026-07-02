@@ -61,11 +61,13 @@ export default async function handler(req, res) {
     const googleEmail = userInfo.email || "";
 
     // Write to public.users — never auth.users
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
-    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    const supabaseUrl = process.env.SUPABASE_URL
+      || process.env.VITE_SUPABASE_URL
+      || "";
+    const serviceKey  = process.env.SUPABASE_SERVICE_KEY || "";
 
     if (!supabaseUrl || !serviceKey) {
-      console.error("Missing Supabase env vars");
+      console.error("Missing Supabase env vars. Available:", Object.keys(process.env).filter(k=>k.includes("SUPA")||k.includes("supabase")).join(", "));
       return res.redirect(302, `${appUrl}?google_error=db_not_configured`);
     }
 
