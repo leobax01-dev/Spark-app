@@ -5,9 +5,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
   const clientId    = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = `${process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "https://usesparkai.app"}/api/google-callback`;
+  const redirectUri = "https://usesparkai.app/api/google-callback";
 
   if (!clientId) return res.status(500).json({ error: "Google client ID not configured" });
 
