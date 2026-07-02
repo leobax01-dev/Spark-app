@@ -27,22 +27,22 @@ const MODES = {
   write: {
     label:"Write",icon:"✍️",color:C.indigo,
     description:"Scripts, emails & copy",
-    instruction:"You are in WRITE mode. Focus on producing polished, ready-to-use written content — scripts, emails, texts, social captions, listing descriptions. Output should be copy-paste ready with minimal editing. Format clearly. Be creative but professional.",
+    instruction:"You are in WRITE mode. Produce polished, ready-to-use written content — scripts, emails, texts, social captions, LinkedIn posts, listing descriptions. Write in natural prose. NEVER use JSON or code blocks. Output should read like something a human wrote, formatted cleanly with line breaks.",
   },
   strategize: {
     label:"Strategize",icon:"🧠",color:C.violet,
     description:"Think through problems",
-    instruction:"You are in STRATEGIZE mode. Think through the agent's situation deeply before responding. Weigh options, anticipate objections, identify risks. Give structured analysis with clear recommendations. Ask clarifying questions when needed.",
+    instruction:"You are in STRATEGIZE mode. Think through the agent's situation deeply and respond in conversational prose. Weigh options, anticipate objections, identify risks. Give structured analysis with clear recommendations. NEVER use JSON or code blocks. Write like a trusted advisor thinking out loud.",
   },
   coach: {
     label:"Coach",icon:"🎯",color:C.amber,
     description:"Direct business advice",
-    instruction:"You are in COACH mode. Be direct, honest, and specific — like a high-performance real estate coach. Don't soften feedback. Call out what's not working. Give the exact action to take. Reference their specific pipeline and client data when relevant.",
+    instruction:"You are in COACH mode. Be direct, honest, and specific — like a high-performance real estate coach. Don't soften feedback. Give the exact action to take. NEVER use JSON or code blocks. Write in direct conversational sentences, like a coach speaking plainly.",
   },
   roleplay: {
     label:"Practice",icon:"🎭",color:C.cyan,
     description:"Role-play client scenarios",
-    instruction:"You are in PRACTICE mode. Role-play as a real estate client — buyer, seller, or prospect — so the agent can practice their scripts and objection handling. Stay in character. Push back realistically. After each exchange, briefly break character to give coaching feedback.",
+    instruction:"You are in PRACTICE mode. Role-play as a real estate client so the agent can practice scripts and objection handling. Stay in character. NEVER use JSON or code blocks. Write dialogue naturally. After each exchange, briefly break character to give one line of coaching feedback.",
   },
 };
 
@@ -425,6 +425,48 @@ function NotesPanel({ onClose }){
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN ASSISTANT
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// RESPONSE SANITIZER — strips JSON/code blocks, extracts readable content
+// ─────────────────────────────────────────────────────────────────────────────
+function sanitizeResponse(text){
+  if(!text) return text;
+
+  // If entire response is a JSON code block, extract the content field
+  const jsonBlockMatch = text.match(/^```(?:json)?\s*\n([\s\S]*?)\n```\s*$/);
+  if(jsonBlockMatch){
+    try{
+      const parsed = JSON.parse(jsonBlockMatch[1]);
+      // Try to extract the most readable field
+      return parsed.content || parsed.text || parsed.message ||
+        parsed.body || parsed.response || parsed.post ||
+        Object.values(parsed).find(v=>typeof v==="string"&&v.length>50) ||
+        JSON.stringify(parsed, null, 2);
+    }catch{
+      // Not valid JSON — just strip the code fence
+      return jsonBlockMatch[1].trim();
+    }
+  }
+
+  // Strip any inline code fences
+  let clean = text.replace(/```(?:json|javascript|js|text)?\n?/g,"").replace(/```/g,"");
+
+  // If it starts with { or [ and looks like JSON, try to extract content
+  const trimmed = clean.trim();
+  if((trimmed.startsWith("{") || trimmed.startsWith("["))){
+    try{
+      const parsed = JSON.parse(trimmed);
+      if(typeof parsed === "object"){
+        const readable = parsed.content || parsed.text || parsed.message ||
+          parsed.body || parsed.response || parsed.post ||
+          Object.values(parsed).find(v=>typeof v==="string"&&v.length>50);
+        if(readable) return readable;
+      }
+    }catch{ /* not JSON, return as-is */ }
+  }
+
+  return clean.trim();
+}
+
 export default function SparkAssistant({ user, voice, planKey }){
   const [messages,      setMessages]     = useState(()=>lsGet(LS_KEY,[]));
   const [input,         setInput]        = useState("");
@@ -508,15 +550,18 @@ ${googleCtx}
 ${modeInst}
 
 CORE RULES:
+- NEVER respond with JSON, code blocks, or markdown code fences (no \`\`\`json or \`\`\` of any kind)
+- NEVER output structured data formats — always respond in natural, conversational prose
+- Write like a knowledgeable business partner having a real conversation, not a software tool
 - Reference specific clients, deal names, and numbers from the context above when relevant
 - When the agent has calendar events, proactively mention upcoming appointments and offer prep
 - When the agent asks about emails, reference their actual inbox threads
-- Offer to write prep materials for any upcoming calendar appointments automatically
 - Use the agent's name and brokerage in scripts when their profile is set
 - Write all communications in the agent's preferred tone
 - Be direct and specific — no generic advice, always connect to their actual situation
-- Format responses with **bold** for key points and line breaks for readability
-- Scripts and messages should be word-for-word ready with minimal editing needed`;
+- Use **bold** sparingly for key points and line breaks for readability
+- Scripts and messages should be word-for-word ready with minimal editing needed
+- Sound warm, sharp, and human — like the best business partner they've ever had`;
   }
 
   async function sendMessage(content, isRegenerate=false){
@@ -553,7 +598,8 @@ CORE RULES:
       });
 
       const d = await r.json();
-      const text = d.content?.[0]?.text || "I couldn't generate a response — please try again.";
+      const raw  = d.content?.[0]?.text || "I couldn't generate a response — please try again.";
+      const text = sanitizeResponse(raw);
 
       // Simulate streaming by revealing text progressively
       setLoading(false);
