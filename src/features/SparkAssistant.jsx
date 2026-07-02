@@ -277,7 +277,7 @@ function Message({ msg, onRegenerate, onSaveNote, isLast }){
       onMouseLeave={()=>setShowActions(false)}>
 
       {/* Avatar */}
-      <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
+      <div style={{width:28,height:28,borderRadius:"50%",
         background:isUser
           ?`linear-gradient(135deg,${C.indigo},${C.violet})`
           :`linear-gradient(135deg,${C.emerald},${C.cyan})`,
@@ -426,14 +426,16 @@ function NotesPanel({ onClose }){
 // MAIN ASSISTANT
 // ─────────────────────────────────────────────────────────────────────────────
 export default function SparkAssistant({ user, voice, planKey }){
-  const [messages,    setMessages]   = useState(()=>lsGet(LS_KEY,[]));
-  const [input,       setInput]      = useState("");
-  const [loading,     setLoading]    = useState(false);
-  const [streaming,   setStreaming]  = useState(false);
-  const [mode,        setMode]       = useState(()=>lsGet(LS_MODE_KEY,"write"));
-  const [showNotes,   setShowNotes]  = useState(false);
-  const [showQuick,   setShowQuick]  = useState(true);
-  const [briefing,    setBriefing]   = useState(null);
+  const [messages,      setMessages]     = useState(()=>lsGet(LS_KEY,[]));
+  const [input,         setInput]        = useState("");
+  const [loading,       setLoading]      = useState(false);
+  const [streaming,     setStreaming]    = useState(false);
+  const [mode,          setMode]         = useState(()=>lsGet(LS_MODE_KEY,"write"));
+  const [showNotes,     setShowNotes]    = useState(false);
+  const [showQuick,     setShowQuick]    = useState(true);
+  const [briefing,      setBriefing]     = useState(null);
+  const [googleData,    setGoogleData]   = useState(null);
+  const [googleLoading, setGoogleLoading]= useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const abortRef       = useRef(null);
@@ -442,29 +444,78 @@ export default function SparkAssistant({ user, voice, planKey }){
   useEffect(()=>{ lsSet(LS_MODE_KEY, mode); }, [mode]);
   useEffect(()=>{ messagesEndRef.current?.scrollIntoView({behavior:"smooth"}); }, [messages, loading]);
 
-  // Generate opening briefing on mount if no history
+  // Fetch Google data on mount if connected
   useEffect(()=>{
-    if(messages.length===0){
-      setBriefing(buildOpeningBriefing(voice));
-    }
+    if(!user?.email) return;
+    if(lsGet("spark_google_connected", false)) fetchGoogleData();
+  }, [user?.email]);
+
+  // Opening briefing on mount
+  useEffect(()=>{
+    if(messages.length===0) setBriefing(buildOpeningBriefing(voice));
   },[]);
 
+  async function fetchGoogleData(){
+    setGoogleLoading(true);
+    try{
+      const r = await fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ email:user.email, action:"fetch" }),
+      });
+      const d = await r.json();
+      if(d.connected){ setGoogleData(d); lsSet("spark_google_connected",true); }
+      else if(d.disconnected){ lsSet("spark_google_connected",false); setGoogleData(null); }
+    }catch(e){ console.warn("Google fetch failed:",e); }
+    setGoogleLoading(false);
+  }
+
+  function buildGoogleContext(){
+    if(!googleData) return "";
+    const lines = ["\nGOOGLE INTEGRATION (live data):"];
+    lines.push(`Connected Gmail: ${googleData.googleEmail}`);
+
+    // Calendar events
+    if(googleData.events?.length > 0){
+      lines.push(`\nUPCOMING CALENDAR (next 7 days, ${googleData.events.length} events):`);
+      googleData.events.forEach(e=>{
+        const urgency = e.isToday?" 🔴 TODAY":e.isTomorrow?" 🟡 TOMORROW":"";
+        lines.push(`- ${e.title}${urgency} · ${e.start}${e.location?` · ${e.location}`:""}${e.attendees?.length?` · with: ${e.attendees.slice(0,3).join(", ")}`:""}${e.description?` · notes: ${e.description.slice(0,80)}`:""}`);
+      });
+    } else {
+      lines.push("\nCALENDAR: No upcoming events in next 7 days");
+    }
+
+    // Recent emails
+    if(googleData.emails?.length > 0){
+      lines.push(`\nRECENT INBOX (${googleData.emails.length} threads):`);
+      googleData.emails.slice(0,8).forEach(e=>{
+        lines.push(`- From: ${e.from.split("<")[0].trim()} · Subject: ${e.subject} · Preview: ${e.snippet.slice(0,100)}`);
+      });
+    }
+
+    return lines.join("\n");
+  }
+
   function buildSystem(){
-    const ctx     = buildAgentContext(voice, planKey);
-    const modeInst = MODES[mode]?.instruction || "";
-    return `You are SPARK, an elite AI business partner built exclusively for real estate agents. You are deeply integrated into this agent's business — you have full context about their clients, pipeline, deals, goals, and communication style.
+    const ctx        = buildAgentContext(voice, planKey);
+    const googleCtx  = buildGoogleContext();
+    const modeInst   = MODES[mode]?.instruction || "";
+    return `You are SPARK, an elite AI business partner built exclusively for real estate agents. You are deeply integrated into this agent's business — you have full context about their clients, pipeline, deals, goals, communication style, calendar, and email inbox.
 
 ${ctx}
+${googleCtx}
 
 ${modeInst}
 
 CORE RULES:
 - Reference specific clients, deal names, and numbers from the context above when relevant
+- When the agent has calendar events, proactively mention upcoming appointments and offer prep
+- When the agent asks about emails, reference their actual inbox threads
+- Offer to write prep materials for any upcoming calendar appointments automatically
 - Use the agent's name and brokerage in scripts when their profile is set
 - Write all communications in the agent's preferred tone
-- Be direct and specific — no generic advice, always connect to their actual situation  
+- Be direct and specific — no generic advice, always connect to their actual situation
 - Format responses with **bold** for key points and line breaks for readability
-- If you notice overdue follow-ups or urgent deals, mention them proactively
 - Scripts and messages should be word-for-word ready with minimal editing needed`;
   }
 
@@ -564,6 +615,23 @@ CORE RULES:
   const currentMode  = MODES[mode];
   const smartPrompts = getSmartPrompts(voice, mode);
   const savedNotes   = lsGet(LS_NOTES_KEY,[]).length;
+  const isGoogleConnected = !!googleData?.connected;
+
+  // Inject upcoming-appointment quick prompts if Google connected
+  const calendarPrompts = isGoogleConnected && googleData.events?.length > 0
+    ? googleData.events
+        .filter(e=>e.isToday||e.isTomorrow||e.daysUntil<=3)
+        .slice(0,2)
+        .map(e=>({
+          label:`Prep: ${e.title}`,
+          icon:"📅",
+          color:e.isToday?C.rose:C.amber,
+          urgent:e.isToday,
+          prompt:`I have "${e.title}" ${e.isToday?"today":e.isTomorrow?"tomorrow":`in ${e.daysUntil} days`} at ${e.start}${e.location?` at ${e.location}`:""}${e.attendees?.length?` with ${e.attendees.join(", ")}`:""}. Give me a complete prep package — key talking points, questions to ask, potential objections, and how to open the meeting.`,
+        }))
+    : [];
+
+  const allPrompts = [...calendarPrompts, ...smartPrompts].slice(0,8);
 
   return(
     <div style={{display:"flex",flexDirection:"column",
@@ -601,6 +669,20 @@ CORE RULES:
             </div>
           </div>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            {/* Google status */}
+            {isGoogleConnected&&(
+              <div style={{display:"flex",alignItems:"center",gap:5,
+                background:"rgba(16,185,129,.08)",border:"1px solid rgba(16,185,129,.2)",
+                borderRadius:7,padding:"4px 9px",cursor:"pointer"}}
+                onClick={fetchGoogleData}
+                title="Google connected — click to refresh">
+                <div style={{width:5,height:5,borderRadius:"50%",
+                  background:C.emerald,boxShadow:`0 0 4px ${C.emerald}`}}/>
+                <span style={{fontSize:9,color:C.emerald,fontFamily:C.F,fontWeight:700}}>
+                  {googleLoading?"syncing...":"Google"}
+                </span>
+              </div>
+            )}
             {savedNotes>0&&(
               <button onClick={()=>setShowNotes(true)}
                 style={{background:`${C.violet}10`,border:`1px solid ${C.violet}28`,
@@ -664,10 +746,10 @@ CORE RULES:
           <div>
             <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,
               fontWeight:700,marginBottom:10,textAlign:"center"}}>
-              {smartPrompts.some(p=>p.urgent)?"⚠️ NEEDS ATTENTION · QUICK STARTS":"QUICK STARTS"}
+              {allPrompts.some(p=>p.urgent)?"⚠️ NEEDS ATTENTION · QUICK STARTS":"QUICK STARTS"}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              {smartPrompts.map((p,i)=>(
+              {allPrompts.map((p,i)=>(
                 <button key={i} onClick={()=>sendMessage(p.prompt)}
                   style={{
                     background:p.urgent?`${C.rose}06`:C.surface,
