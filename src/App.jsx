@@ -4,6 +4,7 @@ import TransactionPanel from "./features/TransactionPanel";
 import ClientPanel from "./features/ClientPanel";
 import MarketPanel from "./features/MarketPanel";
 import SparkAssistant from "./features/SparkAssistant";
+import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -1512,6 +1513,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
   const plan=PLANS[planKey];
   const toast=useToast();
 
+  const [genView,setGenView]   =useState("generate"); // "generate" | "history"
   const [type,setType]      =useState(()=>LS.get("sp_type","listing"));
   const [platform,setPlatform]=useState(()=>{ const s=LS.get("sp_plat","TikTok"); return plan.platforms.includes(s)?s:"TikTok"; });
   const [inputs,setInputs]  =useState(()=>LS.get("sp_inputs",{}));
@@ -1523,6 +1525,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
   const [vidState,setVid]   =useState(null);
   const [tab,setTab]        =useState("script");
   const [justCompleted,setJustCompleted]=useState(false);
+  const [historyCount,setHistoryCount]=useState(()=>getHistory().length);
   const genRef              =useRef(false);
 
   useEffect(()=>LS.set("sp_type",type),[type]);
@@ -1568,6 +1571,10 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
       track("generation_completed", { content_type:type, platform, plan:planKey, cost, photo_count:photos.length });
+
+      // Save to content history
+      saveGeneration({ type, inputs, platform, result:content, planKey });
+      setHistoryCount(getHistory().length);
 
       // Track usage stats for dashboard
       const today = new Date().toISOString().slice(0,10);
@@ -1758,6 +1765,57 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
 
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
+
+      {/* Generate / History toggle */}
+      <div style={{display:"flex",background:"rgba(255,255,255,.03)",
+        borderRadius:10,padding:3,marginBottom:18,gap:2}}>
+        <button onClick={()=>setGenView("generate")}
+          style={{flex:1,padding:"9px 0",borderRadius:7,border:"none",
+            background:genView==="generate"
+              ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
+              :"transparent",
+            color:genView==="generate"?C.indigoLt:C.textDim,
+            cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F,
+            border:genView==="generate"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
+            transition:"all .16s ease"}}>
+          ⚡ Generate
+        </button>
+        <button onClick={()=>setGenView("history")}
+          style={{flex:1,padding:"9px 0",borderRadius:7,border:"none",
+            background:genView==="history"
+              ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
+              :"transparent",
+            color:genView==="history"?C.indigoLt:C.textDim,
+            cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F,
+            border:genView==="history"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
+            transition:"all .16s ease",
+            display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+          📂 History
+          {historyCount>0&&(
+            <span style={{background:`${C.indigo}28`,border:`1px solid ${C.indigo}40`,
+              color:C.indigoLt,borderRadius:10,padding:"1px 7px",
+              fontSize:9,fontWeight:800}}>
+              {historyCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* History view */}
+      {genView==="history"&&(
+        <ContentHistory onReuse={(entry)=>{
+          setType(entry.type);
+          setInputs(entry.inputs||{});
+          if(entry.platform) setPlatform(entry.platform);
+          setResult(null);
+          setVid(null);
+          setGenView("generate");
+          toast("Inputs loaded from history — ready to regenerate","success");
+        }}/>
+      )}
+
+      {/* Generate view */}
+      {genView==="generate"&&<>
 
       {/* Content type selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginBottom:20}}>
@@ -2331,6 +2389,9 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
           )}
         </>
       )}
+
+      {/* End generate view */}
+      </>}
     </div>
   );
 }
@@ -3320,6 +3381,207 @@ function CommissionCalculator({user, planKey}){
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// IN-APP NOTIFICATION SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+function useNotifications({ credits, planKey, onNavigate }){
+  const [notifications, setNotifications] = useState([]);
+  const [dismissed,     setDismissed]     = useState(()=>{
+    try{ const v=localStorage.getItem("spark_dismissed_notifs"); return v?JSON.parse(v):[]; }
+    catch{ return []; }
+  });
+
+  useEffect(()=>{
+    const notifs = [];
+    const now    = Date.now();
+
+    // 1 — Overdue client follow-ups
+    try{
+      const clients = JSON.parse(localStorage.getItem("spark_clients_v1")||"[]");
+      const overdue = clients.filter(c=>{
+        if(!c.lastContact) return false;
+        return Math.round((now-new Date(c.lastContact))/(864e5)) > 7;
+      });
+      if(overdue.length > 0){
+        const id = `overdue-${overdue.length}`;
+        notifs.push({
+          id,
+          type:"warning",
+          icon:"⚠️",
+          color:C.rose,
+          title:`${overdue.length} client${overdue.length>1?"s":""} need${overdue.length===1?"s":""} follow-up`,
+          body:overdue.slice(0,2).map(c=>{
+            const days=Math.round((now-new Date(c.lastContact))/(864e5));
+            return `${c.name} (${days}d)`;
+          }).join(", ")+(overdue.length>2?` +${overdue.length-2} more`:""),
+          action:"View Clients",
+          tab:"clients",
+          priority:1,
+        });
+      }
+    }catch{}
+
+    // 2 — Deals closing soon (≤7 days)
+    try{
+      const deals = JSON.parse(localStorage.getItem("spark_pipeline_value_v1")||"[]");
+      const urgent = deals.filter(d=>{
+        if(!d.closeDate) return false;
+        const days = Math.round((new Date(d.closeDate)-now)/(864e5));
+        return days >= 0 && days <= 7;
+      }).sort((a,b)=>new Date(a.closeDate)-new Date(b.closeDate));
+      if(urgent.length > 0){
+        const d    = urgent[0];
+        const days = Math.round((new Date(d.closeDate)-now)/(864e5));
+        const id   = `closing-${d.name}-${d.closeDate}`;
+        notifs.push({
+          id,
+          type:"info",
+          icon:"🔥",
+          color:C.amber,
+          title:`${d.name} closes ${days===0?"today":days===1?"tomorrow":`in ${days} days`}`,
+          body:`$${(parseFloat(d.value)||0).toLocaleString()} · ${d.stage||"active"} · ${d.probability||50}% probability`,
+          action:"View Pipeline",
+          tab:"market",
+          priority:2,
+        });
+      }
+    }catch{}
+
+    // 3 — Low credits
+    const creditNum = typeof credits === "number" ? credits : 0;
+    if(creditNum <= 3 && creditNum >= 0 && planKey !== "team"){
+      const id = `low-credits-${creditNum}`;
+      notifs.push({
+        id,
+        type:"upgrade",
+        icon:"⚡",
+        color:C.indigo,
+        title:creditNum===0?"You're out of credits":`${creditNum} credit${creditNum!==1?"s":""} remaining`,
+        body:creditNum===0
+          ?"Upgrade to Pro for 60 credits/month — never run out again"
+          :"Upgrade to Pro for 60 credits and unlock all platform features",
+        action:"Upgrade Plan",
+        tab:"settings",
+        priority:3,
+      });
+    }
+
+    // 4 — Streak celebration (≥3 days, show once per day)
+    try{
+      const usage = JSON.parse(localStorage.getItem("sp_usage_stats")||"{}");
+      const today = new Date().toISOString().slice(0,10);
+      const lastShown = localStorage.getItem("spark_streak_notif_shown");
+      if(usage.streak >= 3 && lastShown !== today){
+        const id = `streak-${usage.streak}-${today}`;
+        notifs.push({
+          id,
+          type:"success",
+          icon:"🔥",
+          color:C.emerald,
+          title:`${usage.streak}-day streak — you're on fire`,
+          body:`${usage.total||0} total generations · keep it up`,
+          action:null,
+          tab:null,
+          priority:4,
+          autoDismiss:5000,
+        });
+        localStorage.setItem("spark_streak_notif_shown", today);
+      }
+    }catch{}
+
+    // Filter out dismissed, sort by priority
+    const active = notifs
+      .filter(n=>!dismissed.includes(n.id))
+      .sort((a,b)=>a.priority-b.priority)
+      .slice(0,2); // max 2 at once
+
+    setNotifications(active);
+  }, [credits, planKey, dismissed]);
+
+  function dismiss(id){
+    const updated = [...dismissed, id];
+    setDismissed(updated);
+    try{ localStorage.setItem("spark_dismissed_notifs", JSON.stringify(updated.slice(-50))); }catch{}
+  }
+
+  return { notifications, dismiss };
+}
+
+function NotificationBar({ credits, planKey, onNavigate }){
+  const { notifications, dismiss } = useNotifications({ credits, planKey, onNavigate });
+
+  // Auto-dismiss streak notifications
+  useEffect(()=>{
+    notifications.forEach(n=>{
+      if(n.autoDismiss) setTimeout(()=>dismiss(n.id), n.autoDismiss);
+    });
+  }, [notifications]);
+
+  if(notifications.length === 0) return null;
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:16}}>
+      {notifications.map((n,i)=>(
+        <div key={n.id}
+          style={{
+            display:"flex",alignItems:"center",gap:10,
+            background:`${n.color}0a`,
+            border:`1px solid ${n.color}28`,
+            borderRadius:11,padding:"10px 14px",
+            animation:`slideR .28s ease ${i*.06}s both`,
+            position:"relative",overflow:"hidden"}}>
+
+          {/* Left accent */}
+          <div style={{position:"absolute",left:0,top:0,bottom:0,
+            width:3,background:`linear-gradient(180deg,${n.color},${n.color}88)`,
+            borderRadius:"3px 0 0 3px"}}/>
+
+          {/* Icon */}
+          <div style={{fontSize:16,flexShrink:0,marginLeft:4}}>{n.icon}</div>
+
+          {/* Text */}
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,
+              color:C.text,marginBottom:1,
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {n.title}
+            </div>
+            <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {n.body}
+            </div>
+          </div>
+
+          {/* Action button */}
+          {n.action&&n.tab&&(
+            <button onClick={()=>{ onNavigate(n.tab); dismiss(n.id); }}
+              style={{background:`${n.color}18`,border:`1px solid ${n.color}30`,
+                color:n.color,borderRadius:7,padding:"5px 11px",
+                cursor:"pointer",fontSize:10,fontFamily:C.F,fontWeight:700,
+                letterSpacing:.4,whiteSpace:"nowrap",flexShrink:0,
+                transition:"all .14s"}}
+              onMouseEnter={e=>{ e.currentTarget.style.background=`${n.color}28`; }}
+              onMouseLeave={e=>{ e.currentTarget.style.background=`${n.color}18`; }}>
+              {n.action} →
+            </button>
+          )}
+
+          {/* Dismiss */}
+          <button onClick={()=>dismiss(n.id)}
+            style={{background:"transparent",border:"none",
+              color:C.textDim,cursor:"pointer",fontSize:14,
+              lineHeight:1,padding:"2px 4px",flexShrink:0,
+              transition:"color .12s"}}
+            onMouseEnter={e=>e.currentTarget.style.color=C.text}
+            onMouseLeave={e=>e.currentTarget.style.color=C.textDim}>
+            ✕
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MainApp({user,onLogout}){
   const [tab,setTab]        =useState("generate");
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
@@ -3687,6 +3949,8 @@ function MainApp({user,onLogout}){
                 </p>
               </div>
 
+              <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
+
               {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
               {tab==="voice"&&(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:16}}>
@@ -3717,6 +3981,8 @@ function MainApp({user,onLogout}){
                 <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
                 <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
               </div>
+
+              <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
               {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
               {tab==="voice"&&(
                 <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
