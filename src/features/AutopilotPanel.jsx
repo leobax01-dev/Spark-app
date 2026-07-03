@@ -189,50 +189,8 @@ ACTIVITY:
 
 ${data.memory.patterns ? `LEARNED PATTERNS:\n${data.memory.patterns}` : ""}
 
-Generate a comprehensive Autopilot intelligence report. Return ONLY valid JSON:
-{
-  "mission": {
-    "headline": "today's single most important strategic priority — specific, direct, 1 sentence",
-    "why": "why this is the priority today — 1-2 sentences referencing actual data",
-    "top3": [
-      {"rank":1,"action":"specific action to take","client":"client name or deal name","urgency":"critical/high/medium","message":"exact word-for-word message or script to execute this action — ready to copy and send"},
-      {"rank":2,"action":"specific action","client":"name","urgency":"level","message":"exact message"},
-      {"rank":3,"action":"specific action","client":"name","urgency":"level","message":"exact message"}
-    ]
-  },
-  "deal_intelligence": {
-    "overall_health": "strong/stable/at_risk/critical",
-    "health_summary": "2 sentence honest assessment of pipeline health",
-    "risks": [
-      {"deal":"deal or client name","risk":"specific risk","severity":"high/medium/low","action":"what to do about it right now","message":"exact message or script to address this risk"}
-    ],
-    "opportunities": [
-      {"description":"specific opportunity in the pipeline","action":"how to capitalize on it"}
-    ]
-  },
-  "client_scores": [
-    {"name":"client name","score":85,"trend":"rising/stable/falling","reason":"why this score","next_action":"most important next action","probability":"likelihood to transact in 30 days as %"}
-  ],
-  "relationship_alerts": [
-    {"type":"overdue/referral_window/anniversary/re_engage","client":"name","days":7,"message":"exact personal message to send — warm, not templated","reason":"why reach out now"}
-  ],
-  "market_intelligence": {
-    "insight": "one actionable market insight relevant to this agent's clients and pipeline",
-    "opportunity": "specific market condition they should be capitalizing on right now",
-    "talking_point": "the most powerful market talking point for client conversations this week"
-  },
-  "coaching_insight": {
-    "observation": "honest pattern observed in this agent's business data — specific, not generic",
-    "recommendation": "one concrete change that would have the biggest impact on their results",
-    "this_week": "the single most impactful thing to do differently this week"
-  },
-  "performance_forecast": {
-    "gci_projection": "projected GCI this month based on pipeline — specific dollar amount",
-    "deals_likely_to_close": "number of deals likely to close this month",
-    "biggest_risk_to_target": "what's most likely to prevent hitting the monthly goal",
-    "momentum": "rising/stable/declining — with one sentence explanation"
-  }
-}`;
+Generate a comprehensive Autopilot intelligence report. Return ONLY a single valid JSON object with no text before or after it, no markdown, no code fences:
+{"mission":{"headline":"today's single most important strategic priority — specific, 1 sentence","why":"why this is the priority today referencing actual data — 1-2 sentences","top3":[{"rank":1,"action":"specific action","client":"client or deal name","urgency":"critical","message":"exact word-for-word message to send — ready to copy"},{"rank":2,"action":"specific action","client":"name","urgency":"high","message":"exact message"},{"rank":3,"action":"specific action","client":"name","urgency":"medium","message":"exact message"}]},"deal_intelligence":{"overall_health":"stable","health_summary":"honest 2 sentence pipeline assessment","risks":[{"deal":"name","risk":"specific risk","severity":"high","action":"what to do","message":"exact message to address this risk"}],"opportunities":[{"description":"specific opportunity","action":"how to capitalize"}]},"client_scores":[{"name":"client name","score":80,"trend":"stable","reason":"why this score","next_action":"most important next step","probability":"70%"}],"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact personal message to send","reason":"why reach out now"}],"market_intelligence":{"insight":"one actionable market insight relevant to their pipeline","opportunity":"specific market condition to capitalize on","talking_point":"most powerful talking point for client conversations this week"},"coaching_insight":{"observation":"honest pattern from their business data","recommendation":"one concrete change for biggest impact","this_week":"single most impactful thing to do differently this week"},"performance_forecast":{"gci_projection":"projected GCI this month as dollar amount","deals_likely_to_close":"number","biggest_risk_to_target":"what could prevent hitting the goal","momentum":"rising"}}`;
 
   const r = await fetch("/api/claude", {
     method: "POST",
@@ -246,11 +204,44 @@ Generate a comprehensive Autopilot intelligence report. Return ONLY valid JSON:
 
   const d = await r.json();
   const raw = d.content?.[0]?.text || "";
-  const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-  const first = cleaned.indexOf("{");
-  const last  = cleaned.lastIndexOf("}");
-  if(first === -1 || last === -1) throw new Error("Invalid response format");
-  return JSON.parse(cleaned.slice(first, last+1));
+
+  // Try multiple extraction strategies
+  let parsed = null;
+
+  // Strategy 1: direct parse
+  try { parsed = JSON.parse(raw.trim()); } catch {}
+
+  // Strategy 2: strip code fences then parse
+  if(!parsed){
+    try {
+      const stripped = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      parsed = JSON.parse(stripped);
+    } catch {}
+  }
+
+  // Strategy 3: extract first { ... } block
+  if(!parsed){
+    try {
+      const first = raw.indexOf("{");
+      const last  = raw.lastIndexOf("}");
+      if(first !== -1 && last !== -1 && last > first){
+        parsed = JSON.parse(raw.slice(first, last+1));
+      }
+    } catch {}
+  }
+
+  // Strategy 4: find largest JSON object in response
+  if(!parsed){
+    const matches = raw.match(/\{[\s\S]+\}/g);
+    if(matches){
+      for(const m of matches.sort((a,b)=>b.length-a.length)){
+        try { parsed = JSON.parse(m); break; } catch {}
+      }
+    }
+  }
+
+  if(!parsed) throw new Error("Could not parse Autopilot response — raw: " + raw.slice(0,200));
+  return parsed;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
