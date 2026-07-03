@@ -240,6 +240,7 @@ Generate a comprehensive Autopilot intelligence report. Return ONLY valid JSON:
     body: JSON.stringify({
       system: "You are SPARK Autopilot, the most advanced real estate business intelligence AI ever built. Analyze agent data deeply and generate highly specific, actionable intelligence. Every recommendation must reference actual client names, deal values, and specific situations. Never give generic advice. Return ONLY valid JSON — no markdown, no code fences.",
       messages: [{ role: "user", content: prompt }],
+      max_tokens: 4000,
     })
   });
 
@@ -841,7 +842,13 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setActiveTab("mission");
     }catch(e){
       console.error("Autopilot error:", e);
-      setError("Analysis failed — check your connection and try again");
+      if(e.message?.includes("timeout")||e.message?.includes("504")||e.message?.includes("502")){
+        setError("Analysis timed out — the request took too long. Try again or reduce the amount of client data.");
+      } else if(e.message?.includes("JSON")||e.message?.includes("parse")){
+        setError("Analysis returned unexpected data — try running again.");
+      } else {
+        setError("Analysis failed — check your connection and try again. " + (e.message||""));
+      }
     }
     setRunning(false);
   }
