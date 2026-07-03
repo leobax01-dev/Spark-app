@@ -145,103 +145,63 @@ function aggregateBusinessData(voice){
 // ─────────────────────────────────────────────────────────────────────────────
 async function runAutopilotEngine(data){
   const clientDetails = data.allClients.map(c =>
-    `${c.name} (${c.type}, ${c.stage}, last contact: ${c.daysSince !== null ? c.daysSince+"d ago" : "unknown"}${c.daysSince > 7 ? " ⚠️ OVERDUE" : ""}, property: ${c.property||"unknown"}, budget: ${c.budget||"?"}, timeline: ${c.timeline||"?"}, motivation: ${c.motivation||"?"}, notes: ${c.notes?.slice(0,80)||"none"}, next action: ${c.nextAction||"none"})`
+    `${c.name} (${c.type}, ${c.stage}, last contact: ${c.daysSince !== null ? c.daysSince+"d ago" : "unknown"}${c.daysSince > 7 ? " ⚠️ OVERDUE" : ""}, property: ${c.property||"unknown"}, budget: ${c.budget||"?"}, timeline: ${c.timeline||"?"}, motivation: ${c.motivation||"?"}, notes: ${c.notes?.slice(0,60)||"none"})`
   ).join("\n");
 
   const dealDetails = data.urgentDeals.concat(
     data.atRiskDeals.filter(d => !data.urgentDeals.find(u => u.id === d.id))
   ).map(d => {
     const days = d.closeDate ? Math.round((new Date(d.closeDate) - Date.now()) / 864e5) : null;
-    return `${d.name}: $${(parseFloat(d.value)||0).toLocaleString()}, ${d.stage||"unknown stage"}, ${d.probability||50}% probability${days !== null ? `, closes in ${days} days` : ""}`;
+    return `${d.name}: $${(parseFloat(d.value)||0).toLocaleString()}, ${d.stage||"?"}, ${d.probability||50}% prob${days !== null ? `, closes in ${days}d` : ""}`;
   }).join("\n");
 
-  const prompt = `You are SPARK Autopilot — the most advanced AI business intelligence system ever built for real estate agents. Your job is to analyze this agent's complete business data and generate a prioritized mission, risk alerts, relationship intelligence, and actionable insights.
+  const context = `Agent: ${data.agentName}, ${data.agentBrokerage}, ${data.agentMarket}
+Today: ${data.today}
+Clients (${data.totalClients}): ${clientDetails || "none"}
+Urgent deals: ${dealDetails || "none"}
+Overdue (7+ days): ${data.overdueClients.map(c=>`${c.name} ${c.daysSince}d`).join(", ")||"none"}
+Referral window: ${data.referralOpps.map(c=>c.name).join(", ")||"none"}
+GCI target: $${data.monthlyTarget?.toLocaleString()||"?"} | Current: $${data.currentGci?.toLocaleString()||"?"} | Pipeline: $${Math.round(data.totalPipeline).toLocaleString()}`;
 
-AGENT: ${data.agentName}, ${data.agentBrokerage}, ${data.agentMarket}
-TODAY: ${data.today}
-
-PIPELINE SNAPSHOT:
-- Active clients: ${data.activeClients}
-- Under contract: ${data.contractClients}
-- Prospects: ${data.prospectClients}
-- Total pipeline value: $${Math.round(data.totalPipeline).toLocaleString()}
-- Weighted value: $${Math.round(data.weightedPipeline).toLocaleString()}
-- Monthly GCI target: ${data.monthlyTarget ? "$"+data.monthlyTarget.toLocaleString() : "not set"}
-- Current month GCI: ${data.currentGci ? "$"+data.currentGci.toLocaleString() : "not set"}
-- Progress to target: ${data.gciPct !== null ? data.gciPct+"%" : "unknown"}
-
-CLIENTS (${data.totalClients} total):
-${clientDetails || "No clients in pipeline"}
-
-URGENT DEALS (closing soon or at risk):
-${dealDetails || "No urgent deals"}
-
-OVERDUE FOLLOW-UPS (${data.overdueClients.length}):
-${data.overdueClients.map(c => `${c.name}: ${c.daysSince} days since last contact`).join("\n") || "None"}
-
-REFERRAL OPPORTUNITIES:
-${data.referralOpps.map(c => `${c.name}: closed ~${Math.round((Date.now()-new Date(c.lastContact))/(864e5*30))} months ago`).join("\n") || "None in window"}
-
-ACTIVITY:
-- Total content generated: ${data.totalGenerations}
-- Day streak: ${data.streak}
-- Last generation: ${data.lastGenDaysAgo !== null ? data.lastGenDaysAgo+"d ago" : "never"}
-
-${data.memory.patterns ? `LEARNED PATTERNS:\n${data.memory.patterns}` : ""}
-
-Generate a comprehensive Autopilot intelligence report. Return ONLY a single valid JSON object with no text before or after it, no markdown, no code fences:
-{"mission":{"headline":"today's single most important strategic priority — specific, 1 sentence","why":"why this is the priority today referencing actual data — 1-2 sentences","top3":[{"rank":1,"action":"specific action","client":"client or deal name","urgency":"critical","message":"exact word-for-word message to send — ready to copy"},{"rank":2,"action":"specific action","client":"name","urgency":"high","message":"exact message"},{"rank":3,"action":"specific action","client":"name","urgency":"medium","message":"exact message"}]},"deal_intelligence":{"overall_health":"stable","health_summary":"honest 2 sentence pipeline assessment","risks":[{"deal":"name","risk":"specific risk","severity":"high","action":"what to do","message":"exact message to address this risk"}],"opportunities":[{"description":"specific opportunity","action":"how to capitalize"}]},"client_scores":[{"name":"client name","score":80,"trend":"stable","reason":"why this score","next_action":"most important next step","probability":"70%"}],"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact personal message to send","reason":"why reach out now"}],"market_intelligence":{"insight":"one actionable market insight relevant to their pipeline","opportunity":"specific market condition to capitalize on","talking_point":"most powerful talking point for client conversations this week"},"coaching_insight":{"observation":"honest pattern from their business data","recommendation":"one concrete change for biggest impact","this_week":"single most impactful thing to do differently this week"},"performance_forecast":{"gci_projection":"projected GCI this month as dollar amount","deals_likely_to_close":"number","biggest_risk_to_target":"what could prevent hitting the goal","momentum":"rising"}}`;
-
-  const r = await fetch("/api/claude", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      system: "You are SPARK Autopilot, the most advanced real estate business intelligence AI ever built. Analyze agent data deeply and generate highly specific, actionable intelligence. Every recommendation must reference actual client names, deal values, and specific situations. Never give generic advice. Return ONLY valid JSON — no markdown, no code fences.",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 4000,
-    })
-  });
-
-  const d = await r.json();
-  const raw = d.content?.[0]?.text || "";
-
-  // Try multiple extraction strategies
-  let parsed = null;
-
-  // Strategy 1: direct parse
-  try { parsed = JSON.parse(raw.trim()); } catch {}
-
-  // Strategy 2: strip code fences then parse
-  if(!parsed){
-    try {
-      const stripped = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-      parsed = JSON.parse(stripped);
-    } catch {}
-  }
-
-  // Strategy 3: extract first { ... } block
-  if(!parsed){
-    try {
-      const first = raw.indexOf("{");
-      const last  = raw.lastIndexOf("}");
-      if(first !== -1 && last !== -1 && last > first){
-        parsed = JSON.parse(raw.slice(first, last+1));
-      }
-    } catch {}
-  }
-
-  // Strategy 4: find largest JSON object in response
-  if(!parsed){
-    const matches = raw.match(/\{[\s\S]+\}/g);
-    if(matches){
-      for(const m of matches.sort((a,b)=>b.length-a.length)){
-        try { parsed = JSON.parse(m); break; } catch {}
-      }
+  async function callClaude(userPrompt){
+    const r = await fetch("/api/claude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system: "You are SPARK Autopilot, an elite real estate business intelligence AI. Be specific, reference real names and numbers. Return ONLY valid compact JSON — no markdown, no code fences, no explanation.",
+        messages: [{ role: "user", content: userPrompt }],
+        max_tokens: 4000,
+      })
+    });
+    const d = await r.json();
+    const raw = d.content?.[0]?.text || "";
+    // Multi-strategy parse
+    for(const attempt of [
+      ()=>JSON.parse(raw.trim()),
+      ()=>JSON.parse(raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim()),
+      ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no block"); },
+    ]){
+      try{ return attempt(); } catch{}
     }
+    console.error("Parse failed, raw:", raw.slice(0,300));
+    throw new Error("parse_failed:" + raw.slice(0,100));
   }
 
-  if(!parsed) throw new Error("Could not parse Autopilot response — raw: " + raw.slice(0,200));
-  return parsed;
+  // CALL 1 — Mission + Deal Intelligence + Client Scores
+  const part1 = await callClaude(`${context}
+
+Return ONLY this JSON (compact, no whitespace between keys):
+{"mission":{"headline":"today's #1 priority in 1 sentence","why":"why — reference real names/data","top3":[{"rank":1,"action":"specific action","client":"name","urgency":"critical","message":"exact message to send"},{"rank":2,"action":"action","client":"name","urgency":"high","message":"message"},{"rank":3,"action":"action","client":"name","urgency":"medium","message":"message"}]},"deal_intelligence":{"overall_health":"stable","health_summary":"2 sentence honest assessment","risks":[{"deal":"name","risk":"specific risk","severity":"high","action":"what to do","message":"exact recovery message"}],"opportunities":[{"description":"opportunity","action":"how to capitalize"}]},"client_scores":[{"name":"name","score":75,"trend":"rising","reason":"why","next_action":"what to do","probability":"65%"}]}`);
+
+  // CALL 2 — Relationship Alerts + Market + Coaching + Forecast
+  const part2 = await callClaude(`${context}
+
+Return ONLY this JSON (compact, no whitespace between keys):
+{"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact warm personal message to send","reason":"why reach out now"}],"market_intelligence":{"insight":"actionable market insight for their pipeline","opportunity":"market condition to capitalize on now","talking_point":"most powerful talking point this week"},"coaching_insight":{"observation":"honest pattern from their data","recommendation":"one concrete change","this_week":"single most impactful action"},"performance_forecast":{"gci_projection":"$X projected this month","deals_likely_to_close":"1-2","biggest_risk_to_target":"what could prevent hitting goal","momentum":"rising"}}`);
+
+  // Merge both parts
+  return { ...part1, ...part2 };
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -835,8 +795,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       console.error("Autopilot error:", e);
       if(e.message?.includes("timeout")||e.message?.includes("504")||e.message?.includes("502")){
         setError("Analysis timed out — the request took too long. Try again or reduce the amount of client data.");
-      } else if(e.message?.includes("JSON")||e.message?.includes("parse")){
-        setError("Analysis returned unexpected data — try running again.");
+      } else if(e.message?.includes("JSON")||e.message?.includes("parse")||e.message?.includes("raw:")){
+        const rawSnippet = e.message.includes("raw:") ? e.message.split("raw:")[1]?.slice(0,120) : "";
+        setError(`Parse failed${rawSnippet ? " — Claude returned: " + rawSnippet : " — try running again."}`);
       } else {
         setError("Analysis failed — check your connection and try again. " + (e.message||""));
       }
