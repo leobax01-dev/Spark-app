@@ -5,6 +5,7 @@ import ClientPanel from "./features/ClientPanel";
 import MarketPanel from "./features/MarketPanel";
 import SparkAssistant from "./features/SparkAssistant";
 import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
+import AutopilotPanel from "./features/AutopilotPanel";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -4000,17 +4001,19 @@ function MainApp({user,onLogout}){
   function handleGoSettings(){ setTab("settings"); }
 
   const NAV=[
-    {id:"generate",     icon:"⚡", label:"Generate"},
-    {id:"assistant",    icon:"💬", label:"Assistant"},
-    {id:"transactions", icon:"📋", label:"Deals"},
-    {id:"clients",      icon:"👥", label:"Clients"},
-    {id:"market",       icon:"📈", label:"Market"},
-    {id:"calculator",   icon:"🧮", label:"Calc"},
-    {id:"affiliate",    icon:"🔗", label:"Affiliate"},
-    {id:"settings",     icon:"⚙",  label:"Settings"},
+    {id:"autopilot",   icon:"🤖", label:"Autopilot"},
+    {id:"generate",    icon:"⚡", label:"Generate"},
+    {id:"assistant",   icon:"💬", label:"Assistant"},
+    {id:"transactions",icon:"📋", label:"Deals"},
+    {id:"clients",     icon:"👥", label:"Clients"},
+    {id:"market",      icon:"📈", label:"Market"},
+    {id:"calculator",  icon:"🧮", label:"Calc"},
+    {id:"affiliate",   icon:"🔗", label:"Affiliate"},
+    {id:"settings",    icon:"⚙",  label:"Settings"},
   ];
 
   const TITLES={
+    autopilot:    <>SPARK <Shimmer>Autopilot</Shimmer></>,
     generate:     <>Generate <Shimmer>Content</Shimmer></>,
     assistant:    <>SPARK <Shimmer>Assistant</Shimmer></>,
     transactions: <>Transaction <Shimmer>Intelligence</Shimmer></>,
@@ -4021,6 +4024,7 @@ function MainApp({user,onLogout}){
     settings:     <Shimmer>Settings</Shimmer>,
   };
   const SUBTITLES={
+    autopilot:    "AI business intelligence · monitoring your clients, deals & market 24/7",
     generate:     voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
     assistant:    "Ask anything — scripts, emails, objections, market questions",
     transactions: "Timeline generator · Listing presentation · CMA analyzer",
@@ -4033,13 +4037,13 @@ function MainApp({user,onLogout}){
 
   // ── MOBILE BOTTOM NAV BAR ──────────────────────────────────────────────────
   const NAV_ICONS = {
+    autopilot: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>,
     generate: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
     assistant: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
     transactions: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
     clients: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
     market: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>,
     calculator: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg>,
-    voice: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>,
     affiliate: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
     settings: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   };
@@ -4157,7 +4161,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="assistant"&&<SparkAssistant user={user} voice={voice} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="assistant"&&<SparkAssistant user={user} voice={voice} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
       </div>
     </div>
   );
@@ -4323,7 +4327,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="assistant"&&<SparkAssistant user={user} voice={voice} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="assistant"&&<SparkAssistant user={user} voice={voice} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
             </div>
           </div>
           <MobileNav/>
@@ -4355,7 +4359,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="assistant"&&<SparkAssistant user={user} voice={voice} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="assistant"&&<SparkAssistant user={user} voice={voice} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
             </div>
           </div>
         </div>
