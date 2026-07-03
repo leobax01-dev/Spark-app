@@ -202,7 +202,6 @@ Return ONLY this JSON (compact, no whitespace between keys):
   // Merge both parts
   return { ...part1, ...part2 };
 }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED UI
