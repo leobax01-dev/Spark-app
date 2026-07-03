@@ -1,5 +1,8 @@
 {
   "functions": {
+    "api/claude.js": {
+      "maxDuration": 60
+    },
     "api/stitch.js": {
       "maxDuration": 60
     },
