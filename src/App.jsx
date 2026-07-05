@@ -134,36 +134,40 @@ const GLOBAL_CSS = `
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = {
   trial:{
-    name:"Trial", price:0, credits:3, accent:C.indigo, badge:null,
-    contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education","market","lifestyle"],
-    platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
-    hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
-    perks:["3 free credits — no card required","Full Pro-level feature access","All 4 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation"],
-    stripeLink:null,
-  },
-  agent:{
-    name:"Agent", price:29, credits:20, accent:C.emerald, badge:null,
+    name:"Trial", price:0, credits:5, accent:C.indigo, badge:null,
     contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education"],
     platforms:["TikTok","Reels"],
     hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
-    perks:["20 credits / month","Listing videos + agent tips","TikTok & Reels only","3 hook variants","Up to 3 listing photos","MLS-safe captions","Email support"],
+    autopilot:false,
+    perks:["5 free credits — no card required","Core content tools","TikTok & Reels","720p listing video","Up to 3 photos"],
+    stripeLink:null,
+  },
+  starter:{
+    name:"Starter", price:29, credits:30, accent:C.emerald, badge:null,
+    contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education"],
+    platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
+    hooks:5, voiceMemory:false, videoQuality:"720p", maxPhotos:5, teamSeats:1, apiAccess:false,
+    autopilot:false,
+    perks:["30 credits / month","Full OS platform — all tools","All 5 platforms","5 hook variants","Up to 5 listing photos","720p listing video","Transaction intelligence","Client pipeline","Lead response generator","Email support"],
     stripeLink:"https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00",
   },
   pro:{
-    name:"Pro", price:49, credits:60, accent:C.indigo, badge:"Most Popular",
+    name:"Pro", price:59, credits:100, accent:C.indigo, badge:"Most Popular",
     contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
     hooks:7, voiceMemory:true, videoQuality:"1080p", maxPhotos:8, teamSeats:1, apiAccess:false,
-    perks:["60 credits / month","All 6 content types","All 5 platforms","7 hook variants","Up to 8 listing photos","Agent voice memory","Auto listing video generation","MLS descriptions","Open house packages","Priority support"],
-    stripeLink:"https://buy.stripe.com/7sYcN4gvr4Y37bfddY0sU01",
+    autopilot:false,
+    perks:["100 credits / month","Everything in Starter","Agent voice memory","1080p cinematic video","Up to 8 listing photos","All 9 content types","Google calendar + Gmail","7 hook variants","Priority support"],
+    stripeLink:"https://buy.stripe.com/dRm3cu4MJ1LRdzD0rc0sU07",
   },
-  team:{
-    name:"Team", price:99, credits:180, accent:C.violet, badge:null,
+  premium:{
+    name:"Premium", price:129, credits:999, accent:C.violet, badge:"Best Value",
     contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education","market","lifestyle"],
     platforms:["TikTok","Reels","YouTube","Facebook","LinkedIn"],
-    hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:5, apiAccess:true,
-    perks:["180 credits / month","Full content suite","All 5 platforms","10 hook variants","Up to 20 listing photos","4K cinematic video","5-seat workspace","API access","MLS descriptions","Open house packages","Dedicated support"],
-    stripeLink:"https://buy.stripe.com/00waEWgvr0HNfHLei20sU02",
+    hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:1, apiAccess:true,
+    autopilot:true,
+    perks:["Unlimited credits","Everything in Pro","SPARK Autopilot — AI business intelligence","4K cinematic video","Up to 20 listing photos","10 hook variants","Autopilot pattern memory","Deal risk detection","Client probability scores","Relationship alerts","Monthly business review","API access","Dedicated support"],
+    stripeLink:"https://buy.stripe.com/6oUeVcfrnbmr3Z31vg0sU08",
   },
 };
 
@@ -182,20 +186,20 @@ function goStripe(link, email){
 }
 
 const CONTENT_TYPES = {
-  listing:     {label:"Listing Video",         icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"agent"},
-  mls_desc:    {label:"MLS Description",       icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"agent"},
-  open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"agent"},
-  objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"agent"},
-  scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"agent"},
-  comms:       {label:"Client Communication",  icon:"💬",color:"#f43f5e", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"agent"},
-  education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"agent"},
+  listing:     {label:"Listing Video",         icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"starter"},
+  mls_desc:    {label:"MLS Description",       icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"starter"},
+  open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"starter"},
+  objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"starter"},
+  scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"starter"},
+  comms:       {label:"Client Communication",  icon:"💬",color:"#f43f5e", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
+  education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"starter"},
   market:      {label:"Market Update",         icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
   lifestyle:   {label:"Neighborhood Story",    icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
 };
 
 const PLATFORMS = {
-  TikTok:  {color:"#FF004F",spec:"9:16 · 30–90s",  minPlan:"agent"},
-  Reels:   {color:"#E1306C",spec:"9:16 · 15–90s",  minPlan:"agent"},
+  TikTok:  {color:"#FF004F",spec:"9:16 · 30–90s",  minPlan:"starter"},
+  Reels:   {color:"#E1306C",spec:"9:16 · 15–90s",  minPlan:"starter"},
   YouTube: {color:"#FF0000",spec:"Shorts · 15–60s",minPlan:"pro"},
   Facebook:{color:"#1877F2",spec:"16:9 · 60–180s", minPlan:"pro"},
   LinkedIn:{color:"#0A66C2",spec:"1:1 · pro tone",  minPlan:"pro"},
@@ -247,8 +251,9 @@ const TYPE_INPUTS = {
   education:  ["topic","audience","keyPoint"],
 };
 
-const PLAN_ORDER = ["agent","pro","team"];
+const PLAN_ORDER = ["starter","pro","premium"];
 const planRank = p => PLAN_ORDER.indexOf(p);
+function displayCredits(n){ return n>=999?"∞":String(n); }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LOCALSTORAGE
@@ -885,7 +890,7 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
       <input ref={inputRef} type="file" accept="image/*" multiple
         style={{display:"none"}} onChange={e=>processFiles(e.target.files)}/>
 
-      {photos.length===0&&planKey==="agent"&&(
+      {photos.length===0&&planKey==="starter"&&(
         <div style={{marginTop:8,fontSize:10,color:C.textDim,fontFamily:C.F}}>
           Agent plan: up to 3 photos.{" "}
           <span className="up-tease" onClick={onGoUpgrade}
@@ -1055,7 +1060,7 @@ function OnboardingModal({planKey,onClose}){
                   {plan.name} Plan Activated
                 </div>
                 <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:1}}>
-                  {plan.credits} credits · {plan.videoQuality} video · {plan.maxPhotos} photos per listing
+                  {displayCredits(plan.credits)} credits · {plan.videoQuality} video · {plan.maxPhotos} photos per listing
                 </div>
               </div>
               <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
@@ -1228,7 +1233,7 @@ function OnboardingModal({planKey,onClose}){
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{fontFamily:C.F,fontWeight:800,fontSize:22,
-                color:C.text,letterSpacing:"-0.02em"}}>{plan.credits}</span>
+                color:C.text,letterSpacing:"-0.02em"}}>{displayCredits(plan.credits)}</span>
               <span style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700}}>CR</span>
             </div>
           </div>
@@ -1941,8 +1946,8 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Hooks: <strong style={{color:C.text}}>{plan.hooks}</strong></span>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Video: <strong style={{color:C.text}}>{plan.videoQuality}</strong></span>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Photos: <strong style={{color:C.text}}>{plan.maxPhotos} max</strong></span>
-              <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Credits: <strong style={{color:credits<5?C.rose:C.text}}>{credits} left</strong></span>
-              {planKey!=="team"&&<span className="up-tease" onClick={onGoUpgrade} style={{fontSize:10,color:C.indigo,fontFamily:C.F,cursor:"pointer",marginLeft:"auto"}}>Upgrade for more ↗</span>}
+              <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Credits: <strong style={{color:credits<5?C.rose:C.text}}>{displayCredits(credits)} left</strong></span>
+              {planKey!=="premium"&&<span className="up-tease" onClick={onGoUpgrade} style={{fontSize:10,color:C.indigo,fontFamily:C.F,cursor:"pointer",marginLeft:"auto"}}>Upgrade for more ↗</span>}
             </div>
           </div>
 
@@ -2439,7 +2444,7 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade}){
 // ─────────────────────────────────────────────────────────────────────────────
 function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
   const planEntries=Object.entries(PLANS).filter(([k])=>k!=="trial");
-  const POP_IDX=1; // index 1 = Pro in [agent, pro, team]
+  const POP_IDX=1; // index 1 = Pro in [starter, pro, premium]
   const [idx,setIdx]=useState(POP_IDX);
   const [dir,setDir]=useState(null);
   const [animKey,setAnimKey]=useState(0);
@@ -2603,7 +2608,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
                 color:"#fff",padding:"13px 32px",borderRadius:10,cursor:"pointer",
                 fontWeight:800,fontSize:14,fontFamily:C.F,
                 boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 6px 22px rgba(99,102,241,.3)"}}>
-              Upgrade to Pro — $49/month ⚡
+              Upgrade to Premium — $129/month ⚡
             </button>
             <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"10px 0 0"}}>
               Cancel anytime · No contracts · Instant access
@@ -2631,7 +2636,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
         </div>
         <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
           <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{credits} remaining</span>
-          <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{plan.credits} per month</span>
+          <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{displayCredits(plan.credits)} per month</span>
         </div>
       </div>
 
@@ -2887,7 +2892,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
         <div style={{marginBottom:20}}>
           <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
             <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{currentCredits} remaining this month</span>
-            <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{plan.credits} total</span>
+            <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{displayCredits(plan.credits)} total</span>
           </div>
           <div style={{height:5,background:"rgba(255,255,255,.05)",borderRadius:3,overflow:"hidden"}}>
             <div style={{
@@ -3623,7 +3628,7 @@ function useNotifications({ credits, planKey, onNavigate }){
 
     // 3 — Low credits
     const creditNum = typeof credits === "number" ? credits : 0;
-    if(creditNum <= 3 && creditNum >= 0 && planKey !== "team"){
+    if(creditNum <= 3 && creditNum >= 0 && planKey !== "premium"){
       const id = `low-credits-${creditNum}`;
       notifs.push({
         id,
@@ -3632,8 +3637,8 @@ function useNotifications({ credits, planKey, onNavigate }){
         color:C.indigo,
         title:creditNum===0?"You're out of credits":`${creditNum} credit${creditNum!==1?"s":""} remaining`,
         body:creditNum===0
-          ?"Upgrade to Pro for 60 credits/month — never run out again"
-          :"Upgrade to Pro for 60 credits and unlock all platform features",
+          ?"Upgrade to Premium for unlimited credits + SPARK Autopilot"
+          :"Upgrade to Premium for unlimited credits + SPARK Autopilot",
         action:"Upgrade Plan",
         tab:"settings",
         priority:3,
@@ -3762,7 +3767,7 @@ function NotificationBar({ credits, planKey, onNavigate }){
 // ─────────────────────────────────────────────────────────────────────────────
 function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
   const isTrial   = planKey === "trial";
-  const targetPlan = isTrial ? "pro" : "pro";
+  const targetPlan = isTrial ? "premium" : "premium";
   const plan       = PLANS[targetPlan];
   const usedCount  = usage?.total || 0;
   const topTool    = usage?.toolCounts
@@ -3770,12 +3775,12 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
     : null;
 
   const UNLOCKS = [
-    { icon:"⚡", text:`${plan.credits} credits every month — never run out` },
-    { icon:"🎬", text:`${plan.videoQuality} cinematic listing videos` },
-    { icon:"📸", text:`Up to ${plan.maxPhotos} photos per listing` },
+    { icon:"🤖", text:"SPARK Autopilot — AI business intelligence" },
+    { icon:"⚡", text:"Unlimited credits — never run out" },
+    { icon:"🎬", text:"4K cinematic listing videos" },
+    { icon:"📸", text:"Up to 20 photos per listing" },
     { icon:"🧠", text:"Agent voice memory — every script sounds like you" },
-    { icon:"📊", text:"Neighborhood reports + business dashboard" },
-    { icon:"💬", text:"SPARK Assistant with full business context" },
+    { icon:"🔗", text:"Google calendar + Gmail integration" },
   ];
 
   return(
@@ -3828,7 +3833,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
                   ? `Your most-used tool is ${topTool[0].replace(/_/g," ")}. `
                   : ""}
                 {isTrial
-                  ? "Your 3 free credits are used up. Upgrade to Pro and keep going — 60 credits every month."
+                  ? "Your 3 free credits are used up. Upgrade to Premium for unlimited credits, Autopilot, and the full SPARK platform."
                   : `You're out of credits for this cycle. Add more or upgrade for ${plan.credits} credits/month.`}
               </p>
             </>
@@ -3841,7 +3846,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
               <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
                 margin:0,lineHeight:1.7}}>
                 {isTrial
-                  ? "Upgrade to Pro and unlock 60 credits every month plus everything SPARK has to offer."
+                  ? "Upgrade to Premium for unlimited credits, SPARK Autopilot, 4K video, and the complete platform."
                   : `Upgrade to ${plan.name} for ${plan.credits} credits/month and never run out again.`}
               </p>
             </>
@@ -3926,7 +3931,7 @@ function MainApp({user,onLogout}){
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits??3));
   const [intendedPlan]=useState(()=>{
-    const ip = user.intendedPlan || LS.get("sp_intended_plan","pro");
+    const ip = user.intendedPlan || LS.get("sp_intended_plan","premium");
     LS.set("sp_intended_plan", ip);
     return ip;
   });
@@ -4283,7 +4288,7 @@ function MainApp({user,onLogout}){
           usage={LS.get("sp_usage_stats",{})}
           onClose={()=>setShowUpgradeModal(false)}
           onUpgrade={()=>{
-            const intendedPlan = LS.get("sp_intended_plan","pro");
+            const intendedPlan = LS.get("sp_intended_plan","premium");
             const p = PLANS[intendedPlan]||PLANS.pro;
             track("upgrade_clicked",{ plan:intendedPlan, source:"upgrade_modal", credits_at_click:credits, current_plan:planKey });
             goStripe(p.stripeLink, user?.email||"");
@@ -4377,11 +4382,12 @@ function LandingPage({onStart}){
   const anim=(delay=0)=>ready?`fadeUp .5s ease ${delay}s both`:"none";
 
   const FEATURES=[
-    ["SPARK Assistant (AI chat)",       "✓","✓","✓"],
+    ["SPARK Autopilot",                  "—","—","✓"],
+    ["SPARK Assistant (AI chat)",        "✓","✓","✓"],
     ["Cinematic listing video",          "720p","1080p","4K"],
     ["Transaction timeline + emails",    "✓","✓","✓"],
     ["Listing presentation builder",     "✓","✓","✓"],
-    ["CMA + pricing strategy",           "✓","✓","✓"],
+    ["CMA + auto-fetched comps",         "✓","✓","✓"],
     ["Client pipeline manager",          "✓","✓","✓"],
     ["AI daily briefing",                "✓","✓","✓"],
     ["Lead response sequences",          "✓","✓","✓"],
@@ -4393,7 +4399,13 @@ function LandingPage({onStart}){
     ["Neighborhood intelligence report", "—","✓","✓"],
     ["Business performance dashboard",   "—","✓","✓"],
     ["Agent voice memory",               "—","✓","✓"],
-    ["Credits / month",                  "20","60","180"],
+    ["Google calendar + Gmail",          "—","✓","✓"],
+    ["4K listing video",                 "—","—","✓"],
+    ["Deal risk detection",              "—","—","✓"],
+    ["Client probability scores",        "—","—","✓"],
+    ["Relationship alerts",              "—","—","✓"],
+    ["Unlimited credits",                "—","—","✓"],
+    ["Credits / month",                  "30","100","∞"],
   ];
 
   const TESTIMONIALS=[
@@ -4658,17 +4670,19 @@ function LandingPage({onStart}){
           <div style={{border:`1px solid ${C.border}`,borderRadius:16,overflow:"hidden"}}>
             <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",
               background:C.surfaceHigh,borderBottom:`1px solid ${C.border}`,padding:"16px 20px"}}>
-              {["","Agent","Pro","Team"].map((h,i)=>(
+              {["","Starter","Pro","Premium"].map((h,i)=>(
                 <div key={i} style={{textAlign:i===0?"left":"center"}}>
                   {i>0&&(
                     <>
                       <div style={{fontSize:11,fontWeight:700,fontFamily:C.F,letterSpacing:.5,
-                        color:i===2?C.indigo:Object.values(PLANS).filter(p=>p.price>0)[i-1]?.accent}}>
+                        color:i===2?C.indigo:i===3?C.violet:C.emerald}}>
                         {h}{i===2&&<span style={{marginLeft:5,fontSize:8,background:C.indigo,
                           color:"#fff",padding:"1px 5px",borderRadius:4,fontWeight:800}}>BEST</span>}
+                        {i===3&&<span style={{marginLeft:5,fontSize:8,background:C.violet,
+                          color:"#fff",padding:"1px 5px",borderRadius:4,fontWeight:800}}>✦</span>}
                       </div>
                       <div style={{fontSize:13,fontWeight:800,color:C.text,fontFamily:C.F,marginTop:3}}>
-                        ${Object.values(PLANS).filter(p=>p.price>0)[i-1]?.price}/mo
+                        ${[29,59,129][i-1]}/mo
                       </div>
                     </>
                   )}
@@ -4871,7 +4885,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                 const resp=await fetch('/api/create-user',{
                   method:'POST',
                   headers:{'Content-Type':'application/json'},
-                  body:JSON.stringify({ email, plan:"trial", credits:startCredits, intendedPlan:"pro" })
+                  body:JSON.stringify({ email, plan:"trial", credits:startCredits, intendedPlan:"premium" })
                 });
                 const cuData=await resp.json();
                 finalPlan = resp.ok ? cuData.plan : "trial";
