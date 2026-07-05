@@ -1,6 +1,6 @@
-// api/google-data.js — Reads Gmail/Calendar data OR disconnects Google
-// POST { email, action:"fetch" } → returns emails + calendar
-// POST { email, action:"disconnect" } → removes tokens from Supabase
+// api/google-data.js — Google integration + Autopilot sync (merged to stay under function limit)
+// Google actions: fetch, disconnect
+// Autopilot actions: save_run, load_latest, load_history, sync_data, load_data
 
 import { createClient } from "@supabase/supabase-js";
 
@@ -12,6 +12,7 @@ function getSupabase(){
   );
 }
 
+// ─── GOOGLE HELPERS ───────────────────────────────────────────────────────────
 async function refreshAccessToken(refreshToken, clientId, clientSecret){
   const res = await fetch("https://oauth2.googleapis.com/token",{
     method:"POST",
@@ -58,11 +59,13 @@ async function getGmailData(accessToken){
         const messages   = threadData.messages || [];
         const lastMsg    = messages[messages.length-1];
         if(!lastMsg) continue;
-        const headers  = lastMsg.payload?.headers || [];
-        const subject  = headers.find(h=>h.name==="Subject")?.value || "(no subject)";
-        const from     = headers.find(h=>h.name==="From")?.value || "";
-        const snippet  = (threadData.snippet||"").slice(0,200);
-        results.push({ subject, from, snippet, msgCount:messages.length });
+        const headers = lastMsg.payload?.headers || [];
+        results.push({
+          subject:  headers.find(h=>h.name==="Subject")?.value || "(no subject)",
+          from:     headers.find(h=>h.name==="From")?.value || "",
+          snippet:  (threadData.snippet||"").slice(0,200),
+          msgCount: messages.length,
+        });
       }catch{}
     }
     return results;
@@ -99,29 +102,128 @@ async function getCalendarData(accessToken){
   }catch(err){ console.error("Calendar error:",err); return []; }
 }
 
+// ─── AUTOPILOT HANDLERS ───────────────────────────────────────────────────────
+async function handleAutopilot(action, email, body, res){
+  const sb = getSupabase();
+
+  if(action==="save_run"){
+    const { result, clientCount, dealCount, overallHealth, memory } = body;
+    if(!result) return res.status(400).json({ error:"Result required" });
+
+    const { error: runError } = await sb.from("autopilot_runs").insert({
+      user_email:     email,
+      result,
+      client_count:   clientCount||0,
+      deal_count:     dealCount||0,
+      overall_health: overallHealth||"stable",
+    });
+    if(runError) console.error("Run save error:", runError.message);
+
+    if(memory){
+      const { data: existing } = await sb
+        .from("autopilot_memory")
+        .select("coaching_history,run_count")
+        .eq("user_email", email)
+        .single();
+      const prevHistory = existing?.coaching_history || [];
+      const newEntry = {
+        observation:    result?.coaching_insight?.observation||"",
+        recommendation: result?.coaching_insight?.recommendation||"",
+        date:           new Date().toISOString().slice(0,10),
+      };
+      await sb.from("autopilot_memory").upsert({
+        user_email:       email,
+        run_count:        (existing?.run_count||0)+1,
+        patterns:         memory.patterns||"",
+        last_health:      overallHealth||"stable",
+        coaching_history: [newEntry,...prevHistory].slice(0,30),
+        updated_at:       new Date().toISOString(),
+      },{ onConflict:"user_email" });
+    }
+    return res.status(200).json({ saved:true });
+  }
+
+  if(action==="load_latest"){
+    const { data:run } = await sb
+      .from("autopilot_runs")
+      .select("result,run_at,client_count,deal_count,overall_health")
+      .eq("user_email", email)
+      .order("run_at",{ ascending:false })
+      .limit(1)
+      .single();
+    const { data:memory } = await sb
+      .from("autopilot_memory")
+      .select("run_count,patterns,last_health,coaching_history,updated_at")
+      .eq("user_email", email)
+      .single();
+    return res.status(200).json({ latestRun:run||null, memory:memory||null });
+  }
+
+  if(action==="load_history"){
+    const { data:runs } = await sb
+      .from("autopilot_runs")
+      .select("id,run_at,client_count,deal_count,overall_health")
+      .eq("user_email", email)
+      .order("run_at",{ ascending:false })
+      .limit(20);
+    return res.status(200).json({ runs:runs||[] });
+  }
+
+  if(action==="sync_data"){
+    const { clients, pipeline, goals } = body;
+    const { error } = await sb.from("agent_data_sync").upsert({
+      user_email: email,
+      clients:    clients||[],
+      pipeline:   pipeline||[],
+      goals:      goals||{},
+      synced_at:  new Date().toISOString(),
+    },{ onConflict:"user_email" });
+    if(error){ console.error("Sync error:",error.message); return res.status(500).json({ error:error.message }); }
+    return res.status(200).json({ synced:true });
+  }
+
+  if(action==="load_data"){
+    const { data } = await sb
+      .from("agent_data_sync")
+      .select("clients,pipeline,goals,synced_at")
+      .eq("user_email", email)
+      .single();
+    return res.status(200).json({ data:data||null });
+  }
+
+  return res.status(400).json({ error:`Unknown autopilot action: ${action}` });
+}
+
+// ─── MAIN HANDLER ─────────────────────────────────────────────────────────────
 export default async function handler(req, res){
   if(req.method!=="POST") return res.status(405).json({ error:"Method not allowed" });
 
   const { email, action="fetch" } = req.body;
   if(!email) return res.status(400).json({ error:"Email required" });
 
-  // ── DISCONNECT ──
+  const userEmail = email.toLowerCase().trim();
+
+  // Route autopilot actions
+  const autopilotActions = ["save_run","load_latest","load_history","sync_data","load_data"];
+  if(autopilotActions.includes(action)){
+    try{ return await handleAutopilot(action, userEmail, req.body, res); }
+    catch(err){ console.error("Autopilot error:",err.message); return res.status(500).json({ error:err.message }); }
+  }
+
+  // ── GOOGLE DISCONNECT ──
   if(action==="disconnect"){
     try{
       const sb = getSupabase();
-      // Get token to revoke it
-      const { data } = await sb.from("users").select("google_tokens").eq("email",email.toLowerCase()).single();
+      const { data } = await sb.from("users").select("google_tokens").eq("email",userEmail).single();
       if(data?.google_tokens?.access_token){
         fetch(`https://oauth2.googleapis.com/revoke?token=${data.google_tokens.access_token}`,{ method:"POST" }).catch(()=>{});
       }
-      await sb.from("users").update({ google_tokens:null, google_email:null, google_connected_at:null }).eq("email",email.toLowerCase());
+      await sb.from("users").update({ google_tokens:null, google_email:null, google_connected_at:null }).eq("email",userEmail);
       return res.status(200).json({ disconnected:true });
-    }catch(err){
-      return res.status(500).json({ error:err.message });
-    }
+    }catch(err){ return res.status(500).json({ error:err.message }); }
   }
 
-  // ── FETCH ──
+  // ── GOOGLE FETCH ──
   const clientId     = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if(!clientId||!clientSecret) return res.status(500).json({ error:"Google not configured" });
@@ -131,7 +233,7 @@ export default async function handler(req, res){
     const { data:userData, error:dbError } = await sb
       .from("users")
       .select("google_tokens,google_email")
-      .eq("email",email.toLowerCase())
+      .eq("email",userEmail)
       .single();
 
     if(dbError||!userData?.google_tokens){
@@ -140,7 +242,7 @@ export default async function handler(req, res){
 
     const { accessToken, newTokens } = await getValidToken(userData.google_tokens, clientId, clientSecret);
     if(newTokens){
-      await sb.from("users").update({ google_tokens:newTokens }).eq("email",email.toLowerCase());
+      await sb.from("users").update({ google_tokens:newTokens }).eq("email",userEmail);
     }
 
     const [emails, events] = await Promise.all([
@@ -148,7 +250,7 @@ export default async function handler(req, res){
       getCalendarData(accessToken),
     ]);
 
-    res.status(200).json({
+    return res.status(200).json({
       connected:   true,
       googleEmail: userData.google_email,
       emails, events,
@@ -156,6 +258,6 @@ export default async function handler(req, res){
     });
   }catch(err){
     console.error("google-data error:",err);
-    res.status(500).json({ error:err.message||"Failed to fetch Google data" });
+    return res.status(500).json({ error:err.message||"Failed to fetch Google data" });
   }
 }
