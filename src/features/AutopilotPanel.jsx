@@ -747,24 +747,90 @@ function AutopilotEmptyState({ onNavigate }){
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// LAYER 2 — SUPABASE SYNC UTILITIES
+// ─────────────────────────────────────────────────────────────────────────────
+async function apSync(email, action, body={}){
+  try{
+    const r = await fetch("/api/google-data", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ email, action, ...body }),
+    });
+    return await r.json();
+  }catch(e){
+    console.warn("autopilot-sync failed:", e.message);
+    return null;
+  }
+}
+
+// Sync all agent data to Supabase (called after any data change)
+async function syncAgentData(email){
+  if(!email) return;
+  const clients  = lsGet("spark_clients_v1", []);
+  const pipeline = lsGet("spark_pipeline_value_v1", []);
+  const goals    = lsGet("spark_biz_goals_v1", {});
+  await apSync(email, "sync_data", { clients, pipeline, goals });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN AUTOPILOT PANEL
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
-  const [result,   setResult]   = useState(()=>lsGet(AP_KEY, null));
-  const [running,  setRunning]  = useState(false);
-  const [error,    setError]    = useState(null);
-  const [lastRun,  setLastRun]  = useState(()=>lsGet(RUN_KEY, null));
-  const [activeTab,setActiveTab]= useState("mission");
+  const [result,    setResult]   = useState(()=>lsGet(AP_KEY, null));
+  const [running,   setRunning]  = useState(false);
+  const [error,     setError]    = useState(null);
+  const [lastRun,   setLastRun]  = useState(()=>lsGet(RUN_KEY, null));
+  const [activeTab, setActiveTab]= useState("mission");
+  const [runHistory,setRunHistory]= useState([]);
+  const [syncing,   setSyncing]  = useState(false);
+  const [dbMemory,  setDbMemory] = useState(null);
 
   const data = aggregateBusinessData(voice);
   const hasEnoughData = data.totalClients > 0 || data.totalDeals > 0;
 
-  // Auto-run on mount if no result or result is stale (>12 hours)
+  // On mount — load latest from Supabase, fall back to localStorage
+  useEffect(()=>{
+    if(!user?.email) return;
+    loadFromSupabase();
+    // Sync agent data to Supabase in background
+    syncAgentData(user.email);
+  }, [user?.email]);
+
+  // Auto-run if stale and has data
   useEffect(()=>{
     if(!hasEnoughData) return;
     const stale = !lastRun || (Date.now() - new Date(lastRun)) > 12 * 60 * 60 * 1000;
     if(stale && !result) runAutopilot();
   }, []);
+
+  async function loadFromSupabase(){
+    setSyncing(true);
+    const d = await apSync(user.email, "load_latest");
+    if(d?.latestRun){
+      // Use Supabase version if it's newer than localStorage
+      const dbTime  = new Date(d.latestRun.run_at).getTime();
+      const lsTime  = lastRun ? new Date(lastRun).getTime() : 0;
+      if(dbTime > lsTime){
+        setResult(d.latestRun.result);
+        setLastRun(d.latestRun.run_at);
+        lsSet(AP_KEY, d.latestRun.result);
+        lsSet(RUN_KEY, d.latestRun.run_at);
+      }
+    }
+    if(d?.memory){
+      setDbMemory(d.memory);
+      // Update local memory with DB memory
+      lsSet(MEMORY_KEY, {
+        runCount: d.memory.run_count || 0,
+        patterns: d.memory.patterns || "",
+        lastHealth: d.memory.last_health || "",
+      });
+    }
+    // Load run history
+    const h = await apSync(user.email, "load_history");
+    if(h?.runs) setRunHistory(h.runs);
+    setSyncing(false);
+  }
 
   async function runAutopilot(){
     if(running) return;
@@ -774,7 +840,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       const freshData = aggregateBusinessData(voice);
       const analysis  = await runAutopilotEngine(freshData);
 
-      // Update memory with patterns
+      // Update local memory
       const memory = lsGet(MEMORY_KEY, { runCount:0, patterns:"" });
       const newMemory = {
         runCount:   (memory.runCount||0) + 1,
@@ -790,13 +856,32 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setResult(analysis);
       setLastRun(now);
       setActiveTab("mission");
+
+      // Save to Supabase in background
+      if(user?.email){
+        apSync(user.email, "save_run", {
+          result:        analysis,
+          clientCount:   freshData.totalClients,
+          dealCount:     freshData.totalDeals,
+          overallHealth: analysis.deal_intelligence?.overall_health || "stable",
+          memory:        newMemory,
+        }).then(()=>{
+          // Refresh run history after save
+          apSync(user.email, "load_history").then(h=>{
+            if(h?.runs) setRunHistory(h.runs);
+          });
+          // Sync latest agent data
+          syncAgentData(user.email);
+        });
+      }
+
     }catch(e){
       console.error("Autopilot error:", e);
       if(e.message?.includes("timeout")||e.message?.includes("504")||e.message?.includes("502")){
-        setError("Analysis timed out — the request took too long. Try again or reduce the amount of client data.");
-      } else if(e.message?.includes("JSON")||e.message?.includes("parse")||e.message?.includes("raw:")){
-        const rawSnippet = e.message.includes("raw:") ? e.message.split("raw:")[1]?.slice(0,120) : "";
-        setError(`Parse failed${rawSnippet ? " — Claude returned: " + rawSnippet : " — try running again."}`);
+        setError("Analysis timed out — try again.");
+      } else if(e.message?.includes("parse_failed:")){
+        const snippet = e.message.split("parse_failed:")[1]?.slice(0,100);
+        setError(`Response parse failed${snippet ? ": " + snippet : " — try running again."}`);
       } else {
         setError("Analysis failed — check your connection and try again. " + (e.message||""));
       }
@@ -805,15 +890,18 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   }
 
   const TABS = [
-    { id:"mission",      label:"Mission",      icon:"🎯" },
-    { id:"deals",        label:"Deals",        icon:"📋" },
-    { id:"clients",      label:"Clients",      icon:"👥" },
-    { id:"alerts",       label:"Alerts",       icon:"⚡" },
-    { id:"market",       label:"Market",       icon:"📈" },
-    { id:"coaching",     label:"Coaching",     icon:"🏆" },
+    { id:"mission",  label:"Mission",  icon:"🎯" },
+    { id:"deals",    label:"Deals",    icon:"📋" },
+    { id:"clients",  label:"Clients",  icon:"👥" },
+    { id:"alerts",   label:"Alerts",   icon:"⚡" },
+    { id:"market",   label:"Market",   icon:"📈" },
+    { id:"coaching", label:"Coaching", icon:"🏆" },
+    { id:"history",  label:"History",  icon:"📅", count:runHistory.length },
   ];
 
-  const memory = lsGet(MEMORY_KEY, {});
+  const memory     = lsGet(MEMORY_KEY, {});
+  const totalRuns  = dbMemory?.run_count || memory.runCount || 0;
+  const lastHealth = dbMemory?.last_health || memory.lastHealth;
 
   return(
     <div style={{paddingBottom:48}}>
@@ -868,12 +956,12 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         </div>
 
         {/* Stats bar */}
-        {(memory.runCount||0) > 0 && (
+        {totalRuns > 0 && (
           <div style={{display:"flex",gap:14,marginTop:14,
             paddingTop:12,borderTop:`1px solid ${C.border}`,
-            flexWrap:"wrap",position:"relative"}}>
+            flexWrap:"wrap",position:"relative",alignItems:"center"}}>
             {[
-              {label:"RUNS",      value:memory.runCount||0},
+              {label:"RUNS",      value:totalRuns},
               {label:"CLIENTS",   value:data.totalClients},
               {label:"DEALS",     value:data.totalDeals},
               {label:"PIPELINE",  value:`$${Math.round(data.totalPipeline/1000)}k`},
@@ -886,6 +974,21 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   fontWeight:700,letterSpacing:1.5}}>{s.label}</div>
               </div>
             ))}
+            {/* Sync status */}
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
+              {syncing?(
+                <>
+                  <div style={{width:5,height:5,borderRadius:"50%",
+                    background:C.amber,animation:"pulse 1s ease infinite"}}/>
+                  <span style={{fontSize:9,color:C.amber,fontFamily:C.F}}>Syncing...</span>
+                </>
+              ):(
+                <>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald}}/>
+                  <span style={{fontSize:9,color:C.emerald,fontFamily:C.F}}>Synced</span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -934,8 +1037,14 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   background:activeTab===t.id?`${C.indigo}10`:"transparent",
                   color:activeTab===t.id?C.indigoLt:C.textDim,cursor:"pointer",
                   fontSize:10,fontFamily:C.F,fontWeight:700,whiteSpace:"nowrap",
-                  transition:"all .14s"}}>
+                  transition:"all .14s",display:"flex",alignItems:"center",gap:5}}>
                 {t.icon} {t.label}
+                {t.count>0&&(
+                  <span style={{fontSize:8,background:C.indigo,color:"#fff",
+                    borderRadius:8,padding:"1px 5px",fontWeight:800}}>
+                    {t.count}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -947,6 +1056,77 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
           {activeTab==="alerts"   && <RelationshipAlerts  alerts={result.relationship_alerts}/>}
           {activeTab==="market"   && <MarketIntel         market={result.market_intelligence}/>}
           {activeTab==="coaching" && <CoachingForecast    coaching={result.coaching_insight} forecast={result.performance_forecast}/>}
+          {activeTab==="history"  && (
+            <div>
+              {/* Coaching pattern memory */}
+              {dbMemory?.coaching_history?.length>0&&(
+                <APCard accent={C.violet}>
+                  <APLabel color={C.violet}>PATTERN MEMORY ({dbMemory.coaching_history.length} runs)</APLabel>
+                  <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"0 0 12px",lineHeight:1.5}}>
+                    Autopilot remembers coaching insights from every run. Patterns improve over time.
+                  </p>
+                  {dbMemory.coaching_history.slice(0,5).map((h,i)=>(
+                    <div key={i} style={{background:"rgba(255,255,255,.02)",
+                      border:`1px solid ${C.border}`,borderRadius:9,
+                      padding:"10px 12px",marginBottom:8}}>
+                      <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,
+                        marginBottom:5}}>{h.date}</div>
+                      <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,
+                        margin:"0 0 6px",lineHeight:1.5}}>{h.observation}</p>
+                      {h.recommendation&&(
+                        <p style={{fontFamily:C.F,fontSize:11,color:C.violet,
+                          margin:0,lineHeight:1.5,fontWeight:600}}>→ {h.recommendation}</p>
+                      )}
+                    </div>
+                  ))}
+                </APCard>
+              )}
+
+              {/* Run history */}
+              <APCard accent={C.indigo}>
+                <APLabel color={C.indigo}>RUN HISTORY ({runHistory.length})</APLabel>
+                {runHistory.length===0?(
+                  <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0}}>
+                    No run history yet — run Autopilot to start building your history.
+                  </p>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {runHistory.map((run,i)=>{
+                      const healthColors = {
+                        strong:C.emerald, stable:C.cyan,
+                        at_risk:C.amber, critical:C.rose
+                      };
+                      const hColor = healthColors[run.overall_health] || C.textDim;
+                      return(
+                        <div key={run.id} style={{display:"flex",alignItems:"center",
+                          gap:10,background:"rgba(255,255,255,.02)",
+                          border:`1px solid ${C.border}`,borderRadius:9,
+                          padding:"10px 12px"}}>
+                          <div style={{flex:1}}>
+                            <div style={{fontFamily:C.F,fontSize:12,color:C.text,fontWeight:600}}>
+                              {new Date(run.run_at).toLocaleDateString("en-US",{
+                                month:"short",day:"numeric",
+                                hour:"numeric",minute:"2-digit",
+                              })}
+                            </div>
+                            <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>
+                              {run.client_count} clients · {run.deal_count} deals
+                            </div>
+                          </div>
+                          <span style={{fontSize:9,color:hColor,fontFamily:C.F,
+                            fontWeight:700,background:`${hColor}12`,
+                            border:`1px solid ${hColor}24`,borderRadius:8,
+                            padding:"2px 8px",letterSpacing:1}}>
+                            {run.overall_health?.replace("_"," ").toUpperCase()||"STABLE"}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </APCard>
+            </div>
+          )}
         </div>
       )}
     </div>
