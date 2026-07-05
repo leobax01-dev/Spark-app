@@ -787,6 +787,93 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
   const data = aggregateBusinessData(voice);
   const hasEnoughData = data.totalClients > 0 || data.totalDeals > 0;
+  const isPremium = planKey === "premium";
+
+  // Premium gate
+  if(!isPremium){
+    return(
+      <div style={{paddingBottom:48}}>
+        <div style={{
+          background:`linear-gradient(135deg,${C.violet}10,${C.indigo}08)`,
+          border:`1px solid ${C.violet}28`,borderRadius:20,
+          padding:"48px 28px",textAlign:"center",
+          position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:"-20%",left:"50%",
+            transform:"translateX(-50%)",width:300,height:300,
+            borderRadius:"50%",pointerEvents:"none",
+            background:`radial-gradient(circle,${C.violet}14,transparent 70%)`}}/>
+          <div style={{position:"relative"}}>
+            <div style={{width:72,height:72,borderRadius:20,margin:"0 auto 20px",
+              background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:32,boxShadow:`0 8px 32px ${C.indigo}40`}}>🤖</div>
+            <div style={{display:"inline-flex",alignItems:"center",gap:6,
+              background:`${C.violet}12`,border:`1px solid ${C.violet}28`,
+              borderRadius:16,padding:"4px 14px",marginBottom:16,
+              fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>
+              ✦ PREMIUM EXCLUSIVE
+            </div>
+            <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:C.text,
+              margin:"0 0 12px",letterSpacing:"-0.02em"}}>
+              SPARK Autopilot
+            </h2>
+            <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
+              margin:"0 0 24px",lineHeight:1.75,maxWidth:380,
+              marginLeft:"auto",marginRight:"auto"}}>
+              The AI that monitors your entire business 24/7 — detecting deal risks, scoring clients by probability, surfacing relationship alerts, and telling you exactly what to do every single day with ready-to-send messages.
+            </p>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",
+              gap:8,maxWidth:380,margin:"0 auto 28px",textAlign:"left"}}>
+              {[
+                "Daily mission with priority action queue",
+                "Deal risk detection + recovery messages",
+                "Client probability scores",
+                "Relationship alerts + personal messages",
+                "Market intelligence briefing",
+                "AI coaching from your business patterns",
+                "Performance forecast + GCI projection",
+                "Run history + pattern memory",
+              ].map((f,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <div style={{width:14,height:14,borderRadius:"50%",flexShrink:0,
+                    marginTop:2,background:`${C.violet}18`,
+                    border:`1px solid ${C.violet}28`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:7,color:C.violet}}>✓</div>
+                  <span style={{fontFamily:C.F,fontSize:11,color:C.textMd,lineHeight:1.4}}>
+                    {f}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{marginBottom:20}}>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,
+                color:C.text,letterSpacing:"-0.03em",marginBottom:4}}>$129
+                <span style={{fontSize:14,color:C.textDim,fontWeight:400}}>/month</span>
+              </div>
+              <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>
+                Unlimited credits · Cancel anytime
+              </div>
+            </div>
+            <button onClick={()=>{
+              const link = "https://buy.stripe.com/6oUeVcfrnbmr3Z31vg0sU08";
+              window.open(link,"_blank");
+            }}
+              style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                border:"none",color:"#fff",padding:"15px 40px",borderRadius:12,
+                cursor:"pointer",fontWeight:800,fontSize:15,fontFamily:C.F,
+                letterSpacing:.3,marginBottom:12,
+                boxShadow:`0 0 0 1px ${C.violet}40,0 8px 28px ${C.violet}30`}}>
+              Upgrade to Premium ⚡
+            </button>
+            <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:0}}>
+              No contracts · Cancel anytime · Instant access
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // On mount — load latest from Supabase, fall back to localStorage
   useEffect(()=>{
