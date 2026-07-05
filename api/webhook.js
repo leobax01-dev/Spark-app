@@ -12,12 +12,21 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 export const config = { api: { bodyParser: false } }
 
+// Payment link → plan mapping (updated for new tier structure)
 const LINK_TO_PLAN = {
-  'https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00': { plan:'agent', credits:20 },
-  'https://buy.stripe.com/7sYcN4gvr4Y37bfddY0sU01': { plan:'pro',   credits:60 },
-  'https://buy.stripe.com/00waEWgvr0HNfHLei20sU02': { plan:'team',  credits:180 },
+  'https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00': { plan:'starter',  credits:30  },
+  'https://buy.stripe.com/dRm3cu4MJ1LRdzD0rc0sU07': { plan:'pro',      credits:100 },
+  'https://buy.stripe.com/6oUeVcfrnbmr3Z31vg0sU08': { plan:'premium',  credits:999 },
 }
 
+// Product ID → plan mapping (backup lookup)
+const PRODUCT_TO_PLAN = {
+  'prod_UfwYKov5D0acsH':  { plan:'starter',  credits:30  },
+  'prod_UpNNIk642JCqe7':  { plan:'pro',      credits:100 },
+  'prod_UpNPmx9u4hYhm4':  { plan:'premium',  credits:999 },
+}
+
+// Credit pack links (unchanged)
 const LINK_TO_CREDITS = {
   'https://buy.stripe.com/6oUbJ00wtbmrdzD4Hs0sU03': 10,
   'https://buy.stripe.com/7sYcN4cfb2PV9jn2zk0sU04': 30,
@@ -34,7 +43,6 @@ function getRawBody(req) {
   });
 }
 
-// Helper: look up user with one retry (handles timing race on new signups)
 async function findUser(email, retries = 2) {
   for (let i = 0; i < retries; i++) {
     const { data, error } = await supabase
@@ -43,7 +51,7 @@ async function findUser(email, retries = 2) {
       .eq('email', email)
       .single()
     if (data) return data
-    if (i < retries - 1) await new Promise(r => setTimeout(r, 1500)) // wait 1.5s before retry
+    if (i < retries - 1) await new Promise(r => setTimeout(r, 1500))
   }
   return null
 }
@@ -81,23 +89,44 @@ export default async function handler(req, res) {
       }
 
       const email = rawEmail.toLowerCase()
-      const userData = await findUser(email) // retries once after 1.5s
+      const userData = await findUser(email)
 
       if (!userData) {
         console.error('User not found after retries:', email)
         return res.status(200).json({ received: true, note: 'User not found' })
       }
 
-      // Subscription plan purchase
-      const planData = LINK_TO_PLAN[paymentLink]
+      // Subscription plan purchase — try payment link first, then product ID
+      let planData = LINK_TO_PLAN[paymentLink]
+
+      // Fallback: match by product ID from line items
+      if (!planData && session.line_items) {
+        try {
+          const expanded = await stripe.checkout.sessions.retrieve(session.id, {
+            expand: ['line_items.data.price.product']
+          })
+          for (const item of expanded.line_items?.data || []) {
+            const productId = typeof item.price?.product === 'string'
+              ? item.price.product
+              : item.price?.product?.id
+            if (productId && PRODUCT_TO_PLAN[productId]) {
+              planData = PRODUCT_TO_PLAN[productId]
+              break
+            }
+          }
+        } catch (e) {
+          console.warn('Could not expand line items:', e.message)
+        }
+      }
+
       if (planData) {
         const { error: updateError } = await supabase
           .from('users')
           .update({
-            plan: planData.plan,
-            credits: planData.credits,
+            plan:               planData.plan,
+            credits:            planData.credits,
             stripe_customer_id: session.customer,
-            updated_at: new Date().toISOString(),
+            updated_at:         new Date().toISOString(),
           })
           .eq('id', userData.id)
 
@@ -117,7 +146,7 @@ export default async function handler(req, res) {
         const { error: updateError } = await supabase
           .from('users')
           .update({
-            credits: newCredits,
+            credits:    newCredits,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userData.id)
@@ -135,38 +164,48 @@ export default async function handler(req, res) {
     }
 
     // ── MONTHLY RENEWAL ─────────────────────────────────────────────────────
-    // FIX: use MAX(current_credits, plan_credits) so bought credit packs
-    // are never wiped on renewal
     if (event.type === 'invoice.paid') {
       const invoice = event.data.object
       const rawEmail = invoice.customer_email
       if (!rawEmail) return res.status(200).json({ received: true })
 
       const email = rawEmail.toLowerCase()
-
       const lineItems = invoice.lines?.data || []
+
       for (const item of lineItems) {
-        const amount = item.price?.unit_amount
+        const amount    = item.price?.unit_amount
+        const productId = typeof item.price?.product === 'string'
+          ? item.price.product
+          : item.price?.product?.id
+
         let planData = null
-        if (amount === 2900)      planData = { plan:'agent', credits:20 }
-        else if (amount === 4900) planData = { plan:'pro',   credits:60 }
-        else if (amount === 9900) planData = { plan:'team',  credits:180 }
+
+        // Match by product ID first (most reliable)
+        if (productId && PRODUCT_TO_PLAN[productId]) {
+          planData = PRODUCT_TO_PLAN[productId]
+        }
+        // Fallback: match by price amount
+        else if (amount === 2900)  planData = { plan:'starter',  credits:30  }
+        else if (amount === 5900)  planData = { plan:'pro',      credits:100 }
+        else if (amount === 12900) planData = { plan:'premium',  credits:999 }
 
         if (planData) {
-          // Fetch current credits first so we never wipe a credit pack top-up
           const { data: current } = await supabase
             .from('users')
             .select('credits')
             .eq('email', email)
             .single()
 
-          const renewedCredits = Math.max(current?.credits || 0, planData.credits)
+          // Premium has unlimited (999) — always restore to 999 on renewal
+          const renewedCredits = planData.credits >= 999
+            ? 999
+            : Math.max(current?.credits || 0, planData.credits)
 
           const { error: updateError } = await supabase
             .from('users')
             .update({
-              credits: renewedCredits,
-              plan: planData.plan,
+              credits:    renewedCredits,
+              plan:       planData.plan,
               updated_at: new Date().toISOString(),
             })
             .eq('email', email)
@@ -174,19 +213,17 @@ export default async function handler(req, res) {
           if (updateError) {
             console.error('Renewal update failed:', email, updateError.message)
           } else {
-            console.log(`Monthly renewal: ${email} -> ${planData.plan} (${renewedCredits} credits — was ${current?.credits||0}, plan default ${planData.credits})`)
+            console.log(`Monthly renewal: ${email} -> ${planData.plan} (${renewedCredits} credits)`)
           }
         }
       }
     }
 
     // ── SUBSCRIPTION CANCELLED ──────────────────────────────────────────────
-    // FIX: downgrade to trial when subscription is cancelled so access is revoked
     if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object
       const customerId = subscription.customer
 
-      // Look up user by stripe_customer_id
       const { data: userData } = await supabase
         .from('users')
         .select('id, email, plan')
@@ -197,8 +234,8 @@ export default async function handler(req, res) {
         const { error: updateError } = await supabase
           .from('users')
           .update({
-            plan: 'trial',
-            credits: 0,
+            plan:       'trial',
+            credits:    0,
             updated_at: new Date().toISOString(),
           })
           .eq('id', userData.id)
