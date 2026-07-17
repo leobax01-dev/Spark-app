@@ -23,6 +23,90 @@ const MEMORY_KEY  = "spark_autopilot_memory_v1";
 const RUN_KEY     = "spark_autopilot_last_run";
 const CHAT_KEY    = "spark_autopilot_chat_v1";
 const NOTES_KEY   = "spark_assistant_notes_v1";
+const CONV_KEY    = "spark_conv_memory_v1"; // cached conversation summaries
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONVERSATION MEMORY — summarize + persist sessions
+// ─────────────────────────────────────────────────────────────────────────────
+async function summarizeConversation(messages, email){
+  if(!messages?.length || messages.length < 2) return null;
+  if(!email) return null;
+
+  // Only summarize substantial conversations (4+ messages)
+  const exchanges = messages.filter(m=>!m.streaming);
+  if(exchanges.length < 4) return null;
+
+  const transcript = exchanges.slice(-20).map(m=>
+    `${m.role==="user"?"Agent":"SPARK"}: ${m.content.slice(0,200)}`
+  ).join("\n");
+
+  try{
+    const r = await fetch("/api/claude",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        system:"You are a conversation summarizer for a real estate AI assistant. Summarize conversations concisely, focusing on decisions made, clients discussed, strategies agreed on, and any outcomes the agent reported. Be specific — include client names, deal names, and dollar amounts when mentioned. Return ONLY valid JSON.",
+        messages:[{role:"user",content:`Summarize this SPARK AI conversation in JSON:
+
+${transcript}
+
+Return ONLY this JSON:
+{"summary":"2-3 sentence summary of what was discussed and decided — specific, include names and numbers","key_decisions":["decision or strategy agreed on","another decision"],"clients_discussed":["client name if mentioned"]}`}],
+        max_tokens:600,
+      })
+    });
+    const d = await r.json();
+    const raw = d.content?.[0]?.text||"";
+
+    let parsed = null;
+    for(const attempt of [
+      ()=>JSON.parse(raw.trim()),
+      ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no block"); },
+    ]){
+      try{ parsed=attempt(); break; }catch{}
+    }
+
+    if(!parsed?.summary) return null;
+
+    // Save to Supabase
+    await apSync(email,"save_conversation",{
+      summary:         parsed.summary,
+      keyDecisions:    parsed.key_decisions||[],
+      clientsDiscussed:parsed.clients_discussed||[],
+    });
+
+    // Update local cache
+    const cached = lsGet(CONV_KEY,[]);
+    const newEntry = {
+      summary:          parsed.summary,
+      key_decisions:    parsed.key_decisions||[],
+      clients_discussed:parsed.clients_discussed||[],
+      created_at:       new Date().toISOString(),
+    };
+    lsSet(CONV_KEY,[newEntry,...cached].slice(0,8));
+
+    return parsed.summary;
+  }catch(e){
+    console.warn("Conversation summary failed:",e.message);
+    return null;
+  }
+}
+
+function buildConversationMemoryContext(conversations){
+  if(!conversations?.length) return "";
+  const lines=["\nCONVERSATION MEMORY (previous sessions — what the agent told you before):"];
+  conversations.slice(0,5).forEach((c,i)=>{
+    const date = new Date(c.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+    lines.push(`\n[Session ${i+1} — ${date}]`);
+    lines.push(`Summary: ${c.summary}`);
+    if(c.key_decisions?.length)
+      lines.push(`Decisions made: ${c.key_decisions.join("; ")}`);
+    if(c.clients_discussed?.length)
+      lines.push(`Clients discussed: ${c.clients_discussed.join(", ")}`);
+  });
+  lines.push("\nUse this memory to reference previous conversations naturally. Say things like 'Last time we talked about X' or 'You mentioned Y last week' when relevant.");
+  return lines.join("\n");
+}
 
 function lsGet(key,fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch{ return fb; } }
 function lsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} }
@@ -198,18 +282,20 @@ function buildGoogleContext(googleData){
   return lines.join("\n");
 }
 
-function buildSystem(voice,planKey,autopilotResult,googleData,mode){
+function buildSystem(voice,planKey,autopilotResult,googleData,mode,conversations){
   const agentCtx    = buildAgentContext(voice,planKey);
   const autopilotCtx= buildAutopilotContext(autopilotResult);
   const googleCtx   = buildGoogleContext(googleData);
+  const memoryCtx   = buildConversationMemoryContext(conversations);
   const modeInst    = MODES[mode]?.instruction||"";
   const isPremium   = planKey==="premium";
 
-  return `You are SPARK Autopilot — the most advanced AI business partner ever built for real estate agents. You are deeply integrated into this agent's business with full context about their clients, pipeline, deals, goals, calendar, email, and market.
+  return `You are SPARK Autopilot — the most advanced AI business partner ever built for real estate agents. You are deeply integrated into this agent's business with full context about their clients, pipeline, deals, goals, calendar, email, and the history of your previous conversations together.
 
 ${agentCtx}
 ${autopilotCtx}
 ${googleCtx}
+${memoryCtx}
 
 ${modeInst}
 
@@ -218,6 +304,7 @@ CORE RULES:
 - NEVER output structured data — always respond in natural conversational prose
 - Write like the best business partner the agent has ever had
 - Reference specific client names, deal values, and situations from context above
+- When conversation memory exists, reference previous sessions naturally ("Last time we talked about...", "You mentioned last week that...")
 - When calendar events exist, proactively prep the agent for upcoming appointments
 - When emails are referenced, use actual inbox content
 - Be direct and specific — no generic advice, always tie to their actual situation
@@ -769,11 +856,45 @@ function MarketCoachingForecast({ market, coaching, forecast, onDiscuss }){
   );
 }
 
-function RunHistory({ runs, memory }){
-  if(!runs?.length&&!memory?.coaching_history?.length) return null;
+function RunHistory({ runs, memory, conversations }){
+  if(!runs?.length&&!memory?.coaching_history?.length&&!conversations?.length) return null;
   const hc={strong:C.emerald,stable:C.cyan,at_risk:C.amber,critical:C.rose};
   return(
     <div>
+      {/* Conversation memory */}
+      {conversations?.length>0&&(
+        <APCard accent={C.emerald}>
+          <APLabel color={C.emerald}>CONVERSATION MEMORY ({conversations.length} sessions)</APLabel>
+          <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"0 0 12px",lineHeight:1.5}}>
+            SPARK remembers every conversation. This context is injected into every new session automatically.
+          </p>
+          {conversations.slice(0,5).map((c,i)=>{
+            const date=new Date(c.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+            return(
+              <div key={i} style={{background:`${C.emerald}06`,border:`1px solid ${C.emerald}18`,borderRadius:9,padding:"11px 13px",marginBottom:8,animation:`slideR .22s ease ${i*.05}s both`}}>
+                <div style={{fontSize:9,color:C.emerald,fontFamily:C.F,fontWeight:700,marginBottom:6,letterSpacing:1}}>{date}</div>
+                <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 8px",lineHeight:1.6}}>{c.summary}</p>
+                {c.key_decisions?.length>0&&(
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:4}}>
+                    {c.key_decisions.slice(0,3).map((d,j)=>(
+                      <span key={j} style={{fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:600,background:`${C.indigo}10`,border:`1px solid ${C.indigo}20`,borderRadius:8,padding:"2px 8px"}}>
+                        ✓ {d}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {c.clients_discussed?.length>0&&(
+                  <div style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>
+                    Discussed: {c.clients_discussed.join(", ")}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </APCard>
+      )}
+
+      {/* Coaching pattern memory */}
       {memory?.coaching_history?.length>0&&(
         <APCard accent={C.violet}>
           <APLabel color={C.violet}>PATTERN MEMORY ({memory.coaching_history.length} runs)</APLabel>
@@ -786,6 +907,8 @@ function RunHistory({ runs, memory }){
           ))}
         </APCard>
       )}
+
+      {/* Run history */}
       {runs.length>0&&(
         <APCard accent={C.indigo}>
           <APLabel color={C.indigo}>RUN HISTORY ({runs.length})</APLabel>
@@ -901,6 +1024,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [mode,        setMode]        = useState("write");
   const [briefing,    setBriefing]    = useState(null);
   const [googleData,  setGoogleData]  = useState(null);
+  const [conversations, setConversations] = useState(()=>lsGet(CONV_KEY,[]));
+  const [summarizing, setSummarizing] = useState(false);
   const [showChat,    setShowChat]    = useState(false);
 
   // View state — "intelligence" or "chat"
@@ -919,6 +1044,16 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Persist chat
   useEffect(()=>{ lsSet(CHAT_KEY,messages.slice(-60)); },[messages]);
 
+  // Auto-summarize on unmount if conversation was substantial
+  useEffect(()=>{
+    return ()=>{
+      const current = lsGet(CHAT_KEY,[]);
+      if(current.length >= 4 && user?.email){
+        summarizeConversation(current, user.email);
+      }
+    };
+  },[]);
+
   // Auto scroll
   useEffect(()=>{ messagesEndRef.current?.scrollIntoView({behavior:"smooth"}); },[messages,chatLoading]);
 
@@ -928,9 +1063,18 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       loadFromSupabase();
       syncAgentData(user.email);
       if(lsGet("spark_google_connected",false)) fetchGoogleData();
+      loadConversationMemory();
     }
     if(messages.length===0) setBriefing(buildOpeningBriefing(voice,apResult));
   },[]);
+
+  async function loadConversationMemory(){
+    const d = await apSync(user.email,"load_conversations");
+    if(d?.conversations?.length){
+      setConversations(d.conversations);
+      lsSet(CONV_KEY, d.conversations);
+    }
+  }
 
   // Stale auto-run
   useEffect(()=>{
@@ -1012,8 +1156,20 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     lsSet(NOTES_KEY,[{text,savedAt:new Date().toISOString()},...notes].slice(0,50));
   }
 
-  function clearChat(){
-    if(window.confirm("Clear conversation history?")){ setMessages([]); setBriefing(buildOpeningBriefing(voice,apResult)); }
+  async function clearChat(){
+    if(!window.confirm("Clear conversation? SPARK will summarize and remember this session.")) return;
+    // Summarize before clearing so memory persists
+    if(messages.length >= 4 && user?.email){
+      setSummarizing(true);
+      const summary = await summarizeConversation(messages, user.email);
+      if(summary){
+        const updated = lsGet(CONV_KEY,[]);
+        setConversations(updated);
+      }
+      setSummarizing(false);
+    }
+    setMessages([]);
+    setBriefing(buildOpeningBriefing(voice,apResult));
   }
 
   function handleKey(e){
@@ -1045,7 +1201,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:buildSystem(voice,planKey,apResult,googleData,mode),
+          system:buildSystem(voice,planKey,apResult,googleData,mode,conversations),
           messages:isRegenerate?history:[...history.slice(0,-1),{role:"user",content:content.trim()}],
         })
       });
@@ -1243,7 +1399,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 {apTab==="alerts"   &&<RelationshipAlerts alerts={apResult.relationship_alerts} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="market"   &&<MarketCoachingForecast market={apResult.market_intelligence} coaching={null} forecast={null} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="coaching" &&<MarketCoachingForecast market={null} coaching={apResult.coaching_insight} forecast={apResult.performance_forecast} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
-                {apTab==="history"  &&<RunHistory runs={runHistory} memory={dbMemory}/>}
+                {apTab==="history"  &&<RunHistory runs={runHistory} memory={dbMemory} conversations={conversations}/>}
               </div>
             )}
 
@@ -1360,7 +1516,25 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             <p style={{fontFamily:C.F,fontSize:8,color:C.textDim,margin:0,letterSpacing:.4}}>
               Enter to send · Shift+Enter for new line
             </p>
-            {hasMessages&&<button onClick={clearChat} style={{background:"transparent",border:"none",color:C.textDim,cursor:"pointer",fontSize:9,fontFamily:C.F}}>Clear chat</button>}
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              {conversations.length>0&&(
+                <div style={{display:"flex",alignItems:"center",gap:4,
+                  background:`${C.violet}08`,border:`1px solid ${C.violet}18`,
+                  borderRadius:6,padding:"2px 7px"}}>
+                  <div style={{width:4,height:4,borderRadius:"50%",background:C.violet}}/>
+                  <span style={{fontSize:8,color:C.violet,fontFamily:C.F,fontWeight:700}}>
+                    {conversations.length} session{conversations.length!==1?"s":""} remembered
+                  </span>
+                </div>
+              )}
+              {hasMessages&&(
+                <button onClick={clearChat} disabled={summarizing}
+                  style={{background:"transparent",border:"none",
+                    color:C.textDim,cursor:"pointer",fontSize:9,fontFamily:C.F}}>
+                  {summarizing?"Saving memory...":"Clear chat"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
