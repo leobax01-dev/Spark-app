@@ -133,12 +133,12 @@ const GLOBAL_CSS = `
 // ─────────────────────────────────────────────────────────────────────────────
 const PLANS = {
   trial:{
-    name:"Trial", price:0, credits:5, accent:C.indigo, badge:null,
+    name:"Trial", price:0, credits:10, accent:C.indigo, badge:null,
     contentTypes:["listing","mls_desc","open_house","objection","scripts","comms","education"],
     platforms:["TikTok","Reels"],
     hooks:3, voiceMemory:false, videoQuality:"720p", maxPhotos:3, teamSeats:1, apiAccess:false,
     autopilot:false,
-    perks:["5 free credits — no card required","Core content tools","TikTok & Reels","720p listing video","Up to 3 photos"],
+    perks:["10 free credits — no card required","Core content tools","TikTok & Reels","720p listing video","Up to 3 photos"],
     stripeLink:null,
   },
   starter:{
@@ -1072,7 +1072,7 @@ function OnboardingModal({planKey,onClose}){
 
           {planKey==="trial"&&(
             <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"8px 0 0",textAlign:"center"}}>
-              3 free credits — no card required. Upgrade anytime in Settings.
+              10 free credits — no card required. Upgrade anytime in Settings.
             </p>
           )}
         </div>
@@ -2588,7 +2588,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
             <div style={{fontSize:32,marginBottom:10}}>⚡</div>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,marginBottom:8,
               letterSpacing:"-0.01em"}}>
-              Your 3 free credits are used up.
+              Your 10 free credits are used up.
             </div>
             <p style={{fontSize:13,color:C.textMd,marginBottom:18,fontFamily:C.F,
               lineHeight:1.7,maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>
@@ -3856,7 +3856,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
                   ? `Your most-used tool is ${topTool[0].replace(/_/g," ")}. `
                   : ""}
                 {isTrial
-                  ? "Your 3 free credits are used up. Upgrade to Premium for unlimited credits, Autopilot, and the full SPARK platform."
+                  ? "Your 10 free credits are used up. Upgrade to Premium for unlimited credits, Autopilot, and the full SPARK platform."
                   : `You're out of credits for this cycle. Add more or upgrade for ${plan.credits} credits/month.`}
               </p>
             </>
@@ -4444,57 +4444,80 @@ function LandingPage({onStart}){
   const anim=(delay=0)=>ready?`fadeUp .5s ease ${delay}s both`:"none";
 
   const FEATURES=[
-    ["SPARK Autopilot",                  "—","—","✓"],
-    ["SPARK Assistant (AI chat)",        "✓","✓","✓"],
-    ["Cinematic listing video",          "720p","1080p","4K"],
-    ["Transaction timeline + emails",    "✓","✓","✓"],
-    ["Listing presentation builder",     "✓","✓","✓"],
-    ["CMA + auto-fetched comps",         "✓","✓","✓"],
-    ["Client pipeline manager",          "✓","✓","✓"],
-    ["AI daily briefing",                "✓","✓","✓"],
-    ["Lead response sequences",          "✓","✓","✓"],
-    ["MLS description generator",        "✓","✓","✓"],
-    ["Open house package",               "✓","✓","✓"],
-    ["Objection handler",                "✓","✓","✓"],
-    ["Scripts & dialogues",              "✓","✓","✓"],
-    ["Commission calculator",            "✓","✓","✓"],
-    ["Neighborhood intelligence report", "—","✓","✓"],
-    ["Business performance dashboard",   "—","✓","✓"],
-    ["Agent voice memory",               "—","✓","✓"],
-    ["Google calendar + Gmail",          "—","✓","✓"],
-    ["4K listing video",                 "—","—","✓"],
-    ["Deal risk detection",              "—","—","✓"],
-    ["Client probability scores",        "—","—","✓"],
-    ["Relationship alerts",              "—","—","✓"],
-    ["Unlimited credits",                "—","—","✓"],
-    ["Credits / month",                  "30","100","∞"],
+    ["SPARK Autopilot — full intelligence",  "—",  "—",  "✓"],
+    ["Daily mission + priority action queue","—",  "—",  "✓"],
+    ["Deal risk detection + Situation Rooms","—",  "—",  "✓"],
+    ["Client probability scores",            "—",  "—",  "✓"],
+    ["Relationship alerts + messages",       "—",  "—",  "✓"],
+    ["AI morning brief",                     "—",  "—",  "✓"],
+    ["Weekly intelligence report",           "—",  "—",  "✓"],
+    ["Voice mode — talk to SPARK",           "—",  "—",  "✓"],
+    ["Conversation memory across sessions",  "—",  "—",  "✓"],
+    ["SPARK Assistant (AI chat)",            "✓",  "✓",  "✓"],
+    ["4 conversation modes",                 "✓",  "✓",  "✓"],
+    ["Cinematic listing video",              "720p","1080p","4K"],
+    ["Transaction timeline + emails",        "✓",  "✓",  "✓"],
+    ["Listing presentation builder",         "✓",  "✓",  "✓"],
+    ["CMA + auto-fetched comps",             "✓",  "✓",  "✓"],
+    ["Client pipeline manager",              "✓",  "✓",  "✓"],
+    ["Lead response sequences",              "✓",  "✓",  "✓"],
+    ["MLS description generator",           "✓",  "✓",  "✓"],
+    ["Open house package",                   "✓",  "✓",  "✓"],
+    ["Objection handler + scripts",          "✓",  "✓",  "✓"],
+    ["Commission calculator",                "✓",  "✓",  "✓"],
+    ["Neighborhood intelligence report",     "—",  "✓",  "✓"],
+    ["Business performance dashboard",       "—",  "✓",  "✓"],
+    ["Agent voice memory",                   "—",  "✓",  "✓"],
+    ["Google calendar + Gmail",              "—",  "✓",  "✓"],
+    ["4K listing video",                     "—",  "—",  "✓"],
+    ["Unlimited credits",                    "—",  "—",  "✓"],
+    ["Credits / month",                      "30", "100", "∞"],
   ];
 
   const TESTIMONIALS=[
-    {name:"Marcus T.",role:"Luxury Agent · Miami Beach",quote:"SPARK replaced 4 different tools I was paying for. Pipeline tracking, listing content, transaction emails, market reports — all in one place."},
-    {name:"Ashley R.",role:"RE/MAX · Dallas, TX",quote:"The AI Daily Briefing tells me exactly which clients need attention and what to say. I've never been more organized and my close rate is up."},
-    {name:"Daniel K.",role:"Team Lead · Compass",quote:"Every listing appointment I walk in with a SPARK-generated presentation. Sellers are impressed before I say a word. We're winning more listings."},
+    {name:"Marcus T.",role:"Luxury Agent · Miami Beach",quote:"Autopilot flagged that I hadn't contacted my Thompson deal client in 9 days — right when their appraisal contingency was expiring. The Situation Room gave me the exact script. We closed on time."},
+    {name:"Ashley R.",role:"RE/MAX · Dallas, TX",quote:"Every morning SPARK tells me exactly which clients need attention and what to say. I stopped losing deals to follow-up gaps. My close rate is up significantly since I started using it."},
+    {name:"Daniel K.",role:"Team Lead · Compass",quote:"The Weekly Intelligence Report is the only business review I actually use. Honest assessment of wins, misses, and patterns. It told me I was over-indexing on listings and under-working buyers — it was right."},
   ];
 
   const REPLACING=[
-    {tool:"CRM Software",      price:"$69–150/mo",      icon:"📊"},
-    {tool:"Video Production",  price:"$300–500/listing", icon:"🎬"},
-    {tool:"Market Reports",    price:"$50–200/mo",       icon:"📈"},
-    {tool:"Listing Copywriter",price:"$100–300/listing", icon:"✍️"},
-    {tool:"Coach/Consultant",  price:"$200–500/mo",      icon:"🎯"},
+    {tool:"CRM Software",      price:"$69–150/mo",       icon:"📊"},
+    {tool:"Video Production",  price:"$300–500/listing",  icon:"🎬"},
+    {tool:"Market Reports",    price:"$50–200/mo",        icon:"📈"},
+    {tool:"Listing Copywriter",price:"$100–300/listing",  icon:"✍️"},
+    {tool:"Business Coach",    price:"$200–500/mo",       icon:"🎯"},
+    {tool:"Deal Tracker",      price:"$50–150/mo",        icon:"📋"},
   ];
 
   const PLATFORM_SECTIONS=[
     {
-      icon:"⚡",color:C.indigo,
+      icon:"🤖",color:C.violet,
+      badge:"SPARK AUTOPILOT · PREMIUM",
+      title:"The AI that runs your business while you sell.",
+      subtitle:"Always on. Always watching.",
+      body:"SPARK Autopilot monitors your entire pipeline 24/7 — scoring clients by probability, detecting deal risks before they become problems, and generating a daily mission with your top 3 priorities and ready-to-send messages. Every morning it tells you exactly what to do and what to say. No other real estate platform does this.",
+      features:[
+        "Daily mission with priority action queue",
+        "Deal risk detection + Situation Rooms",
+        "Client probability scores (0–100)",
+        "Relationship alerts + personal messages",
+        "AI-generated morning brief",
+        "Weekly intelligence report",
+        "Voice mode — talk to SPARK hands-free",
+        "Conversation memory across sessions",
+      ],
+      premium:true,
+    },
+    {
+      icon:"💬",color:C.indigo,
       badge:"AI OPERATING SYSTEM",
       title:"Ask SPARK anything.",
       subtitle:"Your AI business partner.",
-      body:"SPARK Assistant knows your clients, pipeline, deals, and goals. Ask for a follow-up message for a specific client by name. Get a pricing strategy for tomorrow's listing appointment. Practice an objection response before a difficult call. Mode-aware — switches between Write, Strategize, Coach, and Practice.",
-      features:["Full client & pipeline context","4 conversation modes","Proactive daily briefing","Streaming responses","Message history & saved notes"],
+      body:"SPARK Assistant knows your clients, pipeline, deals, calendar, and inbox. Ask for a follow-up message for a specific client by name. Get a complete prep package for tomorrow's listing appointment. Practice an objection before a difficult call. Every response is grounded in your actual business data.",
+      features:["Full client & pipeline context","Google calendar + Gmail integration","4 conversation modes — Write, Strategy, Coach, Practice","Voice input + audio responses","Conversation memory — SPARK remembers previous sessions"],
     },
     {
-      icon:"📋",color:C.violet,
+      icon:"📋",color:C.cyan,
       badge:"TRANSACTION INTELLIGENCE",
       title:"Never miss a milestone.",
       subtitle:"Offer to closing.",
@@ -4551,18 +4574,18 @@ function LandingPage({onStart}){
             background:"rgba(99,102,241,.07)",border:"1px solid rgba(99,102,241,.18)",
             borderRadius:20,padding:"5px 16px",fontSize:10,color:C.indigoLt,
             letterSpacing:2,fontWeight:700,marginBottom:24,animation:anim()}}>
-            ⚡ THE AI OPERATING SYSTEM FOR REAL ESTATE AGENTS
+            🤖 THE AI OPERATING SYSTEM FOR REAL ESTATE AGENTS
           </div>
           <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(36px,6.5vw,68px)",
             lineHeight:1.04,margin:"0 0 24px",letterSpacing:"-0.03em",animation:anim(.06)}}>
-            Run your entire<br/><Shimmer>real estate business</Shimmer><br/>with one AI.
+            The AI that runs your<br/><Shimmer>real estate business</Shimmer><br/>while you sell.
           </h1>
-          <p style={{fontSize:18,color:C.textMd,maxWidth:560,margin:"0 auto 14px",
+          <p style={{fontSize:18,color:C.textMd,maxWidth:580,margin:"0 auto 14px",
             lineHeight:1.75,fontWeight:400,animation:anim(.12)}}>
-            SPARK is the complete AI platform that manages your clients, closes your deals, responds to your leads, creates your content, and coaches your business — all in one place.
+            SPARK Autopilot monitors your clients, detects deal risks, tells you exactly what to do every day — and when you need to talk it through, SPARK Assistant is ready with full business context.
           </p>
           <p style={{fontSize:13,color:C.textDim,fontFamily:C.F,marginBottom:36,animation:anim(.16)}}>
-            Replacing CRMs, content tools, videographers, and market reports for agents at RE/MAX, Compass, Keller Williams, and independent brokerages.
+            Replacing CRMs, content tools, coaches, videographers, and market reports for agents at RE/MAX, Compass, Keller Williams, and independent brokerages.
           </p>
           <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:16,animation:anim(.2)}}>
             <button onClick={()=>onStart("signup")}
@@ -4574,7 +4597,7 @@ function LandingPage({onStart}){
             </button>
           </div>
           <p style={{fontSize:11,color:C.textDim,fontFamily:C.F,letterSpacing:1,animation:anim(.26)}}>
-            3 free credits · cancel anytime · 30 second setup
+            10 free credits · cancel anytime · 30 second setup
           </p>
         </div>
 
@@ -4624,7 +4647,12 @@ function LandingPage({onStart}){
           </div>
           {PLATFORM_SECTIONS.map((section,i)=>(
             <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",
-              gap:32,marginBottom:72,alignItems:"center",animation:anim(.08+i*.06)}}>
+              gap:32,marginBottom:72,alignItems:"center",animation:anim(.08+i*.06),
+              ...(section.premium?{
+                background:`linear-gradient(135deg,${C.violet}05,${C.indigo}03)`,
+                border:`1px solid ${C.violet}15`,borderRadius:20,padding:"32px 28px",
+                marginLeft:-28,marginRight:-28,
+              }:{})}}>
               <div style={{order:i%2===0?0:1}}>
                 <div style={{display:"inline-flex",alignItems:"center",gap:6,
                   background:`${section.color}10`,border:`1px solid ${section.color}28`,
@@ -4652,6 +4680,15 @@ function LandingPage({onStart}){
                     </div>
                   ))}
                 </div>
+                {section.premium&&(
+                  <button onClick={()=>onStart("signup")}
+                    style={{marginTop:22,background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                      border:"none",color:"#fff",padding:"12px 28px",borderRadius:10,
+                      cursor:"pointer",fontWeight:800,fontSize:13,fontFamily:C.F,
+                      boxShadow:`0 0 0 1px ${C.violet}40,0 6px 22px ${C.violet}28`}}>
+                    Try Autopilot free ⚡
+                  </button>
+                )}
               </div>
               <div style={{order:i%2===0?1:0}}>
                 <div style={{background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
@@ -4670,12 +4707,16 @@ function LandingPage({onStart}){
                       </div>
                       <div style={{display:"flex",gap:4,marginTop:4}}>
                         <div style={{width:5,height:5,borderRadius:"50%",
-                          background:C.emerald,boxShadow:`0 0 4px ${C.emerald}`}}/>
-                        <span style={{fontFamily:C.F,fontSize:9,color:C.emerald}}>Active</span>
+                          background:section.premium?C.violet:C.emerald,
+                          boxShadow:`0 0 4px ${section.premium?C.violet:C.emerald}`,
+                          animation:section.premium?"pulse 2s ease infinite":"none"}}/>
+                        <span style={{fontFamily:C.F,fontSize:9,color:section.premium?C.violet:C.emerald}}>
+                          {section.premium?"Premium · Always on":"Active"}
+                        </span>
                       </div>
                     </div>
                   </div>
-                  {section.features.slice(0,3).map((f,j)=>(
+                  {section.features.slice(0,section.premium?4:3).map((f,j)=>(
                     <div key={j} style={{background:`${section.color}07`,
                       border:`1px solid ${section.color}18`,borderRadius:8,
                       padding:"9px 12px",marginBottom:7,display:"flex",alignItems:"center",gap:8}}>
@@ -4776,7 +4817,7 @@ function LandingPage({onStart}){
               Start free. Upgrade when you're ready.
             </h2>
             <p style={{fontSize:14,color:C.textMd,fontFamily:C.F,margin:0}}>
-              3 free credits — no card, no commitment. See the platform for yourself.
+              10 free credits — no card, no commitment. See the platform for yourself.
             </p>
           </div>
           <div style={{maxWidth:520,margin:"0 auto"}}>
@@ -4801,7 +4842,7 @@ function LandingPage({onStart}){
               </h2>
               <p style={{fontSize:14,color:C.textMd,fontFamily:C.F,lineHeight:1.75,
                 margin:"0 0 32px",maxWidth:460,marginLeft:"auto",marginRight:"auto"}}>
-                3 free credits. No card. No commitment. In 30 seconds you'll see why agents call SPARK the last real estate tool they'll ever need.
+                10 free credits. No card. No commitment. In 30 seconds you'll see why agents call SPARK the last real estate tool they'll ever need.
               </p>
               <button onClick={()=>onStart("signup")}
                 style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",
@@ -4890,7 +4931,7 @@ function AuthPage({mode,onAuth,onSwitch}){
             const {data,error}=await sb.auth.signUp({ email, password:pass });
             if(error) throw new Error(error.message);
             const isTrialChoice = plan==="trial";
-            const startCredits = isTrialChoice ? 3 : 0;
+            const startCredits = isTrialChoice ? 10 : 0;
             const startPlan = "trial"; // always created as trial pre-payment; webhook upgrades on payment success
 
             // Create user row server-side (bypasses RLS reliably)
@@ -4992,7 +5033,7 @@ function AuthPage({mode,onAuth,onSwitch}){
         if(mode==="signup"){
           if(accounts[key]){ toast("Account already exists — sign in","error"); setLoading(false); return; }
           const isTrialChoice = plan==="trial";
-          const startCredits = isTrialChoice ? 3 : 0;
+          const startCredits = isTrialChoice ? 10 : 0;
           accounts[key]={ plan:"trial", credits:startCredits, intendedPlan:plan };
           LS.set("sp_accounts",accounts);
           if(!isTrialChoice && PLANS[plan].stripeLink){
@@ -5171,7 +5212,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                   </div>
                   <div style={{marginTop:10,fontSize:11,color:C.textDim,fontFamily:C.F,lineHeight:1.5}}>
                     {plan==="trial"
-                      ? "Start with 3 free credits — no card required."
+                      ? "Start with 10 free credits — no card required."
                       : `You'll be taken to secure checkout to subscribe to ${PLANS[plan].name} ($${PLANS[plan].price}/mo).`}
                   </div>
                 </div>
@@ -5188,7 +5229,7 @@ function AuthPage({mode,onAuth,onSwitch}){
 
               {mode==="signup"&&(
                 <p style={{textAlign:"center",fontSize:9,color:C.textDim,marginTop:8,letterSpacing:1.2,fontFamily:C.F}}>
-                  +3 FREE CREDITS ON SIGNUP · NO CARD REQUIRED
+                  +10 FREE CREDITS ON SIGNUP · NO CARD REQUIRED
                 </p>
               )}
 
