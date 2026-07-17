@@ -3667,6 +3667,30 @@ function useNotifications({ credits, planKey, onNavigate }){
       }
     }catch{}
 
+    // 5 — Autopilot critical risk alert (Premium only)
+    if(planKey==="premium"){
+      try{
+        const apResult = JSON.parse(localStorage.getItem("spark_autopilot_v1")||"null");
+        const lastRun  = localStorage.getItem("spark_autopilot_last_run");
+        const isRecent = lastRun && (Date.now()-new Date(lastRun)) < 24*60*60*1000;
+        const critRisks = apResult?.deal_intelligence?.risks?.filter(r=>r.severity==="high")||[];
+        if(isRecent && critRisks.length > 0){
+          const id = `ap-risk-${critRisks[0].deal}`;
+          notifs.push({
+            id,
+            type:"warning",
+            icon:"🤖",
+            color:"#8b5cf6",
+            title:`Autopilot: ${critRisks[0].deal} at risk`,
+            body:critRisks[0].risk?.slice(0,80)||"Open Autopilot for details",
+            action:"Open Situation Room",
+            tab:"autopilot",
+            priority:0, // highest priority
+          });
+        }
+      }catch{}
+    }
+
     // Filter out dismissed, sort by priority
     const active = notifs
       .filter(n=>!dismissed.includes(n.id))
@@ -4085,7 +4109,18 @@ function MainApp({user,onLogout}){
               {item.label}
             </span>
             {/* Notification dots */}
-            {item.id==="settings"&&credits<5&&(
+            {item.id==="autopilot"&&planKey!=="premium"&&(
+              <div style={{position:"absolute",top:6,right:"calc(50% - 14px)",
+                fontSize:7,color:C.violet,fontFamily:C.F,fontWeight:700,
+                background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.25)",
+                borderRadius:4,padding:"0px 3px",letterSpacing:.3}}>✦</div>
+            )}
+            {item.id==="autopilot"&&planKey==="premium"&&lsGet("spark_autopilot_last_run",null)&&(
+              <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
+                width:5,height:5,borderRadius:"50%",
+                background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+            )}
+            {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
               <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
                 width:6,height:6,borderRadius:"50%",
                 background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
@@ -4120,7 +4155,7 @@ function MainApp({user,onLogout}){
             borderRadius:10,padding:"6px 11px",cursor:"pointer",
             boxShadow:`0 0 12px ${plan.accent}18`}}>
             <div style={{width:5,height:5,borderRadius:"50%",background:plan.accent,boxShadow:`0 0 6px ${plan.accent}`}}/>
-            <span style={{fontSize:13,color:C.text,fontFamily:C.F,fontWeight:800,letterSpacing:-.3}}>{credits}</span>
+            <span style={{fontSize:13,color:C.text,fontFamily:C.F,fontWeight:800,letterSpacing:-.3}}>{displayCredits(credits)}</span>
             <span style={{fontSize:9,color:plan.accent,fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>CR</span>
           </div>
           <button className="signout-btn" onClick={doLogout}
@@ -4197,15 +4232,17 @@ function MainApp({user,onLogout}){
                 {NAV_ICONS[item.id]||item.icon}
               </span>
               {item.label}
-              {item.id==="voice"&&plan.voiceMemory&&voice.saved&&(
-                <span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",
-                  background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>
+              {item.id==="autopilot"&&planKey!=="premium"&&(
+                <span style={{marginLeft:"auto",fontSize:7,color:C.violet,
+                  fontFamily:C.F,fontWeight:700,letterSpacing:.5,
+                  background:`rgba(139,92,246,.1)`,border:"1px solid rgba(139,92,246,.2)",
+                  padding:"1px 5px",borderRadius:4}}>✦ PRO</span>
               )}
-              {item.id==="voice"&&!plan.voiceMemory&&(
-                <span style={{marginLeft:"auto",fontSize:7,color:C.amber,
-                  fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>PRO</span>
+              {item.id==="autopilot"&&planKey==="premium"&&(
+                <span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",flexShrink:0,
+                  background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
               )}
-              {item.id==="billing"&&credits<5&&(
+              {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
                 <span style={{marginLeft:"auto",fontSize:7,color:C.rose,
                   fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>LOW</span>
               )}
@@ -4223,14 +4260,14 @@ function MainApp({user,onLogout}){
       <div style={{padding:"13px 14px",borderTop:`1px solid ${C.border}`}}>
         <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,alignItems:"center"}}>
           <span style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700}}>CREDITS</span>
-          <span style={{fontSize:10,color:credits<5?C.rose:plan.accent,fontWeight:800,fontFamily:C.F}}>{credits} / {plan.credits}</span>
+          <span style={{fontSize:10,color:credits<5?C.rose:plan.accent,fontWeight:800,fontFamily:C.F}}>{displayCredits(credits)} / {displayCredits(plan.credits)}</span>
         </div>
         <div style={{height:4,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden",marginBottom:8}}>
           <div style={{height:"100%",
-            width:`${Math.min(100,(credits/Math.max(plan.credits,1))*100)}%`,
-            background:`linear-gradient(90deg,${credits<5?C.rose:plan.accent},${C.indigoLt})`,
+            width:plan.credits>=999?"100%":`${Math.min(100,(credits/Math.max(plan.credits,1))*100)}%`,
+            background:plan.credits>=999?`linear-gradient(90deg,${C.violet},${C.indigoLt})`:`linear-gradient(90deg,${credits<5?C.rose:plan.accent},${C.indigoLt})`,
             borderRadius:2,transition:"width .6s ease",
-            boxShadow:`0 0 6px ${credits<5?C.rose:plan.accent}60`}}/>
+            boxShadow:plan.credits>=999?`0 0 6px ${C.violet}60`:`0 0 6px ${credits<5?C.rose:plan.accent}60`}}/>
         </div>
         <button className="btn-o" onClick={()=>setTab("settings")}
           style={{width:"100%",background:"rgba(99,102,241,.05)",
@@ -4340,8 +4377,37 @@ function MainApp({user,onLogout}){
           <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
             <div style={{maxWidth:840,margin:"0 auto"}}>
               <div style={{marginBottom:26}}>
-                <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
-                <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
+                {tab==="autopilot"?(
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                    <div>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
+                        <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:0,lineHeight:1.2}}>{TITLES[tab]}</h1>
+                        {planKey==="premium"&&(
+                          <span style={{fontSize:9,color:"#8b5cf6",fontFamily:C.F,fontWeight:700,
+                            background:"rgba(139,92,246,.1)",border:"1px solid rgba(139,92,246,.25)",
+                            borderRadius:8,padding:"2px 9px",letterSpacing:1.5}}>✦ PREMIUM</span>
+                        )}
+                      </div>
+                      <p style={{fontSize:10,color:"rgba(255,255,255,.35)",margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
+                    </div>
+                    {planKey==="premium"&&lsGet("spark_autopilot_last_run",null)&&(
+                      <div style={{display:"flex",alignItems:"center",gap:6,
+                        background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",
+                        borderRadius:10,padding:"6px 12px"}}>
+                        <div style={{width:6,height:6,borderRadius:"50%",
+                          background:"#10b981",boxShadow:"0 0 6px #10b981"}}/>
+                        <span style={{fontSize:10,color:"#10b981",fontFamily:C.F,fontWeight:700}}>
+                          Active · Monitoring
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ):(
+                  <>
+                    <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
+                    <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
+                  </>
+                )}
               </div>
 
               <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
