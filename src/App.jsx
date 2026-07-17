@@ -1,38 +1,10 @@
-import { useState, useEffect, useCallback, useRef, Component } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import posthog from "posthog-js";
 import TransactionPanel from "./features/TransactionPanel";
 import ClientPanel from "./features/ClientPanel";
 import MarketPanel from "./features/MarketPanel";
 import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
 import AutopilotPanel from "./features/AutopilotPanel";
-
-class ErrorBoundary extends Component {
-  constructor(props){ super(props); this.state={ hasError:false, error:null }; }
-  static getDerivedStateFromError(error){ return { hasError:true, error }; }
-  componentDidCatch(error, info){ console.error("AutopilotPanel crash:", error, info); }
-  render(){
-    if(this.state.hasError){
-      return(
-        <div style={{padding:"32px 24px",textAlign:"center"}}>
-          <div style={{fontSize:36,marginBottom:16}}>⚠️</div>
-          <p style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:14,color:"rgba(255,255,255,.7)",marginBottom:8}}>
-            Autopilot encountered an error loading.
-          </p>
-          <p style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:11,color:"rgba(255,255,255,.3)",marginBottom:20}}>
-            {this.state.error?.message||"Unknown error"}
-          </p>
-          <button onClick={()=>{ this.setState({hasError:false,error:null}); window.location.reload(); }}
-            style={{background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",
-              color:"#818cf8",borderRadius:8,padding:"8px 20px",cursor:"pointer",
-              fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:600}}>
-            Reload
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -4225,7 +4197,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
       </div>
     </div>
   );
@@ -4393,7 +4365,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
             </div>
           </div>
           <MobileNav/>
@@ -4454,7 +4426,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
             </div>
           </div>
         </div>
