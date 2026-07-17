@@ -191,6 +191,29 @@ async function handleAutopilot(action, email, body, res){
     return res.status(200).json({ data:data||null });
   }
 
+  if(action==="save_weekly_report"){
+    const { weekStart, report } = body;
+    if(!weekStart||!report) return res.status(400).json({ error:"weekStart and report required" });
+    const { error } = await sb.from("autopilot_weekly_reports").upsert({
+      user_email: email,
+      week_start: weekStart,
+      report,
+    },{ onConflict:"user_email,week_start" });
+    if(error){ console.error("Weekly report save error:",error.message); return res.status(500).json({ error:error.message }); }
+    return res.status(200).json({ saved:true });
+  }
+
+  if(action==="load_weekly_reports"){
+    const { data, error } = await sb
+      .from("autopilot_weekly_reports")
+      .select("week_start,report,created_at")
+      .eq("user_email", email)
+      .order("week_start",{ ascending:false })
+      .limit(8);
+    if(error) console.error("Weekly report load error:",error.message);
+    return res.status(200).json({ reports:data||[] });
+  }
+
   if(action==="save_conversation"){
     const { summary, keyDecisions, clientsDiscussed } = body;
     if(!summary) return res.status(400).json({ error:"Summary required" });
