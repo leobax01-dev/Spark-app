@@ -692,6 +692,242 @@ function ScoreRing({ score }){
 // ─────────────────────────────────────────────────────────────────────────────
 // AUTOPILOT INTELLIGENCE SECTIONS
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// SITUATION ROOM — deep-dive workspace for critical deal risks
+// ─────────────────────────────────────────────────────────────────────────────
+async function generateSituationRoomBrief(risk, client, deal, voice){
+  const ctx = [
+    `Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}`,
+    `Deal: ${risk.deal}`,
+    `Risk: ${risk.risk} (severity: ${risk.severity||"high"})`,
+    `Recommended action: ${risk.action||""}`,
+    client ? `Client: ${client.name}, ${client.type}, stage: ${client.stage}, notes: ${client.notes?.slice(0,100)||"none"}` : "",
+    deal   ? `Deal value: $${(parseFloat(deal.value)||0).toLocaleString()}, stage: ${deal.stage||"?"}, probability: ${deal.probability||50}%, close date: ${deal.closeDate||"TBD"}` : "",
+  ].filter(Boolean).join("\n");
+
+  const r = await fetch("/api/claude",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      system:"You are SPARK Autopilot, an elite real estate business intelligence AI. Generate a Situation Room brief for a deal at risk. Be specific, tactical, and direct. Return ONLY valid compact JSON.",
+      messages:[{role:"user",content:`Generate a Situation Room for this deal risk. Context:\n${ctx}\n\nReturn ONLY this JSON:
+{"situation":"2 sentence clear statement of exactly what is at risk and why it matters","urgency":"what happens if agent doesn't act today","scenarios":[{"label":"Best case","outcome":"what happens if handled perfectly","probability":"70%"},{"label":"Most likely","outcome":"most realistic outcome with action","probability":"20%"},{"label":"Worst case","outcome":"what happens with no action","probability":"10%"}],"playbook":[{"step":1,"action":"first thing to do right now","message":"exact word-for-word script or message to send"},{"step":2,"action":"second action","message":"exact message or talking point"},{"step":3,"action":"third action","message":"message or next step"}],"key_intel":"the single most important thing to know going into this situation","winning_move":"the one action that changes the outcome most in agent's favor"}`}],
+      max_tokens:1500,
+    })
+  });
+  const d = await r.json();
+  const raw = d.content?.[0]?.text||"";
+  for(const attempt of [
+    ()=>JSON.parse(raw.trim()),
+    ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no"); },
+  ]){
+    try{ return attempt(); }catch{}
+  }
+  throw new Error("parse failed");
+}
+
+function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
+  const [brief,    setBrief]    = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+
+  // Find matching client and deal from localStorage
+  const clients  = lsGet("spark_clients_v1",[]);
+  const deals    = lsGet("spark_pipeline_value_v1",[]);
+  const dealName = risk.deal?.toLowerCase()||"";
+  const client   = clients.find(c=>dealName.includes(c.name?.toLowerCase()?.split(" ")[0])||c.name?.toLowerCase()?.includes(dealName.split(" ")[0]));
+  const deal     = deals.find(d=>d.name?.toLowerCase()?.includes(dealName.split(" ")[0])||dealName.includes(d.name?.toLowerCase()?.split(" ")[0]));
+
+  useEffect(()=>{
+    generateSituationRoomBrief(risk, client, deal, voice)
+      .then(b=>{ setBrief(b); setLoading(false); })
+      .catch(e=>{ setError("Failed to generate brief — try again."); setLoading(false); });
+  },[]);
+
+  const sevColor = risk.severity==="high"?C.rose:C.amber;
+
+  return(
+    <div style={{animation:"fadeUp .3s ease"}}>
+
+      {/* Header */}
+      <div style={{background:`linear-gradient(135deg,${sevColor}10,${C.surface})`,
+        border:`1px solid ${sevColor}30`,borderRadius:16,
+        padding:"18px 18px",marginBottom:14,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:0,left:0,right:0,height:2,
+          background:`linear-gradient(90deg,${sevColor},${sevColor}60,transparent)`}}/>
+
+        <div style={{display:"flex",alignItems:"center",
+          justifyContent:"space-between",marginBottom:12}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:40,height:40,borderRadius:11,flexShrink:0,
+              background:`linear-gradient(135deg,${sevColor},${sevColor}80)`,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:18,boxShadow:`0 4px 14px ${sevColor}30`}}>⚠️</div>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+                <span style={{fontSize:9,color:sevColor,fontFamily:C.F,fontWeight:700,
+                  background:`${sevColor}14`,border:`1px solid ${sevColor}28`,
+                  borderRadius:8,padding:"1px 8px",letterSpacing:1}}>
+                  SITUATION ROOM
+                </span>
+                <span style={{fontSize:9,color:sevColor,fontFamily:C.F,fontWeight:700,
+                  letterSpacing:1}}>
+                  {risk.severity?.toUpperCase()||"HIGH"} SEVERITY
+                </span>
+              </div>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:16,color:C.text,
+                letterSpacing:"-0.01em"}}>{risk.deal}</div>
+            </div>
+          </div>
+          <button onClick={onClose}
+            style={{background:"transparent",border:`1px solid ${C.border}`,
+              color:C.textDim,borderRadius:8,width:32,height:32,cursor:"pointer",
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>
+            ✕
+          </button>
+        </div>
+
+        <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.6,
+          fontWeight:600}}>{risk.risk}</p>
+      </div>
+
+      {/* Loading */}
+      {loading&&(
+        <APCard accent={sevColor}>
+          <div style={{textAlign:"center",padding:"28px 0"}}>
+            <div style={{display:"flex",justifyContent:"center",gap:7,marginBottom:14}}>
+              {[0,1,2,3].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",
+                background:sevColor,opacity:.6,animation:`pulse 1.1s ease ${i*.14}s infinite`}}/>)}
+            </div>
+            <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 4px"}}>
+              Analyzing situation...
+            </p>
+            <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>
+              Building scenarios, playbook, and winning strategy
+            </p>
+          </div>
+        </APCard>
+      )}
+
+      {error&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",fontFamily:C.F,fontSize:12,color:C.rose}}>{error}</div>}
+
+      {brief&&!loading&&(
+        <div>
+          {/* Situation + urgency */}
+          <APCard accent={sevColor}>
+            <APLabel color={sevColor}>THE SITUATION</APLabel>
+            <p style={{fontFamily:C.F,fontSize:13,color:C.text,margin:"0 0 12px",
+              lineHeight:1.7,fontWeight:600}}>{brief.situation}</p>
+            {brief.urgency&&(
+              <div style={{background:`${sevColor}08`,border:`1px solid ${sevColor}20`,
+                borderRadius:9,padding:"10px 13px",display:"flex",gap:8,alignItems:"flex-start"}}>
+                <span style={{fontSize:14,flexShrink:0}}>⏱️</span>
+                <div>
+                  <div style={{fontSize:8,color:sevColor,fontFamily:C.F,fontWeight:700,
+                    letterSpacing:1.5,marginBottom:3}}>IF YOU DON'T ACT TODAY</div>
+                  <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.5}}>
+                    {brief.urgency}
+                  </p>
+                </div>
+              </div>
+            )}
+          </APCard>
+
+          {/* Key intel */}
+          {brief.key_intel&&(
+            <APCard accent={C.amber}>
+              <APLabel color={C.amber}>KEY INTELLIGENCE</APLabel>
+              <p style={{fontFamily:C.F,fontSize:13,color:C.text,margin:0,
+                lineHeight:1.7,fontWeight:600}}>{brief.key_intel}</p>
+            </APCard>
+          )}
+
+          {/* Scenarios */}
+          {brief.scenarios?.length>0&&(
+            <APCard accent={C.indigo}>
+              <APLabel color={C.indigo}>SCENARIO ANALYSIS</APLabel>
+              <div style={{display:"flex",flexDirection:"column",gap:9}}>
+                {brief.scenarios.map((s,i)=>{
+                  const sc=[C.emerald,C.cyan,C.rose][i]||C.indigo;
+                  return(
+                    <div key={i} style={{background:`${sc}06`,border:`1px solid ${sc}20`,
+                      borderRadius:10,padding:"11px 13px"}}>
+                      <div style={{display:"flex",alignItems:"center",
+                        justifyContent:"space-between",marginBottom:6}}>
+                        <span style={{fontFamily:C.F,fontWeight:700,fontSize:12,
+                          color:sc}}>{s.label}</span>
+                        <span style={{fontSize:9,color:C.textDim,fontFamily:C.F,
+                          fontWeight:700,background:"rgba(255,255,255,.04)",
+                          borderRadius:8,padding:"2px 8px"}}>{s.probability}</span>
+                      </div>
+                      <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,
+                        margin:0,lineHeight:1.5}}>{s.outcome}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </APCard>
+          )}
+
+          {/* Playbook */}
+          {brief.playbook?.length>0&&(
+            <APCard accent={C.violet}>
+              <APLabel color={C.violet}>SITUATION PLAYBOOK</APLabel>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {brief.playbook.map((step,i)=>(
+                  <div key={i} style={{animation:`slideR .22s ease ${i*.07}s both`}}>
+                    <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:8}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",flexShrink:0,
+                        background:`${C.violet}18`,border:`1px solid ${C.violet}28`,
+                        display:"flex",alignItems:"center",justifyContent:"center",
+                        fontSize:10,color:C.violet,fontWeight:800}}>{step.step}</div>
+                      <span style={{fontFamily:C.F,fontWeight:700,fontSize:13,
+                        color:C.text}}>{step.action}</span>
+                    </div>
+                    {step.message&&(
+                      <div style={{background:"rgba(255,255,255,.025)",
+                        border:`1px solid ${C.border}`,borderRadius:9,
+                        padding:"10px 12px",marginLeft:31}}>
+                        <div style={{display:"flex",justifyContent:"space-between",
+                          alignItems:"center",marginBottom:6}}>
+                          <span style={{fontSize:8,color:C.violet,fontFamily:C.F,
+                            fontWeight:700,letterSpacing:1.5}}>SCRIPT / MESSAGE</span>
+                          <APCopyBtn text={step.message}/>
+                        </div>
+                        <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,
+                          margin:0,lineHeight:1.65,whiteSpace:"pre-wrap"}}>
+                          {step.message}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </APCard>
+          )}
+
+          {/* Winning move */}
+          {brief.winning_move&&(
+            <APCard accent={C.emerald} style={{background:`linear-gradient(135deg,rgba(16,185,129,.07),rgba(99,102,241,.04))`}}>
+              <APLabel color={C.emerald}>THE WINNING MOVE</APLabel>
+              <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,
+                margin:"0 0 14px",lineHeight:1.6}}>{brief.winning_move}</p>
+              <button onClick={()=>onDiscuss(`I'm in a Situation Room for "${risk.deal}". The risk: "${risk.risk}". The winning move according to Autopilot: "${brief.winning_move}". Help me execute this right now with the exact words to say.`)}
+                style={{width:"100%",background:`linear-gradient(135deg,${C.emerald},${C.indigo})`,
+                  border:"none",color:"#fff",borderRadius:10,padding:"12px 0",
+                  cursor:"pointer",fontFamily:C.F,fontWeight:800,fontSize:13,
+                  boxShadow:`0 4px 16px ${C.emerald}28`,
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                <span>⚡</span> Execute winning move with SPARK
+              </button>
+            </APCard>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MissionSection({ mission, runTime, onDiscuss }){
   if(!mission) return null;
   const uc={critical:C.rose,high:C.amber,medium:C.indigo};
@@ -754,7 +990,7 @@ function MissionSection({ mission, runTime, onDiscuss }){
   );
 }
 
-function DealIntelligence({ di, onDiscuss }){
+function DealIntelligence({ di, onDiscuss, onSituationRoom }){
   if(!di) return null;
   return(
     <div>
@@ -772,12 +1008,22 @@ function DealIntelligence({ di, onDiscuss }){
             <div key={i} style={{marginBottom:i<di.risks.length-1?14:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:risk.severity==="high"?C.rose:C.amber,boxShadow:`0 0 5px ${risk.severity==="high"?C.rose:C.amber}`,flexShrink:0}}/>
-                <div>
+                <div style={{flex:1}}>
                   <span style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>{risk.deal}</span>
                   <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginLeft:8}}>— {risk.risk}</span>
                 </div>
-                <button onClick={()=>onDiscuss(`Autopilot detected a risk with ${risk.deal}: "${risk.risk}". Action needed: ${risk.action}. Help me handle this right now.`)}
-                  style={{marginLeft:"auto",background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,borderRadius:6,padding:"2px 8px",cursor:"pointer",fontSize:9,fontFamily:C.F,flexShrink:0}}>Chat →</button>
+                <div style={{display:"flex",gap:5,flexShrink:0}}>
+                  {risk.severity==="high"&&(
+                    <button onClick={()=>onSituationRoom(risk)}
+                      style={{background:`linear-gradient(135deg,${C.rose},rgba(244,63,94,.7))`,
+                        border:"none",color:"#fff",borderRadius:6,padding:"3px 9px",
+                        cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700}}>
+                      Situation Room →
+                    </button>
+                  )}
+                  <button onClick={()=>onDiscuss(`Autopilot detected a risk with ${risk.deal}: "${risk.risk}". Action needed: ${risk.action}. Help me handle this right now.`)}
+                    style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:9,fontFamily:C.F}}>Chat →</button>
+                </div>
               </div>
               {risk.message&&(
                 <div style={{background:"rgba(244,63,94,.04)",border:"1px solid rgba(244,63,94,.14)",borderRadius:8,padding:"9px 11px",marginLeft:14}}>
@@ -1097,7 +1343,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [runHistory,  setRunHistory]  = useState([]);
   const [syncing,     setSyncing]     = useState(false);
   const [dbMemory,    setDbMemory]    = useState(null);
-  const [apTab,       setApTab]       = useState("mission");
+  const [apTab,        setApTab]        = useState("mission");
+  const [situationRoom,setSituationRoom] = useState(null); // active risk for situation room
 
   // Chat state
   const [messages,      setMessages]      = useState(()=>lsGet(CHAT_KEY,[]));
@@ -1489,6 +1736,48 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             {/* Intelligence report */}
             {!apRunning&&apResult&&(
               <div>
+                {/* Situation Room — shows when active */}
+                {situationRoom&&(
+                  <div style={{marginBottom:14}}>
+                    <SituationRoom
+                      risk={situationRoom}
+                      apResult={apResult}
+                      voice={voice}
+                      onClose={()=>setSituationRoom(null)}
+                      onDiscuss={p=>{ setView("chat"); setTimeout(()=>sendMessage(p),100); }}
+                    />
+                  </div>
+                )}
+
+                {/* Critical risk banner — appears when high severity risks exist */}
+                {!situationRoom&&apResult?.deal_intelligence?.risks?.filter(r=>r.severity==="high")?.length>0&&(
+                  <div style={{background:"rgba(244,63,94,.07)",
+                    border:"1px solid rgba(244,63,94,.25)",
+                    borderRadius:12,padding:"12px 16px",marginBottom:14,
+                    display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{width:6,height:6,borderRadius:"50%",
+                        background:C.rose,boxShadow:`0 0 6px ${C.rose}`,
+                        animation:"pulse 1s ease infinite",flexShrink:0}}/>
+                      <div>
+                        <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.rose}}>
+                          {apResult.deal_intelligence.risks.filter(r=>r.severity==="high").length} critical deal risk{apResult.deal_intelligence.risks.filter(r=>r.severity==="high").length>1?"s":""} detected
+                        </div>
+                        <div style={{fontFamily:C.F,fontSize:10,color:C.textDim}}>
+                          {apResult.deal_intelligence.risks[0].deal} — {apResult.deal_intelligence.risks[0].risk.slice(0,60)}...
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={()=>setSituationRoom(apResult.deal_intelligence.risks[0])}
+                      style={{background:`linear-gradient(135deg,${C.rose},rgba(244,63,94,.7))`,
+                        border:"none",color:"#fff",borderRadius:8,padding:"7px 14px",
+                        cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:11,
+                        flexShrink:0,boxShadow:`0 3px 12px ${C.rose}28`}}>
+                      Open Situation Room →
+                    </button>
+                  </div>
+                )}
+
                 {/* Tab nav */}
                 <div style={{display:"flex",gap:5,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
                   {AP_TABS.map(t=>(
@@ -1506,7 +1795,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 </div>
 
                 {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
-                {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
+                {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="clients"  &&<ClientScores     scores={apResult.client_scores}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="alerts"   &&<RelationshipAlerts alerts={apResult.relationship_alerts} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="market"   &&<MarketCoachingForecast market={apResult.market_intelligence} coaching={null} forecast={null} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
