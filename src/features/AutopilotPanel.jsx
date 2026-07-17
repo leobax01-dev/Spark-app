@@ -1356,6 +1356,14 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [googleData,    setGoogleData]    = useState(null);
   const [conversations, setConversations] = useState(()=>lsGet(CONV_KEY,[]));
   const [summarizing,   setSummarizing]   = useState(false);
+
+  // Voice state
+  const [voiceActive,   setVoiceActive]   = useState(false); // mic is listening
+  const [voiceEnabled,  setVoiceEnabled]  = useState(false); // voice output toggled on
+  const [voiceSupported,setVoiceSupported]= useState(false); // browser supports it
+  const [transcript,    setTranscript]    = useState("");    // live transcript while speaking
+  const recognitionRef  = useRef(null);
+  const synthRef        = useRef(window.speechSynthesis);
   const [showChat,    setShowChat]    = useState(false);
 
   // View state — "intelligence" or "chat"
@@ -1364,6 +1372,118 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const abortRef       = useRef(null);
+
+  // Check voice support on mount
+  useEffect(()=>{
+    const supported = "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
+    setVoiceSupported(supported);
+    // Load saved voice output preference
+    setVoiceEnabled(lsGet("spark_voice_output", false));
+  },[]);
+
+  // Voice input — start/stop mic
+  function toggleVoice(){
+    if(voiceActive){
+      stopVoice();
+    } else {
+      startVoice();
+    }
+  }
+
+  function startVoice(){
+    if(!voiceSupported) return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SR();
+    recognitionRef.current = recognition;
+
+    recognition.continuous     = true;
+    recognition.interimResults = true;
+    recognition.lang           = "en-US";
+
+    recognition.onstart = ()=>{ setVoiceActive(true); setTranscript(""); };
+
+    recognition.onresult = (e)=>{
+      let interim = "";
+      let final   = "";
+      for(let i=e.resultIndex; i<e.results.length; i++){
+        if(e.results[i].isFinal) final   += e.results[i][0].transcript;
+        else                     interim += e.results[i][0].transcript;
+      }
+      const combined = (input + final).trim();
+      if(final) setInput(combined);
+      setTranscript(interim);
+    };
+
+    recognition.onend = ()=>{
+      setVoiceActive(false);
+      setTranscript("");
+      // Auto-send if we have content
+      const current = document.querySelector("textarea[data-voice]")?.value||"";
+    };
+
+    recognition.onerror = (e)=>{
+      console.warn("Speech recognition error:", e.error);
+      setVoiceActive(false);
+      setTranscript("");
+    };
+
+    recognition.start();
+  }
+
+  function stopVoice(){
+    recognitionRef.current?.stop();
+    setVoiceActive(false);
+    setTranscript("");
+  }
+
+  // Voice output — speak SPARK's response
+  function speakResponse(text){
+    if(!voiceEnabled || !window.speechSynthesis) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    // Strip markdown and clean text for speech
+    const clean = text
+      .replace(/\*\*(.*?)\*\*/g,"$1")
+      .replace(/\*(.*?)\*/g,"$1")
+      .replace(/#{1,6}\s/g,"")
+      .replace(/\n\n/g,". ")
+      .replace(/\n/g,", ")
+      .replace(/→/g,"")
+      .slice(0,800); // cap at ~800 chars for reasonable length
+
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.rate   = 0.95;
+    utterance.pitch  = 1.0;
+    utterance.volume = 1.0;
+
+    // Prefer a natural-sounding voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v=>
+      v.name.includes("Samantha")||    // macOS
+      v.name.includes("Google US English")||
+      v.name.includes("Microsoft Aria")||
+      v.name.includes("Alex")
+    );
+    if(preferred) utterance.voice = preferred;
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function toggleVoiceOutput(){
+    const next = !voiceEnabled;
+    setVoiceEnabled(next);
+    lsSet("spark_voice_output", next);
+    if(!next) window.speechSynthesis?.cancel();
+  }
+
+  // Cleanup on unmount
+  useEffect(()=>{
+    return ()=>{
+      recognitionRef.current?.stop();
+      window.speechSynthesis?.cancel();
+    };
+  },[]);
 
   const isPremium     = planKey==="premium";
   const data          = aggregateBusinessData(voice);
@@ -1583,7 +1703,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
           updated[updated.length-1]={role:"assistant",content:done?text:words.slice(0,idx).join(" "),streaming:!done,timestamp:Date.now()};
           return updated;
         });
-        if(done) clearInterval(interval);
+        if(done){
+          clearInterval(interval);
+          // Speak response if voice output enabled
+          if(voiceEnabled) speakResponse(text);
+        }
       },28);
 
     }catch(e){
@@ -1933,34 +2057,115 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             </div>
           )}
 
-          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+          <div style={{display:"flex",gap:8,alignItems:"flex-end",position:"relative"}}>
+
+            {/* Live transcript overlay */}
+            {voiceActive&&transcript&&(
+              <div style={{position:"absolute",bottom:"100%",left:0,right:0,
+                marginBottom:6,background:`${C.indigo}10`,
+                border:`1px solid ${C.indigo}28`,borderRadius:9,
+                padding:"8px 12px",animation:"fadeUp .2s ease"}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+                  <div style={{width:5,height:5,borderRadius:"50%",background:C.rose,
+                    animation:"pulse .6s ease infinite"}}/>
+                  <span style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>
+                    LISTENING
+                  </span>
+                </div>
+                <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0,
+                  fontStyle:"italic"}}>{transcript}</p>
+              </div>
+            )}
+
+            {/* Mic button — voice input */}
+            {voiceSupported&&isPremium&&(
+              <button onClick={toggleVoice}
+                title={voiceActive?"Stop listening":"Start voice input"}
+                style={{width:44,height:44,borderRadius:11,flexShrink:0,
+                  background:voiceActive
+                    ?`linear-gradient(135deg,${C.rose},rgba(244,63,94,.7))`
+                    :"rgba(255,255,255,.05)",
+                  border:`1px solid ${voiceActive?C.rose+"50":C.border}`,
+                  cursor:"pointer",display:"flex",alignItems:"center",
+                  justifyContent:"center",
+                  boxShadow:voiceActive?`0 0 0 3px ${C.rose}20,0 4px 14px ${C.rose}28`:"none",
+                  transition:"all .18s",position:"relative"}}>
+                {voiceActive&&(
+                  <div style={{position:"absolute",inset:-3,borderRadius:14,
+                    border:`2px solid ${C.rose}40`,animation:"pulse 1s ease infinite"}}/>
+                )}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke={voiceActive?"#fff":C.textDim} strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+            )}
+
             <textarea ref={textareaRef}
-              value={input}
-              onChange={e=>{ setInput(e.target.value); autoResize(e); }}
-              onKeyDown={handleKey}
-              placeholder={isPremium&&apResult?"Ask Autopilot anything — it knows your business...":voice?.saved?`Ask anything, ${voice.name?.split(" ")[0]||""}... (${currentMode.description})`:`Ask anything... (${currentMode.description})`}
+              data-voice="true"
+              value={voiceActive&&transcript ? input+transcript : input}
+              onChange={e=>{ if(!voiceActive){ setInput(e.target.value); autoResize(e); } }}
+              onKeyDown={e=>{ if(!voiceActive) handleKey(e); }}
+              placeholder={voiceActive?"Listening... speak now":isPremium&&apResult?"Ask Autopilot anything — it knows your business...":voice?.saved?`Ask anything, ${voice.name?.split(" ")[0]||""}... (${currentMode.description})`:`Ask anything... (${currentMode.description})`}
               rows={1}
-              style={{flex:1,background:C.surfaceUp,border:`1px solid ${C.borderMd}`,borderRadius:11,padding:"11px 14px",color:C.text,fontFamily:C.F,fontSize:13,resize:"none",lineHeight:1.5,height:44,maxHeight:140,outline:"none",boxSizing:"border-box",transition:"border-color .16s,box-shadow .16s"}}
-              onFocus={e=>{ e.target.style.borderColor=`${currentMode.color}55`; e.target.style.boxShadow=`0 0 0 3px ${currentMode.color}10`; }}
-              onBlur={e=>{ e.target.style.borderColor=C.borderMd; e.target.style.boxShadow="none"; }}/>
-            <button onClick={()=>sendMessage(input)}
-              disabled={chatLoading||!input.trim()}
+              style={{flex:1,background:voiceActive?`${C.rose}06`:C.surfaceUp,
+                border:`1px solid ${voiceActive?C.rose+"30":C.borderMd}`,
+                borderRadius:11,padding:"11px 14px",color:C.text,fontFamily:C.F,
+                fontSize:13,resize:"none",lineHeight:1.5,height:44,maxHeight:140,
+                outline:"none",boxSizing:"border-box",transition:"all .16s"}}
+              onFocus={e=>{ if(!voiceActive){ e.target.style.borderColor=`${currentMode.color}55`; e.target.style.boxShadow=`0 0 0 3px ${currentMode.color}10`; } }}
+              onBlur={e=>{ e.target.style.borderColor=voiceActive?C.rose+"30":C.borderMd; e.target.style.boxShadow="none"; }}/>
+
+            <button onClick={()=>{ stopVoice(); sendMessage(input); }}
+              disabled={chatLoading||(!input.trim()&&!transcript)}
               style={{width:44,height:44,borderRadius:11,flexShrink:0,
-                background:input.trim()&&!chatLoading?`linear-gradient(135deg,${currentMode.color},${currentMode.color}cc)`:"rgba(255,255,255,.05)",
-                border:"none",cursor:input.trim()&&!chatLoading?"pointer":"default",
+                background:(input.trim()||transcript)&&!chatLoading
+                  ?`linear-gradient(135deg,${currentMode.color},${currentMode.color}cc)`
+                  :"rgba(255,255,255,.05)",
+                border:"none",
+                cursor:(input.trim()||transcript)&&!chatLoading?"pointer":"default",
                 display:"flex",alignItems:"center",justifyContent:"center",
-                boxShadow:input.trim()&&!chatLoading?`0 4px 14px ${currentMode.color}30`:"none",transition:"all .18s"}}>
+                boxShadow:(input.trim()||transcript)&&!chatLoading?`0 4px 14px ${currentMode.color}30`:"none",
+                transition:"all .18s"}}>
               {chatLoading
                 ?<div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${currentMode.color}`,borderTopColor:"transparent",animation:"spin .7s linear infinite"}}/>
-                :<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={input.trim()?"#fff":C.textDim} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                :<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={(input.trim()||transcript)?"#fff":C.textDim} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               }
             </button>
           </div>
 
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
-            <p style={{fontFamily:C.F,fontSize:8,color:C.textDim,margin:0,letterSpacing:.4}}>
-              Enter to send · Shift+Enter for new line
-            </p>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <p style={{fontFamily:C.F,fontSize:8,color:C.textDim,margin:0,letterSpacing:.4}}>
+                {voiceActive?"Tap send or stop mic to send":"Enter to send · Shift+Enter for new line"}
+              </p>
+              {/* Voice output toggle — Premium only */}
+              {voiceSupported&&isPremium&&(
+                <button onClick={toggleVoiceOutput}
+                  title={voiceEnabled?"Turn off voice responses":"Turn on voice responses"}
+                  style={{display:"flex",alignItems:"center",gap:4,
+                    background:voiceEnabled?`${C.emerald}10`:"transparent",
+                    border:`1px solid ${voiceEnabled?C.emerald+"30":C.border}`,
+                    borderRadius:6,padding:"2px 8px",cursor:"pointer",transition:"all .14s"}}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
+                    stroke={voiceEnabled?C.emerald:C.textDim} strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    {voiceEnabled
+                      ?<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>
+                      :<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>
+                    }
+                  </svg>
+                  <span style={{fontSize:8,color:voiceEnabled?C.emerald:C.textDim,
+                    fontFamily:C.F,fontWeight:700}}>
+                    {voiceEnabled?"Voice on":"Voice off"}
+                  </span>
+                </button>
+              )}
+            </div>
             <div style={{display:"flex",gap:8,alignItems:"center"}}>
               {conversations.length>0&&(
                 <div style={{display:"flex",alignItems:"center",gap:4,
