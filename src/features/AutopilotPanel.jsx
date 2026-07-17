@@ -25,6 +25,9 @@ const CHAT_KEY    = "spark_autopilot_chat_v1";
 const NOTES_KEY   = "spark_assistant_notes_v1";
 const CONV_KEY    = "spark_conv_memory_v1"; // cached conversation summaries
 
+function lsGet(key,fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch{ return fb; } }
+function lsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CONVERSATION MEMORY — summarize + persist sessions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,9 +110,6 @@ function buildConversationMemoryContext(conversations){
   lines.push("\nUse this memory to reference previous conversations naturally. Say things like 'Last time we talked about X' or 'You mentioned Y last week' when relevant.");
   return lines.join("\n");
 }
-
-function lsGet(key,fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch{ return fb; } }
-function lsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONVERSATION MODES
@@ -1657,7 +1657,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [voiceSupported,setVoiceSupported]= useState(false); // browser supports it
   const [transcript,    setTranscript]    = useState("");    // live transcript while speaking
   const recognitionRef  = useRef(null);
-  const synthRef        = useRef(window.speechSynthesis);
+  const synthRef        = useRef(null);
   const [showChat,    setShowChat]    = useState(false);
 
   // View state — "intelligence" or "chat"
@@ -1671,6 +1671,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   useEffect(()=>{
     const supported = "SpeechRecognition" in window || "webkitSpeechRecognition" in window;
     setVoiceSupported(supported);
+    synthRef.current = window.speechSynthesis || null;
     // Load saved voice output preference
     setVoiceEnabled(lsGet("spark_voice_output", false));
   },[]);
@@ -1732,9 +1733,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
   // Voice output — speak SPARK's response
   function speakResponse(text){
-    if(!voiceEnabled || !window.speechSynthesis) return;
+    if(!voiceEnabled || !synthRef.current) return;
     // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+    synthRef.current.cancel();
 
     // Strip markdown and clean text for speech
     const clean = text
@@ -1752,7 +1753,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     utterance.volume = 1.0;
 
     // Prefer a natural-sounding voice
-    const voices = window.speechSynthesis.getVoices();
+    const voices = synthRef.current?.getVoices()||[];
     const preferred = voices.find(v=>
       v.name.includes("Samantha")||    // macOS
       v.name.includes("Google US English")||
@@ -1761,21 +1762,21 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     );
     if(preferred) utterance.voice = preferred;
 
-    window.speechSynthesis.speak(utterance);
+    synthRef.current?.speak(utterance);
   }
 
   function toggleVoiceOutput(){
     const next = !voiceEnabled;
     setVoiceEnabled(next);
     lsSet("spark_voice_output", next);
-    if(!next) window.speechSynthesis?.cancel();
+    if(!next) synthRef.current?.cancel();
   }
 
   // Cleanup on unmount
   useEffect(()=>{
     return ()=>{
       recognitionRef.current?.stop();
-      window.speechSynthesis?.cancel();
+      synthRef.current?.cancel();
     };
   },[]);
 
