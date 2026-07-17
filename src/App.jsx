@@ -5,6 +5,17 @@ import ClientPanel from "./features/ClientPanel";
 import MarketPanel from "./features/MarketPanel";
 import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
 import AutopilotPanel from "./features/AutopilotPanel";
+// TEMP DEBUG - remove after fix
+function AutopilotStub({ planKey, user }){
+  return(
+    <div style={{padding:32,color:"white",fontFamily:"sans-serif",textAlign:"center"}}>
+      <div style={{fontSize:48,marginBottom:16}}>🤖</div>
+      <h2 style={{marginBottom:8}}>Autopilot Loading Test</h2>
+      <p style={{color:"rgba(255,255,255,.5)",marginBottom:8}}>Plan: {planKey}</p>
+      <p style={{color:"rgba(255,255,255,.5)"}}>User: {user?.email}</p>
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -4197,7 +4208,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotStub user={user} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
       </div>
     </div>
   );
@@ -4365,7 +4376,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotStub user={user} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
             </div>
           </div>
           <MobileNav/>
@@ -4426,7 +4437,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<AutopilotStub user={user} planKey={planKey}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
             </div>
           </div>
         </div>
