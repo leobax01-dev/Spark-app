@@ -2039,12 +2039,12 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     }
   }
 
+  try {
   const smartPrompts = getSmartPrompts(voice,mode,apResult,googleData);
   const hasMessages  = messages.length>0;
   const isGoogle     = !!googleData?.connected;
   const currentMode  = MODES[mode];
 
-  // ── INTELLIGENCE VIEW TABS ──
   const AP_TABS=[
     {id:"mission",  label:"Mission",  icon:"🎯"},
     {id:"deals",    label:"Deals",    icon:"📋"},
@@ -2585,4 +2585,21 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       )}
     </div>
   );
+  } catch(err) {
+    console.error("AutopilotPanel render error:", err);
+    return (
+      <div style={{padding:"40px 24px",textAlign:"center"}}>
+        <div style={{fontSize:36,marginBottom:16}}>⚠️</div>
+        <p style={{fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:14,color:"rgba(255,255,255,.7)",marginBottom:8}}>
+          Autopilot failed to load: {err?.message||"Unknown error"}
+        </p>
+        <button onClick={()=>window.location.reload()}
+          style={{background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",
+            color:"#818cf8",borderRadius:8,padding:"8px 20px",cursor:"pointer",
+            fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:600}}>
+          Reload
+        </button>
+      </div>
+    );
+  }
 }
