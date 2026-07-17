@@ -316,36 +316,118 @@ CORE RULES:
 // ─────────────────────────────────────────────────────────────────────────────
 // OPENING BRIEFING
 // ─────────────────────────────────────────────────────────────────────────────
-function buildOpeningBriefing(voice,autopilotResult){
-  const firstName = voice?.name?.split(" ")[0]||null;
-  const hour      = new Date().getHours();
-  const greeting  = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
-  const name      = firstName?`, ${firstName}`:"";
+const DAILY_BRIEF_KEY = "spark_daily_brief_v1"; // { brief, suggestedAction, date, urgency }
 
-  // Premium with Autopilot — lead with mission
-  if(autopilotResult?.mission?.headline){
-    return `${greeting}${name}. Autopilot has analyzed your business.\n\n**Today's priority:** ${autopilotResult.mission.headline}\n\n${autopilotResult.mission.why||""}\n\nWhat would you like to tackle first? I have everything ready.`;
-  }
+async function generateDailyBrief(voice, autopilotResult, googleData, conversations){
+  const firstName   = voice?.name?.split(" ")[0] || null;
+  const hour        = new Date().getHours();
+  const greeting    = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+  const name        = firstName?`, ${firstName}`:"";
+  const today       = new Date().toISOString().slice(0,10);
 
-  // Standard briefing from live data
+  // Check if already generated today
+  const cached = lsGet(DAILY_BRIEF_KEY, null);
+  if(cached?.date===today) return cached;
+
+  // Build rich context for brief generation
   const clients     = lsGet("spark_clients_v1",[]);
   const deals       = lsGet("spark_pipeline_value_v1",[]);
+  const goals       = lsGet("spark_biz_goals_v1",{});
   const now         = Date.now();
-  const overdue     = clients.filter(c=>c.lastContact&&Math.round((now-new Date(c.lastContact))/864e5)>7);
-  const closingSoon = deals.filter(d=>d.closeDate&&Math.round((new Date(d.closeDate)-now)/864e5)<=14&&Math.round((new Date(d.closeDate)-now)/864e5)>=0);
-  const active      = clients.filter(c=>c.stage==="active").length;
-  const contract    = clients.filter(c=>c.stage==="contract").length;
 
-  const items=[];
-  if(overdue.length)     items.push(`**${overdue.length} client${overdue.length>1?"s":""} need${overdue.length===1?"s":""} follow-up** — ${overdue.map(c=>c.name).join(", ")}`);
-  if(closingSoon.length) items.push(`**${closingSoon[0].name} closes in ${Math.round((new Date(closingSoon[0].closeDate)-now)/864e5)} days** — are you ready?`);
-  if(active>0)           items.push(`**${active} active client${active>1?"s":""}** in your pipeline`);
-  if(contract>0)         items.push(`**${contract} deal${contract>1?"s":""} under contract** — all milestones on track?`);
+  const overdue     = clients.filter(c=>c.lastContact&&Math.round((now-new Date(c.lastContact))/864e5)>7).sort((a,b)=>b.daysSince-a.daysSince);
+  const critical    = clients.filter(c=>c.lastContact&&Math.round((now-new Date(c.lastContact))/864e5)>14);
+  const closingToday= deals.filter(d=>d.closeDate&&Math.round((new Date(d.closeDate)-now)/864e5)===0);
+  const closingSoon = deals.filter(d=>d.closeDate&&Math.round((new Date(d.closeDate)-now)/864e5)<=7&&Math.round((new Date(d.closeDate)-now)/864e5)>0);
+  const todayEvents = googleData?.events?.filter(e=>e.isToday)||[];
+  const tomorrowEvents = googleData?.events?.filter(e=>e.isTomorrow)||[];
 
-  if(items.length===0){
-    return `${greeting}${name}. I'm SPARK — your AI business partner. I have full context on your business and I'm ready to help with scripts, strategy, client situations, or anything else you need.`;
+  // Determine urgency level
+  const isUrgent    = closingToday.length>0 || critical.length>0;
+  const urgency     = closingToday.length>0?"critical":critical.length>0?"high":overdue.length>0?"medium":"low";
+
+  // Build prompt context
+  const ctx = [
+    `Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, ${voice?.market||""}`,
+    `Time: ${greeting.replace("Good ","")} — ${new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}`,
+    autopilotResult?.mission?.headline ? `Autopilot mission: ${autopilotResult.mission.headline}` : "",
+    autopilotResult?.mission?.why ? `Why: ${autopilotResult.mission.why}` : "",
+    overdue.length ? `Overdue clients (7+ days): ${overdue.map(c=>`${c.name} (${Math.round((now-new Date(c.lastContact))/864e5)}d)`).join(", ")}` : "",
+    critical.length ? `CRITICAL overdue (14+ days): ${critical.map(c=>c.name).join(", ")}` : "",
+    closingToday.length ? `CLOSING TODAY: ${closingToday.map(d=>`${d.name} $${(parseFloat(d.value)||0).toLocaleString()}`).join(", ")}` : "",
+    closingSoon.length ? `Closing soon: ${closingSoon.map(d=>`${d.name} in ${Math.round((new Date(d.closeDate)-now)/864e5)}d`).join(", ")}` : "",
+    todayEvents.length ? `Today's calendar: ${todayEvents.map(e=>`${e.title} at ${e.start}`).join(", ")}` : "",
+    tomorrowEvents.length ? `Tomorrow: ${tomorrowEvents.map(e=>e.title).join(", ")}` : "",
+    goals.monthlyGciTarget ? `GCI target: ${goals.monthlyGciTarget} | Current: ${goals.currentMonth||"$0"}` : "",
+    conversations?.length ? `Last session: ${conversations[0]?.summary?.slice(0,120)}` : "",
+    autopilotResult?.deal_intelligence?.risks?.[0] ? `Top deal risk: ${autopilotResult.deal_intelligence.risks[0].deal} — ${autopilotResult.deal_intelligence.risks[0].risk}` : "",
+  ].filter(Boolean).join("\n");
+
+  try{
+    const r = await fetch("/api/claude",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        system:`You are SPARK Autopilot — a brilliant, warm real estate business partner. Generate a proactive daily brief that feels like a trusted colleague calling the agent in the morning. Be specific, reference real names and numbers. Sound human, not robotic. NEVER use JSON. Return ONLY plain text.`,
+        messages:[{role:"user",content:`Generate a proactive morning brief for this agent. Context:\n\n${ctx}\n\nRules:
+- Start with "${greeting}${name}." then immediately lead with the MOST IMPORTANT thing — don't bury the lede
+- If something is closing TODAY or critical, lead with that urgency immediately
+- Reference specific client names, deal values, and calendar events
+- If you have conversation memory, reference it naturally ("Last time we talked about X...")
+- 3-5 sentences max — punchy, direct, warm
+- End with ONE specific suggested action the agent should take right now
+- Do NOT use bullet points or headers — flowing conversational prose only
+- Sound like the smartest business partner they've ever had calling them in the morning`}],
+        max_tokens:400,
+      })
+    });
+    const d = await r.json();
+    const brief = sanitizeResponse(d.content?.[0]?.text||"");
+    if(!brief) throw new Error("Empty brief");
+
+    // Extract suggested action from the brief (last sentence)
+    const sentences = brief.split(/(?<=[.!?])\s+/);
+    const suggestedAction = sentences[sentences.length-1]||"";
+
+    const result = { brief, suggestedAction, date:today, urgency };
+    lsSet(DAILY_BRIEF_KEY, result);
+    return result;
+  }catch(e){
+    console.warn("Daily brief generation failed:",e.message);
+    // Fallback to static brief
+    return buildStaticBriefing(voice, autopilotResult, greeting, name);
   }
-  return `${greeting}${name}. Here's what needs your attention:\n\n${items.map(i=>`• ${i}`).join("\n")}\n\nWhat would you like to tackle first?`;
+}
+
+function buildStaticBriefing(voice, autopilotResult, greeting, name){
+  const today = new Date().toISOString().slice(0,10);
+  if(autopilotResult?.mission?.headline){
+    const brief = `${greeting}${name}. Autopilot has analyzed your business.\n\n**Today's priority:** ${autopilotResult.mission.headline}\n\n${autopilotResult.mission.why||""}\n\nWhat would you like to tackle first?`;
+    return { brief, suggestedAction:null, date:today, urgency:"medium" };
+  }
+  const clients  = lsGet("spark_clients_v1",[]);
+  const deals    = lsGet("spark_pipeline_value_v1",[]);
+  const now      = Date.now();
+  const overdue  = clients.filter(c=>c.lastContact&&Math.round((now-new Date(c.lastContact))/864e5)>7);
+  const closing  = deals.filter(d=>d.closeDate&&Math.round((new Date(d.closeDate)-now)/864e5)<=14&&Math.round((new Date(d.closeDate)-now)/864e5)>=0);
+  const items=[];
+  if(overdue.length) items.push(`**${overdue.length} client${overdue.length>1?"s":""} need follow-up** — ${overdue.map(c=>c.name).join(", ")}`);
+  if(closing.length) items.push(`**${closing[0].name} closes in ${Math.round((new Date(closing[0].closeDate)-now)/864e5)} days**`);
+  const brief = items.length
+    ? `${greeting}${name}. Here's what needs your attention:\n\n${items.map(i=>`• ${i}`).join("\n")}\n\nWhat would you like to tackle first?`
+    : `${greeting}${name}. I'm SPARK — your AI business partner. I'm ready to help with whatever you need today.`;
+  return { brief, suggestedAction:null, date:today, urgency:"low" };
+}
+
+function buildOpeningBriefing(voice, autopilotResult){
+  // Synchronous fallback — returns immediately from cache or static
+  const cached = lsGet(DAILY_BRIEF_KEY, null);
+  const today  = new Date().toISOString().slice(0,10);
+  if(cached?.date===today) return cached;
+  const hour    = new Date().getHours();
+  const greeting= hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+  const name    = voice?.name?.split(" ")[0] ? `, ${voice.name.split(" ")[0]}` : "";
+  return buildStaticBriefing(voice, autopilotResult, greeting, name);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1018,14 +1100,15 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [apTab,       setApTab]       = useState("mission");
 
   // Chat state
-  const [messages,    setMessages]    = useState(()=>lsGet(CHAT_KEY,[]));
-  const [input,       setInput]       = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-  const [mode,        setMode]        = useState("write");
-  const [briefing,    setBriefing]    = useState(null);
-  const [googleData,  setGoogleData]  = useState(null);
+  const [messages,      setMessages]      = useState(()=>lsGet(CHAT_KEY,[]));
+  const [input,         setInput]         = useState("");
+  const [chatLoading,   setChatLoading]   = useState(false);
+  const [mode,          setMode]          = useState("write");
+  const [briefObj,      setBriefObj]      = useState(()=>buildOpeningBriefing(voice,apResult));
+  const [briefLoading,  setBriefLoading]  = useState(false);
+  const [googleData,    setGoogleData]    = useState(null);
   const [conversations, setConversations] = useState(()=>lsGet(CONV_KEY,[]));
-  const [summarizing, setSummarizing] = useState(false);
+  const [summarizing,   setSummarizing]   = useState(false);
   const [showChat,    setShowChat]    = useState(false);
 
   // View state — "intelligence" or "chat"
@@ -1062,10 +1145,17 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     if(user?.email){
       loadFromSupabase();
       syncAgentData(user.email);
-      if(lsGet("spark_google_connected",false)) fetchGoogleData();
-      loadConversationMemory();
+      loadConversationMemory().then(convs=>{
+        // Generate AI brief once conversations are loaded
+        if(messages.length===0) triggerDailyBrief(convs);
+      });
+      if(lsGet("spark_google_connected",false)) fetchGoogleData().then(gd=>{
+        // Regenerate brief with Google context if we got calendar data
+        if(messages.length===0 && gd?.events?.length) triggerDailyBrief(null, gd);
+      });
+    } else {
+      if(messages.length===0) setBriefObj(buildOpeningBriefing(voice,apResult));
     }
-    if(messages.length===0) setBriefing(buildOpeningBriefing(voice,apResult));
   },[]);
 
   async function loadConversationMemory(){
@@ -1073,7 +1163,27 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     if(d?.conversations?.length){
       setConversations(d.conversations);
       lsSet(CONV_KEY, d.conversations);
+      return d.conversations;
     }
+    return lsGet(CONV_KEY,[]);
+  }
+
+  async function triggerDailyBrief(convs, gd){
+    setBriefLoading(true);
+    const today = new Date().toISOString().slice(0,10);
+    const cached = lsGet(DAILY_BRIEF_KEY,null);
+    // Skip if already generated today (unless we have better context now)
+    if(cached?.date===today && !gd) {
+      setBriefObj(cached);
+      setBriefLoading(false);
+      return;
+    }
+    const result = await generateDailyBrief(
+      voice, apResult, gd||googleData,
+      convs||lsGet(CONV_KEY,[])
+    );
+    setBriefObj(result);
+    setBriefLoading(false);
   }
 
   // Stale auto-run
@@ -1109,9 +1219,10 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     try{
       const r=await fetch("/api/google-data",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:user.email,action:"fetch"})});
       const d=await r.json();
-      if(d.connected){ setGoogleData(d); lsSet("spark_google_connected",true); }
+      if(d.connected){ setGoogleData(d); lsSet("spark_google_connected",true); return d; }
       else if(d.disconnected){ lsSet("spark_google_connected",false); setGoogleData(null); }
     }catch(e){ console.warn("Google fetch failed:",e); }
+    return null;
   }
 
   async function runAutopilot(){
@@ -1129,8 +1240,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setApResult(analysis);
       setLastRun(now);
       setApTab("mission");
-      // Update briefing with new result
-      setBriefing(buildOpeningBriefing(voice,analysis));
+      // Regenerate daily brief with new Autopilot context
+      lsSet(DAILY_BRIEF_KEY,null);
+      triggerDailyBrief(lsGet(CONV_KEY,[]),googleData);
       if(user?.email){
         apSync(user.email,"save_run",{result:analysis,clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory})
           .then(()=>{
@@ -1169,7 +1281,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setSummarizing(false);
     }
     setMessages([]);
-    setBriefing(buildOpeningBriefing(voice,apResult));
+    setBriefObj(buildOpeningBriefing(voice,apResult));
   }
 
   function handleKey(e){
@@ -1191,7 +1303,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     else setMessages(p=>p.slice(0,-1));
 
     setInput("");
-    setBriefing(null);
+    setBriefObj(null);
     setChatLoading(true);
     if(textareaRef.current) textareaRef.current.style.height="44px";
 
@@ -1428,12 +1540,56 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
           <div style={{display:"flex",flexDirection:"column",height:"100%"}}>
 
             {/* Opening briefing */}
-            {!hasMessages&&briefing&&(
-              <div style={{background:`linear-gradient(135deg,${C.indigo}10,${C.emerald}06)`,border:`1px solid ${C.indigo}20`,borderRadius:13,padding:"16px 16px",marginBottom:16,animation:"fadeUp .4s ease"}}>
+            {!hasMessages&&briefObj&&(
+              <div style={{
+                background: briefObj.urgency==="critical"
+                  ? `linear-gradient(135deg,rgba(244,63,94,.08),rgba(99,102,241,.04))`
+                  : briefObj.urgency==="high"
+                  ? `linear-gradient(135deg,rgba(245,158,11,.07),rgba(99,102,241,.04))`
+                  : `linear-gradient(135deg,${C.indigo}10,${C.emerald}06)`,
+                border: `1px solid ${briefObj.urgency==="critical"?C.rose+"30":briefObj.urgency==="high"?C.amber+"30":C.indigo+"20"}`,
+                borderRadius:13,padding:"16px 16px",marginBottom:16,
+                animation:"fadeUp .4s ease",position:"relative",overflow:"hidden"}}>
+
+                {/* Urgency pulse for critical */}
+                {briefObj.urgency==="critical"&&(
+                  <div style={{position:"absolute",top:10,right:12,
+                    width:8,height:8,borderRadius:"50%",background:C.rose,
+                    boxShadow:`0 0 8px ${C.rose}`,animation:"pulse 1s ease infinite"}}/>
+                )}
+
                 <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-                  <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff"}}>S</div>
-                  <p style={{fontFamily:C.F,fontSize:13,color:C.text,margin:0,lineHeight:1.75,whiteSpace:"pre-wrap",flex:1}}
-                    dangerouslySetInnerHTML={{__html:briefing.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")}}/>
+                  <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
+                    background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:12,fontWeight:800,color:"#fff"}}>S</div>
+                  <div style={{flex:1}}>
+                    {briefLoading?(
+                      <div style={{display:"flex",gap:5,alignItems:"center",padding:"4px 0"}}>
+                        {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.indigoLt,animation:`pulse .9s ease ${i*.18}s infinite`}}/>)}
+                        <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginLeft:4}}>Preparing your brief...</span>
+                      </div>
+                    ):(
+                      <p style={{fontFamily:C.F,fontSize:13,color:C.text,margin:0,
+                        lineHeight:1.75,whiteSpace:"pre-wrap"}}
+                        dangerouslySetInnerHTML={{__html:(briefObj.brief||"").replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")}}/>
+                    )}
+                    {/* Suggested action button */}
+                    {!briefLoading&&briefObj.suggestedAction&&(
+                      <button onClick={()=>sendMessage(briefObj.suggestedAction)}
+                        style={{marginTop:10,background:`linear-gradient(135deg,${C.indigo}18,${C.violet}10)`,
+                          border:`1px solid ${C.indigo}30`,color:C.indigoLt,
+                          borderRadius:9,padding:"7px 14px",cursor:"pointer",
+                          fontFamily:C.F,fontWeight:700,fontSize:11,
+                          display:"inline-flex",alignItems:"center",gap:6,
+                          transition:"all .15s"}}
+                        onMouseEnter={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}28,${C.violet}18)`}
+                        onMouseLeave={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}18,${C.violet}10)`}>
+                        <span>⚡</span>
+                        Do this now
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
