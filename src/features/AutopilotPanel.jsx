@@ -25,8 +25,8 @@ const CHAT_KEY    = "spark_autopilot_chat_v1";
 const NOTES_KEY   = "spark_assistant_notes_v1";
 const CONV_KEY    = "spark_conv_memory_v1"; // cached conversation summaries
 
-function apLsGet(key,fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch{ return fb; } }
-function apLsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} }
+const apLsGet=(key,fb)=>{ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch(e){ return fb; } };
+const apLsSet=(key,val)=>{ try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){} };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONVERSATION MEMORY — summarize + persist sessions
