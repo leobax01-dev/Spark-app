@@ -4126,7 +4126,7 @@ function MainApp({user,onLogout}){
                 background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.25)",
                 borderRadius:4,padding:"0px 3px",letterSpacing:.3}}>✦</div>
             )}
-            {item.id==="autopilot"&&planKey==="premium"&&lsGet("spark_autopilot_last_run",null)&&(
+            {item.id==="autopilot"&&planKey==="premium"&&(()=>{ try{ return localStorage.getItem("spark_autopilot_last_run"); }catch(e){ return null; } })()&&(
               <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
                 width:5,height:5,borderRadius:"50%",
                 background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
@@ -4401,7 +4401,7 @@ function MainApp({user,onLogout}){
                       </div>
                       <p style={{fontSize:10,color:"rgba(255,255,255,.35)",margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
                     </div>
-                    {planKey==="premium"&&lsGet("spark_autopilot_last_run",null)&&(
+                    {planKey==="premium"&&(()=>{ try{ return localStorage.getItem("spark_autopilot_last_run"); }catch(e){ return null; } })()&&(
                       <div style={{display:"flex",alignItems:"center",gap:6,
                         background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",
                         borderRadius:10,padding:"6px 12px"}}>
