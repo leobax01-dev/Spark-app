@@ -191,6 +191,30 @@ async function handleAutopilot(action, email, body, res){
     return res.status(200).json({ data:data||null });
   }
 
+  if(action==="save_conversation"){
+    const { summary, keyDecisions, clientsDiscussed } = body;
+    if(!summary) return res.status(400).json({ error:"Summary required" });
+    const { error } = await sb.from("autopilot_conversations").insert({
+      user_email:        email,
+      summary,
+      key_decisions:     keyDecisions||[],
+      clients_discussed: clientsDiscussed||[],
+    });
+    if(error){ console.error("Conversation save error:",error.message); return res.status(500).json({ error:error.message }); }
+    return res.status(200).json({ saved:true });
+  }
+
+  if(action==="load_conversations"){
+    const { data, error } = await sb
+      .from("autopilot_conversations")
+      .select("summary,key_decisions,clients_discussed,created_at")
+      .eq("user_email", email)
+      .order("created_at",{ ascending:false })
+      .limit(8);
+    if(error) console.error("Conversation load error:",error.message);
+    return res.status(200).json({ conversations:data||[] });
+  }
+
   return res.status(400).json({ error:`Unknown autopilot action: ${action}` });
 }
 
