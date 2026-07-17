@@ -25,8 +25,8 @@ const CHAT_KEY    = "spark_autopilot_chat_v1";
 const NOTES_KEY   = "spark_assistant_notes_v1";
 const CONV_KEY    = "spark_conv_memory_v1"; // cached conversation summaries
 
-function lsGet(key,fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch{ return fb; } }
-function lsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} }
+function apLsGet(key,fb){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch{ return fb; } }
+function apLsSet(key,val){ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONVERSATION MEMORY — summarize + persist sessions
@@ -79,14 +79,14 @@ Return ONLY this JSON:
     });
 
     // Update local cache
-    const cached = lsGet(CONV_KEY,[]);
+    const cached = apLsGet(CONV_KEY,[]);
     const newEntry = {
       summary:          parsed.summary,
       key_decisions:    parsed.key_decisions||[],
       clients_discussed:parsed.clients_discussed||[],
       created_at:       new Date().toISOString(),
     };
-    lsSet(CONV_KEY,[newEntry,...cached].slice(0,8));
+    apLsSet(CONV_KEY,[newEntry,...cached].slice(0,8));
 
     return parsed.summary;
   }catch(e){
@@ -125,10 +125,10 @@ const MODES = {
 // DATA AGGREGATOR
 // ─────────────────────────────────────────────────────────────────────────────
 function aggregateBusinessData(voice){
-  const clients  = lsGet("spark_clients_v1",[]);
-  const pipeline = lsGet("spark_pipeline_value_v1",[]);
-  const goals    = lsGet("spark_biz_goals_v1",{});
-  const usage    = lsGet("sp_usage_stats",{});
+  const clients  = apLsGet("spark_clients_v1",[]);
+  const pipeline = apLsGet("spark_pipeline_value_v1",[]);
+  const goals    = apLsGet("spark_biz_goals_v1",{});
+  const usage    = apLsGet("sp_usage_stats",{});
   const now      = Date.now();
 
   const clientsWithMetrics = clients.map(c=>({
@@ -178,7 +178,7 @@ function aggregateBusinessData(voice){
     gciPct:         monthlyTarget>0?Math.round((currentGci/monthlyTarget)*100):null,
     totalGenerations:usage.total||0,
     streak:         usage.streak||0,
-    memory:         lsGet(MEMORY_KEY,{}),
+    memory:         apLsGet(MEMORY_KEY,{}),
     today: new Date().toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}),
   };
 }
@@ -200,15 +200,15 @@ function buildAgentContext(voice,planKey){
     lines.push("");
   }
 
-  const usage   = lsGet("sp_usage_stats",{});
-  const credits = lsGet("sp_credits",null);
+  const usage   = apLsGet("sp_usage_stats",{});
+  const credits = apLsGet("sp_credits",null);
   lines.push("SPARK USAGE:");
   if(planKey)       lines.push(`- Plan: ${planKey}`);
   if(credits!==null)lines.push(`- Credits remaining: ${credits}`);
   if(usage.streak)  lines.push(`- Day streak: ${usage.streak}`);
   lines.push("");
 
-  const clients = lsGet("spark_clients_v1",[]);
+  const clients = apLsGet("spark_clients_v1",[]);
   if(clients.length){
     const now=Date.now();
     lines.push(`CLIENT PIPELINE (${clients.length} total):`);
@@ -220,7 +220,7 @@ function buildAgentContext(voice,planKey){
     lines.push("");
   }
 
-  const deals=lsGet("spark_pipeline_value_v1",[]);
+  const deals=apLsGet("spark_pipeline_value_v1",[]);
   if(deals.length){
     const total=deals.reduce((s,d)=>s+(parseFloat(d.value)||0),0);
     lines.push(`DEALS ($${Math.round(total).toLocaleString()} total pipeline):`);
@@ -231,7 +231,7 @@ function buildAgentContext(voice,planKey){
     lines.push("");
   }
 
-  const goals=lsGet("spark_biz_goals_v1",{});
+  const goals=apLsGet("spark_biz_goals_v1",{});
   if(goals.monthlyGciTarget||goals.currentMonth){
     lines.push("BUSINESS GOALS:");
     if(goals.monthlyGciTarget) lines.push(`- Monthly GCI target: ${goals.monthlyGciTarget}`);
@@ -326,13 +326,13 @@ async function generateDailyBrief(voice, autopilotResult, googleData, conversati
   const today       = new Date().toISOString().slice(0,10);
 
   // Check if already generated today
-  const cached = lsGet(DAILY_BRIEF_KEY, null);
+  const cached = apLsGet(DAILY_BRIEF_KEY, null);
   if(cached?.date===today) return cached;
 
   // Build rich context for brief generation
-  const clients     = lsGet("spark_clients_v1",[]);
-  const deals       = lsGet("spark_pipeline_value_v1",[]);
-  const goals       = lsGet("spark_biz_goals_v1",{});
+  const clients     = apLsGet("spark_clients_v1",[]);
+  const deals       = apLsGet("spark_pipeline_value_v1",[]);
+  const goals       = apLsGet("spark_biz_goals_v1",{});
   const now         = Date.now();
 
   const overdue     = clients.filter(c=>c.lastContact&&Math.round((now-new Date(c.lastContact))/864e5)>7).sort((a,b)=>b.daysSince-a.daysSince);
@@ -390,7 +390,7 @@ async function generateDailyBrief(voice, autopilotResult, googleData, conversati
     const suggestedAction = sentences[sentences.length-1]||"";
 
     const result = { brief, suggestedAction, date:today, urgency };
-    lsSet(DAILY_BRIEF_KEY, result);
+    apLsSet(DAILY_BRIEF_KEY, result);
     return result;
   }catch(e){
     console.warn("Daily brief generation failed:",e.message);
@@ -405,8 +405,8 @@ function buildStaticBriefing(voice, autopilotResult, greeting, name){
     const brief = `${greeting}${name}. Autopilot has analyzed your business.\n\n**Today's priority:** ${autopilotResult.mission.headline}\n\n${autopilotResult.mission.why||""}\n\nWhat would you like to tackle first?`;
     return { brief, suggestedAction:null, date:today, urgency:"medium" };
   }
-  const clients  = lsGet("spark_clients_v1",[]);
-  const deals    = lsGet("spark_pipeline_value_v1",[]);
+  const clients  = apLsGet("spark_clients_v1",[]);
+  const deals    = apLsGet("spark_pipeline_value_v1",[]);
   const now      = Date.now();
   const overdue  = clients.filter(c=>c.lastContact&&Math.round((now-new Date(c.lastContact))/864e5)>7);
   const closing  = deals.filter(d=>d.closeDate&&Math.round((new Date(d.closeDate)-now)/864e5)<=14&&Math.round((new Date(d.closeDate)-now)/864e5)>=0);
@@ -421,7 +421,7 @@ function buildStaticBriefing(voice, autopilotResult, greeting, name){
 
 function buildOpeningBriefing(voice, autopilotResult){
   // Synchronous fallback — returns immediately from cache or static
-  const cached = lsGet(DAILY_BRIEF_KEY, null);
+  const cached = apLsGet(DAILY_BRIEF_KEY, null);
   const today  = new Date().toISOString().slice(0,10);
   if(cached?.date===today) return cached;
   const hour    = new Date().getHours();
@@ -434,9 +434,9 @@ function buildOpeningBriefing(voice, autopilotResult){
 // SMART PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
 function getSmartPrompts(voice,mode,autopilotResult,googleData){
-  const clients    = lsGet("spark_clients_v1",[]);
-  const deals      = lsGet("spark_pipeline_value_v1",[]);
-  const goals      = lsGet("spark_biz_goals_v1",{});
+  const clients    = apLsGet("spark_clients_v1",[]);
+  const deals      = apLsGet("spark_pipeline_value_v1",[]);
+  const goals      = apLsGet("spark_biz_goals_v1",{});
   const now        = Date.now();
 
   const prompts = [];
@@ -527,9 +527,9 @@ async function apSync(email,action,body={}){
 
 async function syncAgentData(email){
   if(!email) return;
-  const clients  = lsGet("spark_clients_v1",[]);
-  const pipeline = lsGet("spark_pipeline_value_v1",[]);
-  const goals    = lsGet("spark_biz_goals_v1",{});
+  const clients  = apLsGet("spark_clients_v1",[]);
+  const pipeline = apLsGet("spark_pipeline_value_v1",[]);
+  const goals    = apLsGet("spark_biz_goals_v1",{});
   await apSync(email,"sync_data",{ clients,pipeline,goals });
 }
 
@@ -732,8 +732,8 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
   const [error,    setError]    = useState(null);
 
   // Find matching client and deal from localStorage
-  const clients  = lsGet("spark_clients_v1",[]);
-  const deals    = lsGet("spark_pipeline_value_v1",[]);
+  const clients  = apLsGet("spark_clients_v1",[]);
+  const deals    = apLsGet("spark_pipeline_value_v1",[]);
   const dealName = risk.deal?.toLowerCase()||"";
   const client   = clients.find(c=>dealName.includes(c.name?.toLowerCase()?.split(" ")[0])||c.name?.toLowerCase()?.includes(dealName.split(" ")[0]));
   const deal     = deals.find(d=>d.name?.toLowerCase()?.includes(dealName.split(" ")[0])||dealName.includes(d.name?.toLowerCase()?.split(" ")[0]));
@@ -1399,7 +1399,7 @@ async function generateWeeklyReport(data, apResult, conversations, email){
     apSync(email,"save_weekly_report",{ weekStart, report:parsed }).catch(()=>{});
   }
   // Cache locally
-  lsSet(WEEKLY_KEY,{ report:parsed, weekStart, generated:new Date().toISOString() });
+  apLsSet(WEEKLY_KEY,{ report:parsed, weekStart, generated:new Date().toISOString() });
   return parsed;
 }
 
@@ -1627,28 +1627,28 @@ function WeeklyReport({ report, weekLabel, onDiscuss }){
 
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
-  const [apResult,    setApResult]    = useState(()=>lsGet(AP_KEY,null));
+  const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
   const [apRunning,   setApRunning]   = useState(false);
   const [apError,     setApError]     = useState(null);
-  const [lastRun,     setLastRun]     = useState(()=>lsGet(RUN_KEY,null));
+  const [lastRun,     setLastRun]     = useState(()=>apLsGet(RUN_KEY,null));
   const [runHistory,  setRunHistory]  = useState([]);
   const [syncing,     setSyncing]     = useState(false);
   const [dbMemory,    setDbMemory]    = useState(null);
   const [apTab,        setApTab]        = useState("mission");
   const [situationRoom,setSituationRoom] = useState(null);
-  const [weeklyReport, setWeeklyReport] = useState(()=>lsGet(WEEKLY_KEY,null));
+  const [weeklyReport, setWeeklyReport] = useState(()=>apLsGet(WEEKLY_KEY,null));
   const [weeklyLoading,setWeeklyLoading]= useState(false);
   const [weeklyError,  setWeeklyError]  = useState(null); // active risk for situation room
 
   // Chat state
-  const [messages,      setMessages]      = useState(()=>lsGet(CHAT_KEY,[]));
+  const [messages,      setMessages]      = useState(()=>apLsGet(CHAT_KEY,[]));
   const [input,         setInput]         = useState("");
   const [chatLoading,   setChatLoading]   = useState(false);
   const [mode,          setMode]          = useState("write");
   const [briefObj,      setBriefObj]      = useState(()=>buildOpeningBriefing(voice,apResult));
   const [briefLoading,  setBriefLoading]  = useState(false);
   const [googleData,    setGoogleData]    = useState(null);
-  const [conversations, setConversations] = useState(()=>lsGet(CONV_KEY,[]));
+  const [conversations, setConversations] = useState(()=>apLsGet(CONV_KEY,[]));
   const [summarizing,   setSummarizing]   = useState(false);
 
   // Voice state
@@ -1673,7 +1673,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     setVoiceSupported(supported);
     synthRef.current = window.speechSynthesis || null;
     // Load saved voice output preference
-    setVoiceEnabled(lsGet("spark_voice_output", false));
+    setVoiceEnabled(apLsGet("spark_voice_output", false));
   },[]);
 
   // Voice input — start/stop mic
@@ -1768,7 +1768,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   function toggleVoiceOutput(){
     const next = !voiceEnabled;
     setVoiceEnabled(next);
-    lsSet("spark_voice_output", next);
+    apLsSet("spark_voice_output", next);
     if(!next) synthRef.current?.cancel();
   }
 
@@ -1783,16 +1783,16 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const isPremium     = planKey==="premium";
   const data          = aggregateBusinessData(voice);
   const hasEnoughData = data.totalClients>0||data.totalDeals>0;
-  const memory        = lsGet(MEMORY_KEY,{});
+  const memory        = apLsGet(MEMORY_KEY,{});
   const totalRuns     = dbMemory?.run_count||memory.runCount||0;
 
   // Persist chat
-  useEffect(()=>{ lsSet(CHAT_KEY,messages.slice(-60)); },[messages]);
+  useEffect(()=>{ apLsSet(CHAT_KEY,messages.slice(-60)); },[messages]);
 
   // Auto-summarize on unmount if conversation was substantial
   useEffect(()=>{
     return ()=>{
-      const current = lsGet(CHAT_KEY,[]);
+      const current = apLsGet(CHAT_KEY,[]);
       if(current.length >= 4 && user?.email){
         summarizeConversation(current, user.email);
       }
@@ -1811,7 +1811,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         // Generate AI brief once conversations are loaded
         if(messages.length===0) triggerDailyBrief(convs);
       });
-      if(lsGet("spark_google_connected",false)) fetchGoogleData().then(gd=>{
+      if(apLsGet("spark_google_connected",false)) fetchGoogleData().then(gd=>{
         // Regenerate brief with Google context if we got calendar data
         if(messages.length===0 && gd?.events?.length) triggerDailyBrief(null, gd);
       });
@@ -1824,16 +1824,16 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     const d = await apSync(user.email,"load_conversations");
     if(d?.conversations?.length){
       setConversations(d.conversations);
-      lsSet(CONV_KEY, d.conversations);
+      apLsSet(CONV_KEY, d.conversations);
       return d.conversations;
     }
-    return lsGet(CONV_KEY,[]);
+    return apLsGet(CONV_KEY,[]);
   }
 
   async function triggerDailyBrief(convs, gd){
     setBriefLoading(true);
     const today = new Date().toISOString().slice(0,10);
-    const cached = lsGet(DAILY_BRIEF_KEY,null);
+    const cached = apLsGet(DAILY_BRIEF_KEY,null);
     // Skip if already generated today (unless we have better context now)
     if(cached?.date===today && !gd) {
       setBriefObj(cached);
@@ -1842,7 +1842,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     }
     const result = await generateDailyBrief(
       voice, apResult, gd||googleData,
-      convs||lsGet(CONV_KEY,[])
+      convs||apLsGet(CONV_KEY,[])
     );
     setBriefObj(result);
     setBriefLoading(false);
@@ -1864,13 +1864,13 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       if(dbTime>lsTime){
         setApResult(d.latestRun.result);
         setLastRun(d.latestRun.run_at);
-        lsSet(AP_KEY,d.latestRun.result);
-        lsSet(RUN_KEY,d.latestRun.run_at);
+        apLsSet(AP_KEY,d.latestRun.result);
+        apLsSet(RUN_KEY,d.latestRun.run_at);
       }
     }
     if(d?.memory){
       setDbMemory(d.memory);
-      lsSet(MEMORY_KEY,{runCount:d.memory.run_count||0,patterns:d.memory.patterns||"",lastHealth:d.memory.last_health||""});
+      apLsSet(MEMORY_KEY,{runCount:d.memory.run_count||0,patterns:d.memory.patterns||"",lastHealth:d.memory.last_health||""});
     }
     const h=await apSync(user.email,"load_history");
     if(h?.runs) setRunHistory(h.runs);
@@ -1882,7 +1882,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       const thisWeek = getWeekStart();
       if(latest.week_start===thisWeek){
         setWeeklyReport({ report:latest.report, weekStart:latest.week_start, generated:latest.created_at });
-        lsSet(WEEKLY_KEY,{ report:latest.report, weekStart:latest.week_start, generated:latest.created_at });
+        apLsSet(WEEKLY_KEY,{ report:latest.report, weekStart:latest.week_start, generated:latest.created_at });
       }
     }
 
@@ -1895,7 +1895,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     setWeeklyError(null);
     try{
       const freshData = aggregateBusinessData(voice);
-      const convs     = lsGet(CONV_KEY,[]);
+      const convs     = apLsGet(CONV_KEY,[]);
       const report    = await generateWeeklyReport(freshData, apResult, convs, user?.email);
       setWeeklyReport({ report, weekStart:getWeekStart(), generated:new Date().toISOString() });
     }catch(e){
@@ -1909,8 +1909,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     try{
       const r=await fetch("/api/google-data",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:user.email,action:"fetch"})});
       const d=await r.json();
-      if(d.connected){ setGoogleData(d); lsSet("spark_google_connected",true); return d; }
-      else if(d.disconnected){ lsSet("spark_google_connected",false); setGoogleData(null); }
+      if(d.connected){ setGoogleData(d); apLsSet("spark_google_connected",true); return d; }
+      else if(d.disconnected){ apLsSet("spark_google_connected",false); setGoogleData(null); }
     }catch(e){ console.warn("Google fetch failed:",e); }
     return null;
   }
@@ -1923,16 +1923,16 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       const freshData=aggregateBusinessData(voice);
       const analysis=await runAutopilotEngine(freshData);
       const newMemory={runCount:(memory.runCount||0)+1,lastHealth:analysis.deal_intelligence?.overall_health,patterns:analysis.coaching_insight?.observation||memory.patterns,updatedAt:new Date().toISOString()};
-      lsSet(MEMORY_KEY,newMemory);
+      apLsSet(MEMORY_KEY,newMemory);
       const now=new Date().toISOString();
-      lsSet(AP_KEY,analysis);
-      lsSet(RUN_KEY,now);
+      apLsSet(AP_KEY,analysis);
+      apLsSet(RUN_KEY,now);
       setApResult(analysis);
       setLastRun(now);
       setApTab("mission");
       // Regenerate daily brief with new Autopilot context
-      lsSet(DAILY_BRIEF_KEY,null);
-      triggerDailyBrief(lsGet(CONV_KEY,[]),googleData);
+      apLsSet(DAILY_BRIEF_KEY,null);
+      triggerDailyBrief(apLsGet(CONV_KEY,[]),googleData);
       if(user?.email){
         apSync(user.email,"save_run",{result:analysis,clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory})
           .then(()=>{
@@ -1954,8 +1954,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   }
 
   function saveNote(text){
-    const notes=lsGet(NOTES_KEY,[]);
-    lsSet(NOTES_KEY,[{text,savedAt:new Date().toISOString()},...notes].slice(0,50));
+    const notes=apLsGet(NOTES_KEY,[]);
+    apLsSet(NOTES_KEY,[{text,savedAt:new Date().toISOString()},...notes].slice(0,50));
   }
 
   async function clearChat(){
@@ -1965,7 +1965,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setSummarizing(true);
       const summary = await summarizeConversation(messages, user.email);
       if(summary){
-        const updated = lsGet(CONV_KEY,[]);
+        const updated = apLsGet(CONV_KEY,[]);
         setConversations(updated);
       }
       setSummarizing(false);
