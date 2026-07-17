@@ -1334,6 +1334,297 @@ function TypingIndicator(){
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN UNIFIED COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
+const WEEKLY_KEY = "spark_weekly_report_v1"; // cached weekly report
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY INTELLIGENCE REPORT — generated Sunday, covers full business week
+// ─────────────────────────────────────────────────────────────────────────────
+function getWeekStart(date=new Date()){
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  d.setDate(d.getDate() - day);
+  d.setHours(0,0,0,0);
+  return d.toISOString().slice(0,10);
+}
+
+async function generateWeeklyReport(data, apResult, conversations, email){
+  const weekStart  = getWeekStart();
+  const weekEnd    = new Date();
+  const weekLabel  = new Date(weekStart).toLocaleDateString("en-US",{month:"long",day:"numeric"})
+    + " – " + weekEnd.toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+
+  // Gather week's conversation summaries
+  const weekConvs = conversations.filter(c=>{
+    const d = new Date(c.created_at);
+    return d >= new Date(weekStart);
+  });
+
+  // Build context
+  const ctx = [
+    `Agent: ${data.agentName}, ${data.agentBrokerage}, ${data.agentMarket}`,
+    `Week: ${weekLabel}`,
+    `Pipeline: ${data.totalClients} clients, ${data.totalDeals} deals, $${Math.round(data.totalPipeline).toLocaleString()} total`,
+    `GCI target: $${data.monthlyTarget?.toLocaleString()||"not set"} | Current month: $${data.currentGci?.toLocaleString()||"$0"}`,
+    data.overdueClients.length ? `Overdue clients: ${data.overdueClients.map(c=>c.name).join(", ")}` : "No overdue clients",
+    data.urgentDeals.length ? `Deals closing soon: ${data.urgentDeals.map(d=>`${d.name} in ${Math.round((new Date(d.closeDate)-Date.now())/864e5)}d`).join(", ")}` : "",
+    apResult?.deal_intelligence?.overall_health ? `Pipeline health: ${apResult.deal_intelligence.overall_health}` : "",
+    apResult?.coaching_insight?.observation ? `Recent coaching insight: ${apResult.coaching_insight.observation}` : "",
+    weekConvs.length ? `This week's conversations (${weekConvs.length}): ${weekConvs.map(c=>c.summary).join(" | ")}` : "No conversations this week yet",
+    data.memory.patterns ? `Ongoing patterns: ${data.memory.patterns}` : "",
+  ].filter(Boolean).join("\n");
+
+  const r = await fetch("/api/claude",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      system:"You are SPARK Autopilot generating a weekly business intelligence report for a real estate agent. Be specific, honest, and actionable. Reference real names and numbers. Return ONLY valid compact JSON.",
+      messages:[{role:"user",content:`Generate a weekly intelligence report for ${weekLabel}. Context:\n${ctx}\n\nReturn ONLY this JSON:
+{"week_label":"${weekLabel}","headline":"one powerful sentence that captures the most important thing about this week","momentum":"rising/stable/declining","momentum_reason":"why — specific","wins":[{"description":"specific win or positive development this week","impact":"why it matters"}],"misses":[{"description":"specific miss or thing that didn't happen","lesson":"what to do differently"}],"pipeline_snapshot":{"total_value":"$X","active_deals":"N","at_risk":"what's most at risk","strongest":"strongest opportunity right now"},"pattern_of_the_week":"one honest pattern observed in the agent's behavior or results this week — specific, not generic","next_week_priorities":[{"priority":"specific action","why":"why this week","by":"by when"}],"coaching_focus":"the single most important thing to work on next week and why","gci_status":"on track/behind/ahead — with specific dollar amounts and what's needed to hit target","closing_thought":"one motivating, honest, forward-looking sentence to end the week on"}`}],
+      max_tokens:2000,
+    })
+  });
+  const d = await r.json();
+  const raw = d.content?.[0]?.text||"";
+  let parsed = null;
+  for(const attempt of [
+    ()=>JSON.parse(raw.trim()),
+    ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no"); },
+  ]){
+    try{ parsed=attempt(); break; }catch{}
+  }
+  if(!parsed) throw new Error("parse_failed");
+
+  // Save to Supabase
+  if(email){
+    apSync(email,"save_weekly_report",{ weekStart, report:parsed }).catch(()=>{});
+  }
+  // Cache locally
+  lsSet(WEEKLY_KEY,{ report:parsed, weekStart, generated:new Date().toISOString() });
+  return parsed;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEEKLY REPORT COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+function WeeklyReport({ report, weekLabel, onDiscuss }){
+  const mc = report.momentum==="rising"?C.emerald:report.momentum==="declining"?C.rose:C.cyan;
+
+  return(
+    <div style={{animation:"fadeUp .3s ease"}}>
+
+      {/* Header */}
+      <APCard accent={mc} style={{background:`linear-gradient(135deg,${mc}08,${C.surface})`}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+          <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
+            background:`linear-gradient(135deg,${mc},${mc}80)`,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:20,boxShadow:`0 4px 14px ${mc}30`}}>📊</div>
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
+              <span style={{fontSize:9,color:mc,fontFamily:C.F,fontWeight:700,
+                background:`${mc}14`,border:`1px solid ${mc}28`,
+                borderRadius:8,padding:"1px 8px",letterSpacing:1}}>
+                WEEKLY INTELLIGENCE REPORT
+              </span>
+            </div>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,color:C.text}}>
+              {report.week_label||weekLabel}
+            </div>
+          </div>
+          <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5,
+            background:`${mc}10`,border:`1px solid ${mc}24`,borderRadius:8,padding:"4px 10px"}}>
+            <span style={{fontSize:11,color:mc,fontWeight:800}}>
+              {report.momentum==="rising"?"↑":report.momentum==="declining"?"↓":"→"}
+            </span>
+            <span style={{fontSize:9,color:mc,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>
+              {report.momentum?.toUpperCase()||"STABLE"}
+            </span>
+          </div>
+        </div>
+        <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,
+          margin:"0 0 8px",lineHeight:1.5,letterSpacing:"-0.01em"}}>
+          {report.headline}
+        </p>
+        {report.momentum_reason&&(
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.6}}>
+            {report.momentum_reason}
+          </p>
+        )}
+      </APCard>
+
+      {/* GCI Status */}
+      {report.gci_status&&(
+        <APCard accent={C.emerald}>
+          <APLabel color={C.emerald}>GCI STATUS</APLabel>
+          <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,
+            margin:0,lineHeight:1.6}}>{report.gci_status}</p>
+        </APCard>
+      )}
+
+      {/* Pipeline snapshot */}
+      {report.pipeline_snapshot&&(
+        <APCard accent={C.indigo}>
+          <APLabel color={C.indigo}>PIPELINE SNAPSHOT</APLabel>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+            {[
+              {label:"TOTAL VALUE",   value:report.pipeline_snapshot.total_value,  color:C.emerald},
+              {label:"ACTIVE DEALS",  value:report.pipeline_snapshot.active_deals, color:C.indigo},
+            ].map((m,i)=>(
+              <div key={i} style={{background:`${m.color}08`,border:`1px solid ${m.color}18`,
+                borderRadius:9,padding:"10px 12px",textAlign:"center"}}>
+                <div style={{fontSize:8,color:m.color,fontFamily:C.F,fontWeight:700,
+                  letterSpacing:1.5,marginBottom:4}}>{m.label}</div>
+                <div style={{fontFamily:C.F,fontWeight:800,fontSize:16,color:C.text}}>
+                  {m.value}
+                </div>
+              </div>
+            ))}
+          </div>
+          {report.pipeline_snapshot.strongest&&(
+            <div style={{background:`${C.emerald}06`,border:`1px solid ${C.emerald}18`,
+              borderRadius:8,padding:"9px 12px",marginBottom:8}}>
+              <div style={{fontSize:8,color:C.emerald,fontFamily:C.F,fontWeight:700,
+                letterSpacing:1.5,marginBottom:3}}>STRONGEST OPPORTUNITY</div>
+              <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0}}>
+                {report.pipeline_snapshot.strongest}
+              </p>
+            </div>
+          )}
+          {report.pipeline_snapshot.at_risk&&(
+            <div style={{background:"rgba(244,63,94,.05)",border:"1px solid rgba(244,63,94,.18)",
+              borderRadius:8,padding:"9px 12px"}}>
+              <div style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,
+                letterSpacing:1.5,marginBottom:3}}>AT RISK</div>
+              <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0}}>
+                {report.pipeline_snapshot.at_risk}
+              </p>
+            </div>
+          )}
+        </APCard>
+      )}
+
+      {/* Wins */}
+      {report.wins?.length>0&&(
+        <APCard accent={C.emerald}>
+          <APLabel color={C.emerald}>THIS WEEK'S WINS</APLabel>
+          {report.wins.map((w,i)=>(
+            <div key={i} style={{display:"flex",gap:10,padding:"8px 0",
+              borderBottom:i<report.wins.length-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{width:18,height:18,borderRadius:"50%",flexShrink:0,
+                background:`${C.emerald}14`,border:`1px solid ${C.emerald}24`,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:9,color:C.emerald,fontWeight:800,marginTop:1}}>✓</div>
+              <div>
+                <p style={{fontFamily:C.F,fontSize:12,fontWeight:600,color:C.text,
+                  margin:"0 0 3px"}}>{w.description}</p>
+                <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>
+                  {w.impact}
+                </p>
+              </div>
+            </div>
+          ))}
+        </APCard>
+      )}
+
+      {/* Misses */}
+      {report.misses?.length>0&&(
+        <APCard accent={C.amber}>
+          <APLabel color={C.amber}>MISSES & LESSONS</APLabel>
+          {report.misses.map((m,i)=>(
+            <div key={i} style={{display:"flex",gap:10,padding:"8px 0",
+              borderBottom:i<report.misses.length-1?`1px solid ${C.border}`:"none"}}>
+              <div style={{width:18,height:18,borderRadius:"50%",flexShrink:0,
+                background:`${C.amber}14`,border:`1px solid ${C.amber}24`,
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:9,color:C.amber,fontWeight:800,marginTop:1}}>→</div>
+              <div>
+                <p style={{fontFamily:C.F,fontSize:12,fontWeight:600,color:C.text,
+                  margin:"0 0 3px"}}>{m.description}</p>
+                <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>
+                  {m.lesson}
+                </p>
+              </div>
+            </div>
+          ))}
+        </APCard>
+      )}
+
+      {/* Pattern of the week */}
+      {report.pattern_of_the_week&&(
+        <APCard accent={C.violet}>
+          <APLabel color={C.violet}>PATTERN OF THE WEEK</APLabel>
+          <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:"0 0 12px",
+            lineHeight:1.75,fontStyle:"italic"}}>"{report.pattern_of_the_week}"</p>
+          <button onClick={()=>onDiscuss(`Autopilot identified this pattern in my business this week: "${report.pattern_of_the_week}". Help me understand what's driving this and what I should do about it.`)}
+            style={{background:`${C.violet}10`,border:`1px solid ${C.violet}24`,
+              color:C.violet,borderRadius:8,padding:"6px 14px",cursor:"pointer",
+              fontFamily:C.F,fontWeight:700,fontSize:10}}>
+            Discuss this pattern →
+          </button>
+        </APCard>
+      )}
+
+      {/* Next week priorities */}
+      {report.next_week_priorities?.length>0&&(
+        <APCard accent={C.indigo}>
+          <APLabel color={C.indigo}>NEXT WEEK'S PRIORITIES</APLabel>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {report.next_week_priorities.map((p,i)=>(
+              <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",
+                animation:`slideR .22s ease ${i*.06}s both`}}>
+                <div style={{width:22,height:22,borderRadius:"50%",flexShrink:0,
+                  background:`${C.indigo}18`,border:`1px solid ${C.indigo}28`,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:10,color:C.indigoLt,fontWeight:800}}>{i+1}</div>
+                <div style={{flex:1}}>
+                  <p style={{fontFamily:C.F,fontSize:12,fontWeight:700,color:C.text,
+                    margin:"0 0 3px"}}>{p.priority}</p>
+                  <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"0 0 2px"}}>
+                    {p.why}
+                  </p>
+                  {p.by&&<span style={{fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:700}}>
+                    By: {p.by}
+                  </span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </APCard>
+      )}
+
+      {/* Coaching focus */}
+      {report.coaching_focus&&(
+        <APCard accent={C.violet} style={{background:`linear-gradient(135deg,${C.violet}08,${C.indigo}04)`}}>
+          <APLabel color={C.violet}>COACHING FOCUS FOR NEXT WEEK</APLabel>
+          <p style={{fontFamily:C.F,fontSize:13,fontWeight:700,color:C.text,
+            margin:"0 0 12px",lineHeight:1.6}}>{report.coaching_focus}</p>
+          <button onClick={()=>onDiscuss(`My coaching focus for next week according to Autopilot: "${report.coaching_focus}". Help me build a specific plan to work on this.`)}
+            style={{width:"100%",background:`linear-gradient(135deg,${C.violet},${C.indigo})`,
+              border:"none",color:"#fff",borderRadius:10,padding:"11px 0",
+              cursor:"pointer",fontFamily:C.F,fontWeight:800,fontSize:12,
+              boxShadow:`0 4px 14px ${C.violet}28`,
+              display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
+            <span>🎯</span> Build action plan with SPARK
+          </button>
+        </APCard>
+      )}
+
+      {/* Closing thought */}
+      {report.closing_thought&&(
+        <div style={{textAlign:"center",padding:"20px 16px",
+          background:`linear-gradient(135deg,${C.indigo}06,${C.violet}04)`,
+          border:`1px solid ${C.indigo}18`,borderRadius:14,marginBottom:8}}>
+          <div style={{fontSize:24,marginBottom:10}}>⚡</div>
+          <p style={{fontFamily:C.F,fontSize:14,fontWeight:600,color:C.textMd,
+            margin:0,lineHeight:1.75,fontStyle:"italic"}}>
+            "{report.closing_thought}"
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>lsGet(AP_KEY,null));
@@ -1344,7 +1635,10 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [syncing,     setSyncing]     = useState(false);
   const [dbMemory,    setDbMemory]    = useState(null);
   const [apTab,        setApTab]        = useState("mission");
-  const [situationRoom,setSituationRoom] = useState(null); // active risk for situation room
+  const [situationRoom,setSituationRoom] = useState(null);
+  const [weeklyReport, setWeeklyReport] = useState(()=>lsGet(WEEKLY_KEY,null));
+  const [weeklyLoading,setWeeklyLoading]= useState(false);
+  const [weeklyError,  setWeeklyError]  = useState(null); // active risk for situation room
 
   // Chat state
   const [messages,      setMessages]      = useState(()=>lsGet(CHAT_KEY,[]));
@@ -1579,7 +1873,35 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     }
     const h=await apSync(user.email,"load_history");
     if(h?.runs) setRunHistory(h.runs);
+
+    // Load weekly reports
+    const wr=await apSync(user.email,"load_weekly_reports");
+    if(wr?.reports?.length){
+      const latest = wr.reports[0];
+      const thisWeek = getWeekStart();
+      if(latest.week_start===thisWeek){
+        setWeeklyReport({ report:latest.report, weekStart:latest.week_start, generated:latest.created_at });
+        lsSet(WEEKLY_KEY,{ report:latest.report, weekStart:latest.week_start, generated:latest.created_at });
+      }
+    }
+
     setSyncing(false);
+  }
+
+  async function runWeeklyReport(){
+    if(weeklyLoading) return;
+    setWeeklyLoading(true);
+    setWeeklyError(null);
+    try{
+      const freshData = aggregateBusinessData(voice);
+      const convs     = lsGet(CONV_KEY,[]);
+      const report    = await generateWeeklyReport(freshData, apResult, convs, user?.email);
+      setWeeklyReport({ report, weekStart:getWeekStart(), generated:new Date().toISOString() });
+    }catch(e){
+      console.error("Weekly report error:",e);
+      setWeeklyError("Report generation failed — try again.");
+    }
+    setWeeklyLoading(false);
   }
 
   async function fetchGoogleData(){
@@ -1729,7 +2051,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     {id:"alerts",   label:"Alerts",   icon:"⚡"},
     {id:"market",   label:"Market",   icon:"📈"},
     {id:"coaching", label:"Coaching", icon:"🏆"},
-    {id:"history",  label:"History",  icon:"📅",count:runHistory.length},
+    {id:"weekly",   label:"Weekly",   icon:"📊", badge:weeklyReport?"✓":null},
+    {id:"history",  label:"History",  icon:"📅", count:runHistory.length},
   ];
 
   return(
@@ -1905,7 +2228,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 {/* Tab nav */}
                 <div style={{display:"flex",gap:5,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
                   {AP_TABS.map(t=>(
-                    <button key={t.id} onClick={()=>setApTab(t.id)}
+                    <button key={t.id} onClick={()=>{ setApTab(t.id); setSituationRoom(null); }}
                       style={{padding:"7px 12px",borderRadius:10,flexShrink:0,
                         border:`1px solid ${apTab===t.id?C.indigo+"44":C.border}`,
                         background:apTab===t.id?`${C.indigo}10`:"transparent",
@@ -1914,6 +2237,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                         transition:"all .14s",display:"flex",alignItems:"center",gap:5}}>
                       {t.icon} {t.label}
                       {t.count>0&&<span style={{fontSize:8,background:C.indigo,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.count}</span>}
+                      {t.badge&&<span style={{fontSize:8,background:C.emerald,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.badge}</span>}
                     </button>
                   ))}
                 </div>
@@ -1924,6 +2248,63 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 {apTab==="alerts"   &&<RelationshipAlerts alerts={apResult.relationship_alerts} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="market"   &&<MarketCoachingForecast market={apResult.market_intelligence} coaching={null} forecast={null} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="coaching" &&<MarketCoachingForecast market={null} coaching={apResult.coaching_insight} forecast={apResult.performance_forecast} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
+                {apTab==="weekly"   &&(
+                  <div>
+                    {/* Generate / refresh button */}
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                      <div>
+                        <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>
+                          Weekly Intelligence Report
+                        </div>
+                        <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>
+                          {weeklyReport
+                            ? `Generated ${new Date(weeklyReport.generated).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
+                            : "Not yet generated this week"}
+                        </div>
+                      </div>
+                      <button onClick={runWeeklyReport} disabled={weeklyLoading}
+                        style={{background:weeklyLoading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                          border:"none",color:weeklyLoading?C.textDim:"#fff",
+                          borderRadius:9,padding:"8px 16px",cursor:weeklyLoading?"default":"pointer",
+                          fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0,
+                          boxShadow:weeklyLoading?"none":`0 3px 12px ${C.indigo}30`,transition:"all .2s"}}>
+                        {weeklyLoading?"Generating...":weeklyReport?"Regenerate":"Generate Report"}
+                      </button>
+                    </div>
+
+                    {weeklyError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{weeklyError}</div>}
+
+                    {weeklyLoading&&(
+                      <APCard accent={C.indigo}>
+                        <div style={{textAlign:"center",padding:"28px 0"}}>
+                          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
+                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.indigo,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                          </div>
+                          <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Generating your weekly report...</p>
+                          <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>Analyzing your week — wins, misses, patterns, and priorities for next week</p>
+                        </div>
+                      </APCard>
+                    )}
+
+                    {!weeklyLoading&&weeklyReport?.report&&(
+                      <WeeklyReport
+                        report={weeklyReport.report}
+                        weekLabel={weeklyReport.weekStart}
+                        onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}
+                      />
+                    )}
+
+                    {!weeklyLoading&&!weeklyReport&&(
+                      <APCard accent={C.indigo}>
+                        <div style={{textAlign:"center",padding:"24px 0"}}>
+                          <div style={{fontSize:36,marginBottom:12}}>📊</div>
+                          <p style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,margin:"0 0 8px"}}>No report yet this week</p>
+                          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:"0 0 16px",lineHeight:1.6,maxWidth:300,marginLeft:"auto",marginRight:"auto"}}>Generate your weekly intelligence report to see wins, misses, patterns, priorities, and a coaching focus for next week.</p>
+                        </div>
+                      </APCard>
+                    )}
+                  </div>
+                )}
                 {apTab==="history"  &&<RunHistory runs={runHistory} memory={dbMemory} conversations={conversations}/>}
               </div>
             )}
