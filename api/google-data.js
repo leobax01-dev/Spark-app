@@ -251,7 +251,11 @@ export default async function handler(req, res){
   const userEmail = email.toLowerCase().trim();
 
   // Route autopilot actions
-  const autopilotActions = ["save_run","load_latest","load_history","sync_data","load_data"];
+  const autopilotActions = [
+    "save_run","load_latest","load_history","sync_data","load_data",
+    "save_weekly_report","load_weekly_reports",
+    "save_conversation","load_conversations",
+  ];
   if(autopilotActions.includes(action)){
     try{ return await handleAutopilot(action, userEmail, req.body, res); }
     catch(err){ console.error("Autopilot error:",err.message); return res.status(500).json({ error:err.message }); }
