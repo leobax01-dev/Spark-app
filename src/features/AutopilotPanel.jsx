@@ -282,7 +282,7 @@ function buildGoogleContext(googleData){
   return lines.join("\n");
 }
 
-function buildSystem(voice,planKey,autopilotResult,googleData,mode,conversations){
+function buildSystem(voice,planKey,autopilotResult,googleData,mode,conversations,marketContext){
   const agentCtx    = buildAgentContext(voice,planKey);
   const autopilotCtx= buildAutopilotContext(autopilotResult);
   const googleCtx   = buildGoogleContext(googleData);
@@ -296,6 +296,7 @@ ${agentCtx}
 ${autopilotCtx}
 ${googleCtx}
 ${memoryCtx}
+${marketContext?"\n"+marketContext+"\n":""}
 
 ${modeInst}
 
@@ -307,6 +308,7 @@ CORE RULES:
 - When conversation memory exists, reference previous sessions naturally ("Last time we talked about...", "You mentioned last week that...")
 - When calendar events exist, proactively prep the agent for upcoming appointments
 - When emails are referenced, use actual inbox content
+- When live market data is available above, use the real numbers to ground pricing or market-related answers — never invent statistics that weren't given to you
 - Be direct and specific — no generic advice, always tie to their actual situation
 - Use **bold** sparingly for emphasis, line breaks for readability
 - Scripts and messages should be word-for-word ready to send
@@ -546,6 +548,10 @@ async function runAutopilotEngine(data){
     return `${d.name}: $${(parseFloat(d.value)||0).toLocaleString()}, ${d.stage||"?"}, ${d.probability||50}% prob${days!==null?`, ${days}d to close`:""}`;
   }).join("\n");
 
+  // Live market data — grounds market_intelligence and deal risk assessment
+  // in real numbers instead of purely reasoning from agent-typed text.
+  const marketCtx = await getMarketContext(data.allClients);
+
   const ctx=`Agent: ${data.agentName}, ${data.agentBrokerage}, ${data.agentMarket}
 Today: ${data.today}
 Clients (${data.totalClients}): ${clientDetails||"none"}
@@ -553,7 +559,8 @@ Urgent/at-risk deals: ${dealDetails||"none"}
 Overdue: ${data.overdueClients.map(c=>`${c.name} ${c.daysSince}d`).join(", ")||"none"}
 Referral opps: ${data.referralOpps.map(c=>c.name).join(", ")||"none"}
 GCI target: $${data.monthlyTarget?.toLocaleString()||"?"} | Current: $${data.currentGci?.toLocaleString()||"?"} | Pipeline: $${Math.round(data.totalPipeline).toLocaleString()}
-${data.memory.patterns?`Patterns: ${data.memory.patterns}`:""}`;
+${data.memory.patterns?`Patterns: ${data.memory.patterns}`:""}
+${marketCtx}`;
 
   async function callClaude(userPrompt){
     const r=await fetch("/api/claude",{
@@ -586,7 +593,7 @@ Return ONLY this JSON (compact):
   const part2 = await callClaude(`${ctx}
 
 Return ONLY this JSON (compact):
-{"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact warm personal message to send","reason":"why reach out now"}],"market_intelligence":{"insight":"actionable market insight for their pipeline","opportunity":"market condition to capitalize on now","talking_point":"most powerful talking point this week"},"coaching_insight":{"observation":"honest pattern from their data","recommendation":"one concrete change","this_week":"single most impactful action"},"performance_forecast":{"gci_projection":"$X projected this month","deals_likely_to_close":"1-2","biggest_risk_to_target":"what could prevent hitting goal","momentum":"rising"}}`);
+{"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact warm personal message to send","reason":"why reach out now"}],"market_intelligence":{"insight":"actionable market insight for their pipeline — if LIVE MARKET DATA is provided above, ground this in the real numbers given (e.g. reference actual median DOM or price trends); otherwise give an honest general insight without inventing statistics","opportunity":"market condition to capitalize on now","talking_point":"most powerful talking point this week"},"coaching_insight":{"observation":"honest pattern from their data","recommendation":"one concrete change","this_week":"single most impactful action"},"performance_forecast":{"gci_projection":"$X projected this month","deals_likely_to_close":"1-2","biggest_risk_to_target":"what could prevent hitting goal","momentum":"rising"}}`);
 
   return {...part1,...part2};
 }
@@ -1388,15 +1395,30 @@ async function generateSphereReactivation(clients, voice, email, apResult){
 
   // Cap at the top 12 most valuable candidates so the prompt stays focused
   const top = candidates.slice(0,12);
-  const ctx = top.map((cand,i)=>
-    `${i+1}. ${cand.client.name} — ${cand.trigger}, ${cand.days} days since last contact, type: ${cand.client.type||"?"}, property: ${cand.client.property||"unknown"}, notes: ${cand.client.notes?.slice(0,120)||"none"}`
-  ).join("\n");
+
+  // Pull real market data for each candidate's zip — this is what turns
+  // "it's been a year, checking in!" into "home values in your area are
+  // up 8% since you closed — want an updated equity picture?"
+  const zipMap = {};
+  for(const cand of top){
+    const zip = extractZip(cand.client.property);
+    if(zip && !(zip in zipMap)) zipMap[zip] = await fetchMarketStats(zip);
+  }
+
+  const ctx = top.map((cand,i)=>{
+    const zip = extractZip(cand.client.property);
+    const stats = zip ? zipMap[zip] : null;
+    const marketLine = stats
+      ? ` | LIVE MARKET DATA for their area: median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median DOM ${stats.medianDaysOnMarket??"?"}d`
+      : "";
+    return `${i+1}. ${cand.client.name} — ${cand.trigger}, ${cand.days} days since last contact, type: ${cand.client.type||"?"}, property: ${cand.client.property||"unknown"}, notes: ${cand.client.notes?.slice(0,120)||"none"}${marketLine}`;
+  }).join("\n");
 
   const r = await fetch("/api/claude",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
-      system:"You are SPARK Autopilot's Sphere Reactivation Engine. Real estate's biggest missed opportunity is that most agents' past clients would use them again but never get re-contacted. Your job is to give the agent a specific, non-salesy, genuinely valuable reason to reach out to each dormant relationship, plus a ready-to-send message. Reference real names, timeframes, and property details. Return ONLY valid compact JSON.",
+      system:"You are SPARK Autopilot's Sphere Reactivation Engine. Real estate's biggest missed opportunity is that most agents' past clients would use them again but never get re-contacted. Your job is to give the agent a specific, non-salesy, genuinely valuable reason to reach out to each dormant relationship, plus a ready-to-send message. When live market data is given for a client's area, use the real numbers as part of the 'why now' reason and the message itself (e.g. referencing actual median sale prices) — never invent statistics if none are given. Reference real names, timeframes, and property details. Return ONLY valid compact JSON.",
       messages:[{role:"user",content:`Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, market: ${voice?.market||""}
 
 Here are dormant relationships detected in the agent's book of business:
@@ -1474,6 +1496,60 @@ async function fetchMarketStats(zipCode){
     console.warn("Market stats fetch failed:", e.message);
     return null;
   }
+}
+
+async function fetchPropertyComps(address){
+  try{
+    const r = await fetch("/api/comps",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ address }),
+    });
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(e){
+    console.warn("Comps fetch failed:", e.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED LIVE MARKET CONTEXT — used by Mission, Sphere, and SPARK Assistant
+// chat so every piece of Autopilot reasoning is grounded in real numbers,
+// not just what the agent typed. Cached for a few hours since market stats
+// don't meaningfully change minute to minute — this keeps every feature
+// fast and avoids redundant RentCast calls across the app.
+// ─────────────────────────────────────────────────────────────────────────────
+const MARKET_CTX_KEY = "spark_market_context_v1";
+const MARKET_CTX_TTL_HOURS = 6;
+
+async function getMarketContext(clients, forceRefresh=false){
+  const cached = apLsGet(MARKET_CTX_KEY, null);
+  if(!forceRefresh && cached?.generated){
+    const ageHours = (Date.now()-new Date(cached.generated).getTime())/36e5;
+    if(ageHours < MARKET_CTX_TTL_HOURS) return cached.text||"";
+  }
+
+  const relevant = (clients||[]).filter(c=>c.property && (c.stage==="active"||c.stage==="contract"||c.stage==="prospect"));
+  const zips = [...new Set(relevant.map(c=>extractZip(c.property)).filter(Boolean))].slice(0,8);
+
+  if(zips.length===0){
+    apLsSet(MARKET_CTX_KEY, { text:"", zips:[], generated:new Date().toISOString() });
+    return "";
+  }
+
+  const results = await Promise.all(zips.map(async zip=>{
+    const stats = await fetchMarketStats(zip);
+    return stats ? { zip, stats } : null;
+  }));
+
+  const lines = results.filter(Boolean).map(({zip,stats})=>
+    `Zip ${zip}: median days on market ${stats.medianDaysOnMarket??"?"}, median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median list price $${stats.medianListPrice?.toLocaleString()||"?"}, active listings ${stats.activeListings??"?"}`
+  );
+
+  const text = lines.length ? `LIVE MARKET DATA (real, current, from RentCast — reference these actual numbers, never invent statistics):\n${lines.join("\n")}` : "";
+  apLsSet(MARKET_CTX_KEY, { text, zips, generated:new Date().toISOString() });
+  return text;
 }
 
 async function generateListingPerformance(clients, voice, email, apResult){
@@ -1569,20 +1645,42 @@ const NEGOTIATION_SITUATIONS = [
 ];
 
 async function generateNegotiationStrategy(situation, situationType, dealContext, voice){
+  // Pull REAL comps and market data for the linked property — this is what
+  // turns "counter at $625k" into "counter at $625k, backed by the actual
+  // comp that closed three weeks ago at $618k."
+  let realDataBlock = "";
+  if(dealContext?.property){
+    const zip = extractZip(dealContext.property);
+    const [comps, stats] = await Promise.all([
+      fetchPropertyComps(dealContext.property).catch(()=>null),
+      zip ? fetchMarketStats(zip).catch(()=>null) : null,
+    ]);
+    const lines = [];
+    if(comps?.comps?.length){
+      lines.push(`REAL COMPARABLE SALES near this property (from RentCast):`);
+      comps.comps.forEach(c=>lines.push(`  ${c.address}: ${c.price}${c.details?`, ${c.details}`:""}`));
+      if(comps.avgPricePerSqft) lines.push(`  Average price/sqft in comps: ${comps.avgPricePerSqft}`);
+    }
+    if(stats){
+      lines.push(`REAL MARKET DATA for zip ${zip}: median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median days on market ${stats.medianDaysOnMarket??"?"}, active listings ${stats.activeListings??"?"}`);
+    }
+    if(lines.length) realDataBlock = "\n\n"+lines.join("\n");
+  }
+
   const ctx = [
     `Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, market: ${voice?.market||""}`,
     `Situation type: ${NEGOTIATION_SITUATIONS.find(s=>s.id===situationType)?.label||"Negotiation"}`,
     dealContext ? `Deal context: ${dealContext.name}, type: ${dealContext.type||"?"}, property: ${dealContext.property||"unknown"}, budget/value: ${dealContext.budget||"unknown"}, motivation: ${dealContext.motivation||"unknown"}, notes: ${dealContext.notes?.slice(0,200)||"none"}` : "No specific deal linked — general situation",
-    `The situation, in the agent's own words:\n${situation}`,
+    `The situation, in the agent's own words:\n${situation}${realDataBlock}`,
   ].filter(Boolean).join("\n\n");
 
   const r = await fetch("/api/claude",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
-      system:"You are SPARK's Negotiation Copilot — an elite real estate negotiation strategist. Agents bring you live, in-the-moment situations (a counter-offer, a lowball, a repair request, an appraisal gap) and you give them a sharp strategic read plus exact language to use. Be tactical and specific, not generic. Reference the actual numbers and details given. Return ONLY valid compact JSON.",
+      system:"You are SPARK's Negotiation Copilot — an elite real estate negotiation strategist. Agents bring you live, in-the-moment situations (a counter-offer, a lowball, a repair request, an appraisal gap) and you give them a sharp strategic read plus exact language to use. Be tactical and specific, not generic. When real comparable sales or market data is provided, use those actual numbers to justify the recommended move and leverage points — this is what makes the strategy credible instead of generic. Never invent statistics that weren't given to you. Return ONLY valid compact JSON.",
       messages:[{role:"user",content:`Give the agent a full negotiation strategy for this situation:\n\n${ctx}\n\nReturn ONLY this JSON:
-{"the_read":"2-3 sentence sharp read on what's really happening here — what does the other side actually want, what's their likely leverage and pressure points","recommended_move":"the specific counter, number, or strategic response to make right now — be concrete","why_this_move":"1-2 sentences on why this is the right move given the leverage on both sides","script":"exact word-for-word language for the agent to say or send — ready to use, sounds natural not robotic","leverage_points":["specific leverage point 1 grounded in the situation","specific leverage point 2","specific leverage point 3 if applicable"],"walk_away_line":"the specific point or term past which the agent's client should not concede, and why","risk_if_too_soft":"what happens if they cave too easily here","risk_if_too_hard":"what happens if they push too hard and it backfires"}`}],
+{"the_read":"2-3 sentence sharp read on what's really happening here — what does the other side actually want, what's their likely leverage and pressure points","recommended_move":"the specific counter, number, or strategic response to make right now — be concrete, and if real comps/market data were given, ground the number in them","why_this_move":"1-2 sentences on why this is the right move given the leverage on both sides","script":"exact word-for-word language for the agent to say or send — ready to use, sounds natural not robotic, references real comps by address if given","leverage_points":["specific leverage point 1 — cite a real comp or market stat if available","specific leverage point 2","specific leverage point 3 if applicable"],"walk_away_line":"the specific point or term past which the agent's client should not concede, and why","risk_if_too_soft":"what happens if they cave too easily here","risk_if_too_hard":"what happens if they push too hard and it backfires"}`}],
       max_tokens:1600,
     })
   });
@@ -2395,6 +2493,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [googleData,    setGoogleData]    = useState(null);
   const [conversations, setConversations] = useState(()=>apLsGet(CONV_KEY,[]));
   const [summarizing,   setSummarizing]   = useState(false);
+  const [marketContext, setMarketContext] = useState(()=>apLsGet(MARKET_CTX_KEY,null)?.text||"");
 
   // Voice state
   const [voiceActive,   setVoiceActive]   = useState(false); // mic is listening
@@ -2560,6 +2659,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         // Regenerate brief with Google context if we got calendar data
         if(messages.length===0 && gd?.events?.length) triggerDailyBrief(null, gd);
       });
+      // Live market data for the agent's active pipeline — cached ~6hrs,
+      // grounds every chat response in real numbers, not just guesses
+      getMarketContext(apLsGet("spark_clients_v1",[])).then(setMarketContext);
     } else {
       if(messages.length===0) setBriefObj(buildOpeningBriefing(voice,apResult));
     }
@@ -2794,7 +2896,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:buildSystem(voice,planKey,apResult,googleData,mode,conversations),
+          system:buildSystem(voice,planKey,apResult,googleData,mode,conversations,marketContext),
           messages:isRegenerate?history:[...history.slice(0,-1),{role:"user",content:content.trim()}],
         })
       });
