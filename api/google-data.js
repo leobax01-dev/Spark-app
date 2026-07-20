@@ -62,6 +62,53 @@ async function sendCriticalRiskEmail(toEmail, risk, agentName){
   }
 }
 
+// Fires the moment a lead submits SPARK's public lead-capture page, so the
+// agent finds out immediately instead of having to check the app.
+async function sendNewLeadEmail(toEmail, lead){
+  const apiKey = process.env.RESEND_API_KEY;
+  if(!apiKey || !toEmail) return;
+
+  const subject = `🎯 New lead: ${lead.name}`;
+  const html = `
+    <div style="font-family:-apple-system,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0a0a12;color:#fff;border-radius:16px;">
+      <div style="display:inline-block;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#34d399;font-size:11px;font-weight:700;letter-spacing:1.5px;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
+        NEW LEAD
+      </div>
+      <h1 style="font-size:20px;margin:0 0 12px;color:#fff;">${lead.name} just reached out</h1>
+      <p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.7);margin:0 0 6px;">
+        ${lead.type==="seller"?"Interested in selling":"Interested in buying"}
+      </p>
+      ${lead.phone?`<p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.7);margin:0 0 6px;">📞 ${lead.phone}</p>`:""}
+      ${lead.email?`<p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.7);margin:0 0 6px;">✉️ ${lead.email}</p>`:""}
+      ${lead.motivation?`
+      <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px 16px;margin:16px 0;">
+        <div style="font-size:10px;color:#a78bfa;font-weight:700;letter-spacing:1px;margin-bottom:6px;">THEIR MESSAGE</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;">${lead.motivation}</div>
+      </div>` : ""}
+      <a href="https://usesparkai.app" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;margin-top:8px;">
+        View in SPARK →
+      </a>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:28px;">
+        This lead has already been added to your pipeline as a prospect. Fastest agents win — reach out within the hour if you can.
+      </p>
+    </div>`;
+
+  try{
+    await fetch("https://api.resend.com/emails",{
+      method:"POST",
+      headers:{ "Authorization":`Bearer ${apiKey}`, "Content-Type":"application/json" },
+      body: JSON.stringify({
+        from: "SPARK Leads <leads@usesparkai.app>",
+        to: toEmail,
+        subject,
+        html,
+      }),
+    });
+  }catch(e){
+    console.error("Lead email notify error:", e.message);
+  }
+}
+
 // ─── GOOGLE HELPERS ───────────────────────────────────────────────────────────
 async function refreshAccessToken(refreshToken, clientId, clientSecret){
   const res = await fetch("https://oauth2.googleapis.com/token",{
@@ -226,14 +273,13 @@ async function handleAutopilot(action, email, body, res){
   }
 
   if(action==="sync_data"){
-    const { clients, pipeline, goals } = body;
-    const { error } = await sb.from("agent_data_sync").upsert({
-      user_email: email,
-      clients:    clients||[],
-      pipeline:   pipeline||[],
-      goals:      goals||{},
-      synced_at:  new Date().toISOString(),
-    },{ onConflict:"user_email" });
+    const { clients, pipeline, goals, profile } = body;
+    const patch = { user_email: email, synced_at: new Date().toISOString() };
+    if(clients  !== undefined) patch.clients  = clients;
+    if(pipeline !== undefined) patch.pipeline = pipeline;
+    if(goals    !== undefined) patch.goals    = goals;
+    if(profile  !== undefined) patch.profile  = profile;
+    const { error } = await sb.from("agent_data_sync").upsert(patch,{ onConflict:"user_email" });
     if(error){ console.error("Sync error:",error.message); return res.status(500).json({ error:error.message }); }
     return res.status(200).json({ synced:true });
   }
@@ -241,10 +287,79 @@ async function handleAutopilot(action, email, body, res){
   if(action==="load_data"){
     const { data } = await sb
       .from("agent_data_sync")
-      .select("clients,pipeline,goals,synced_at")
+      .select("clients,pipeline,goals,profile,synced_at")
       .eq("user_email", email)
       .single();
     return res.status(200).json({ data:data||null });
+  }
+
+  // ─── PUBLIC LEAD CAPTURE — no auth required, deliberately narrow ─────────
+  // get_public_profile ONLY ever returns the small public-facing subset of
+  // an agent's profile — never clients, pipeline, goals, plan, or any
+  // other private business data, even though it reads the same row.
+  if(action==="get_public_profile"){
+    const { data } = await sb
+      .from("agent_data_sync")
+      .select("profile")
+      .eq("user_email", email)
+      .single();
+    const p = data?.profile || {};
+    return res.status(200).json({
+      profile: {
+        name:      p.name || null,
+        brokerage: p.brokerage || null,
+        market:    p.market || null,
+        specialty: p.specialty || null,
+        cta:       p.cta || null,
+      },
+    });
+  }
+
+  if(action==="capture_lead"){
+    const { name, phone, leadEmail, message, interest, honeypot } = body;
+    // Basic bot filter — honeypot field must stay empty for real submissions
+    if(honeypot) return res.status(200).json({ captured:true });
+    if(!name || (!phone && !leadEmail)){
+      return res.status(400).json({ error:"Name and at least one contact method required" });
+    }
+
+    const { data: existing } = await sb
+      .from("agent_data_sync")
+      .select("clients")
+      .eq("user_email", email)
+      .single();
+
+    const newClient = {
+      id: `lead_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+      name: String(name).slice(0,100),
+      phone: phone ? String(phone).slice(0,30) : "",
+      email: leadEmail ? String(leadEmail).slice(0,120) : "",
+      type: interest==="selling" ? "seller" : "buyer",
+      stage: "prospect",
+      property: "",
+      budget: "",
+      timeline: "",
+      motivation: message ? String(message).slice(0,500) : "",
+      notes: `Submitted via SPARK lead capture page${message?`: ${String(message).slice(0,300)}`:""}`,
+      lastContact: new Date().toISOString(),
+      nextAction: "New lead — reach out within 24 hours",
+      aiAction: "",
+      createdAt: new Date().toISOString(),
+      source: "spark_lead_capture",
+    };
+
+    const updatedClients = [...(existing?.clients||[]), newClient];
+    const { error } = await sb.from("agent_data_sync").upsert({
+      user_email: email,
+      clients: updatedClients,
+      synced_at: new Date().toISOString(),
+    },{ onConflict:"user_email" });
+    if(error){ console.error("Lead capture error:", error.message); return res.status(500).json({ error:error.message }); }
+
+    // Notify the agent immediately — reuses the existing Resend integration
+    sendNewLeadEmail(email, newClient).catch(()=>{});
+
+    return res.status(200).json({ captured:true });
   }
 
   if(action==="save_weekly_report"){
@@ -311,6 +426,7 @@ export default async function handler(req, res){
     "save_run","load_latest","load_history","sync_data","load_data",
     "save_weekly_report","load_weekly_reports",
     "save_conversation","load_conversations",
+    "get_public_profile","capture_lead",
   ];
   if(autopilotActions.includes(action)){
     try{ return await handleAutopilot(action, userEmail, req.body, res); }
