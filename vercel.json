@@ -12,5 +12,9 @@
     "api/higgsfield-poll.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" }
+  ]
 }
