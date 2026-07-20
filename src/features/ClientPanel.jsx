@@ -104,7 +104,17 @@ const BLANK_CLIENT = {
   stage:"prospect", property:"", budget:"", timeline:"",
   motivation:"", notes:"", lastContact:"", nextAction:"",
   aiAction:"", createdAt:"",
+  activities:[], tags:[], tasks:[],
 };
+
+const ACTIVITY_TYPES = [
+  { id:"call",     label:"Call",     icon:"📞" },
+  { id:"email",    label:"Email",    icon:"📧" },
+  { id:"text",     label:"Text",     icon:"💬" },
+  { id:"meeting",  label:"Meeting",  icon:"🤝" },
+  { id:"showing",  label:"Showing",  icon:"🏡" },
+  { id:"note",     label:"Note",     icon:"📝" },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 1 — CLIENT PIPELINE MANAGER
@@ -159,6 +169,52 @@ function ClientPipeline({ user }){
 
   function deleteClient(id){ setClients(prev=>prev.filter(c=>c.id!==id)); setView("pipeline"); }
 
+  // Logging an activity also bumps lastContact — every existing feature
+  // that reads lastContact (Autopilot, Sphere dormancy detection, the
+  // daysSince badge here) keeps working exactly as before, now driven by
+  // real logged interactions instead of a manually-typed date.
+  function addActivity(clientId, activity){
+    setClients(prev=>prev.map(c=>{
+      if(c.id!==clientId) return c;
+      const entry = { id:`act_${Date.now()}`, date:new Date().toISOString(), ...activity };
+      return { ...c, activities:[entry, ...(c.activities||[])], lastContact:entry.date };
+    }));
+  }
+
+  function addTag(clientId, tag){
+    const clean = tag.trim();
+    if(!clean) return;
+    setClients(prev=>prev.map(c=>{
+      if(c.id!==clientId) return c;
+      const existing = c.tags||[];
+      if(existing.some(t=>t.toLowerCase()===clean.toLowerCase())) return c;
+      return { ...c, tags:[...existing, clean] };
+    }));
+  }
+
+  function removeTag(clientId, tag){
+    setClients(prev=>prev.map(c=>c.id===clientId?{...c, tags:(c.tags||[]).filter(t=>t!==tag)}:c));
+  }
+
+  function addTask(clientId, task){
+    setClients(prev=>prev.map(c=>{
+      if(c.id!==clientId) return c;
+      const entry = { id:`task_${Date.now()}`, title:task.title, dueDate:task.dueDate||"", completed:false, createdAt:new Date().toISOString() };
+      return { ...c, tasks:[...(c.tasks||[]), entry] };
+    }));
+  }
+
+  function toggleTask(clientId, taskId){
+    setClients(prev=>prev.map(c=>{
+      if(c.id!==clientId) return c;
+      return { ...c, tasks:(c.tasks||[]).map(t=>t.id===taskId?{...t, completed:!t.completed}:t) };
+    }));
+  }
+
+  function deleteTask(clientId, taskId){
+    setClients(prev=>prev.map(c=>c.id===clientId?{...c, tasks:(c.tasks||[]).filter(t=>t.id!==taskId)}:c));
+  }
+
   async function generateAiAction(client){
     setLoadingAi(client.id);
     try{
@@ -196,6 +252,13 @@ Return ONLY valid JSON:
     if(!dateStr) return null;
     return Math.round((Date.now()-new Date(dateStr))/(1000*60*60*24));
   };
+
+  // Tasks due today or overdue, across every client — the daily hook.
+  const todayStr = new Date().toISOString().slice(0,10);
+  const dueTasks = clients.flatMap(c=>
+    (c.tasks||[]).filter(t=>!t.completed && t.dueDate && t.dueDate<=todayStr)
+      .map(t=>({ ...t, clientName:c.name, clientId:c.id }))
+  ).sort((a,b)=>(a.dueDate||"").localeCompare(b.dueDate||""));
 
   // ── Add / Edit Form ──
   if(view==="add"||view==="edit"){
@@ -299,6 +362,18 @@ Return ONLY valid JSON:
             </div>
           )}
         </CCard>
+
+        {/* Tags */}
+        <ClientTagsSection client={client} onAdd={tag=>addTag(client.id,tag)} onRemove={tag=>removeTag(client.id,tag)}/>
+
+        {/* Tasks */}
+        <ClientTasksSection client={client}
+          onAdd={task=>addTask(client.id,task)}
+          onToggle={taskId=>toggleTask(client.id,taskId)}
+          onDelete={taskId=>deleteTask(client.id,taskId)}/>
+
+        {/* Activity Timeline */}
+        <ClientActivitySection client={client} onAdd={activity=>addActivity(client.id,activity)}/>
       </div>
     );
   }
@@ -330,6 +405,38 @@ Return ONLY valid JSON:
           + Add Client
         </CBtn>
       </div>
+
+      {/* Today's Tasks — the daily reason to open this tab */}
+      {dueTasks.length>0&&(
+        <div style={{background:"rgba(245,158,11,.05)",border:`1px solid ${C.amber}20`,
+          borderRadius:12,padding:"12px 14px",marginBottom:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:9}}>
+            <span style={{fontSize:14}}>📌</span>
+            <span style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.amber}}>
+              {dueTasks.length} task{dueTasks.length!==1?"s":""} due
+            </span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {dueTasks.slice(0,5).map(t=>{
+              const overdue = t.dueDate<todayStr;
+              return(
+                <div key={t.id} onClick={()=>{ const c=clients.find(cl=>cl.id===t.clientId); if(c){ setEditing(c); setView("detail"); } }}
+                  style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                  <button onClick={e=>{ e.stopPropagation(); toggleTask(t.clientId,t.id); }}
+                    style={{width:14,height:14,borderRadius:4,border:`1.5px solid ${C.amber}60`,
+                      background:"transparent",cursor:"pointer",flexShrink:0,padding:0}}/>
+                  <span style={{fontFamily:C.F,fontSize:11,color:C.text,flex:1}}>{t.title}</span>
+                  <span style={{fontFamily:C.F,fontSize:9,color:C.textDim}}>{t.clientName}</span>
+                  {overdue&&<span style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700}}>OVERDUE</span>}
+                </div>
+              );
+            })}
+            {dueTasks.length>5&&(
+              <div style={{fontFamily:C.F,fontSize:9,color:C.textDim}}>+ {dueTasks.length-5} more</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stage filter */}
       <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
@@ -397,6 +504,17 @@ Return ONLY valid JSON:
                     background:"rgba(139,92,246,.06)",borderRadius:7,
                     fontFamily:C.F,fontSize:11,color:C.violet,lineHeight:1.4}}>
                     ✦ {aiData.next_action}
+                  </div>
+                )}
+                {(client.tags||[]).length>0&&(
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
+                    {client.tags.map(tag=>(
+                      <span key={tag} style={{fontSize:8,fontFamily:C.F,fontWeight:700,
+                        color:tagColor(tag),background:`${tagColor(tag)}12`,
+                        border:`1px solid ${tagColor(tag)}28`,padding:"2px 7px",borderRadius:10}}>
+                        {tag}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
@@ -794,6 +912,217 @@ Return ONLY valid JSON:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CLIENT DETAIL — TAGS, TASKS, ACTIVITY TIMELINE
+// These are the CRM-depth additions: flexible segmentation, structured
+// follow-ups, and a real interaction history instead of one notes blob.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TAG_COLORS = [C.violet, C.cyan, C.emerald, C.amber, C.rose, C.indigo];
+function tagColor(tag){
+  let hash = 0;
+  for(let i=0;i<tag.length;i++) hash = tag.charCodeAt(i) + ((hash<<5)-hash);
+  return TAG_COLORS[Math.abs(hash)%TAG_COLORS.length];
+}
+
+function ClientTagsSection({ client, onAdd, onRemove }){
+  const [input, setInput] = useState("");
+  const tags = client.tags||[];
+  function submit(e){
+    e.preventDefault();
+    if(input.trim()){ onAdd(input); setInput(""); }
+  }
+  return(
+    <CCard accent={C.cyan}>
+      <CLabel color={C.cyan}>TAGS</CLabel>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:tags.length?12:0}}>
+        {tags.map(tag=>(
+          <span key={tag} style={{display:"flex",alignItems:"center",gap:5,
+            background:`${tagColor(tag)}14`,border:`1px solid ${tagColor(tag)}30`,
+            color:tagColor(tag),fontFamily:C.F,fontSize:10,fontWeight:700,
+            padding:"4px 10px",borderRadius:20}}>
+            {tag}
+            <button onClick={()=>onRemove(tag)}
+              style={{background:"none",border:"none",color:"inherit",cursor:"pointer",
+                padding:0,fontSize:11,lineHeight:1,opacity:.6}}>×</button>
+          </span>
+        ))}
+      </div>
+      <form onSubmit={submit} style={{display:"flex",gap:7}}>
+        <input value={input} onChange={e=>setInput(e.target.value)}
+          placeholder="Add a tag — VIP, Investor, Referral source..."
+          style={{flex:1,background:C.surfaceUp,border:`1px solid ${C.border}`,
+            borderRadius:8,padding:"7px 11px",color:C.text,fontFamily:C.F,fontSize:11,outline:"none"}}/>
+        <button type="submit"
+          style={{background:"rgba(34,211,238,.1)",border:`1px solid ${C.cyan}30`,
+            color:C.cyan,borderRadius:8,padding:"7px 14px",cursor:"pointer",
+            fontFamily:C.F,fontWeight:700,fontSize:11}}>
+          Add
+        </button>
+      </form>
+    </CCard>
+  );
+}
+
+function ClientTasksSection({ client, onAdd, onToggle, onDelete }){
+  const [title, setTitle] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const tasks = client.tasks||[];
+  const pending = tasks.filter(t=>!t.completed);
+  const done = tasks.filter(t=>t.completed);
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  function submit(e){
+    e.preventDefault();
+    if(!title.trim()) return;
+    onAdd({ title:title.trim(), dueDate });
+    setTitle(""); setDueDate("");
+  }
+
+  return(
+    <CCard accent={C.amber}>
+      <CLabel color={C.amber}>TASKS</CLabel>
+      {pending.length>0&&(
+        <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:12}}>
+          {pending.map(t=>{
+            const overdue = t.dueDate && t.dueDate<todayStr;
+            return(
+              <div key={t.id} style={{display:"flex",alignItems:"center",gap:9,
+                background:overdue?"rgba(244,63,94,.05)":"rgba(255,255,255,.02)",
+                border:`1px solid ${overdue?C.rose+"20":C.border}`,borderRadius:8,padding:"8px 10px"}}>
+                <button onClick={()=>onToggle(t.id)}
+                  style={{width:16,height:16,borderRadius:5,border:`1.5px solid ${C.amber}60`,
+                    background:"transparent",cursor:"pointer",flexShrink:0,padding:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:C.F,fontSize:12,color:C.text}}>{t.title}</div>
+                  {t.dueDate&&<div style={{fontFamily:C.F,fontSize:9,color:overdue?C.rose:C.textDim,marginTop:1}}>
+                    {overdue?"Overdue — ":""}{new Date(t.dueDate).toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                  </div>}
+                </div>
+                <button onClick={()=>onDelete(t.id)}
+                  style={{background:"none",border:"none",color:C.textDim,cursor:"pointer",fontSize:13,opacity:.5,flexShrink:0}}>×</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {done.length>0&&(
+        <details style={{marginBottom:12}}>
+          <summary style={{fontFamily:C.F,fontSize:10,color:C.textDim,cursor:"pointer"}}>
+            {done.length} completed
+          </summary>
+          <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:8}}>
+            {done.map(t=>(
+              <div key={t.id} style={{display:"flex",alignItems:"center",gap:9,opacity:.5}}>
+                <button onClick={()=>onToggle(t.id)}
+                  style={{width:16,height:16,borderRadius:5,border:`1.5px solid ${C.emerald}`,
+                    background:C.emerald,cursor:"pointer",flexShrink:0,padding:0,color:"#fff",fontSize:10,
+                    display:"flex",alignItems:"center",justifyContent:"center"}}>✓</button>
+                <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,textDecoration:"line-through"}}>{t.title}</div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      <form onSubmit={submit} style={{display:"flex",gap:7}}>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="New task..."
+          style={{flex:1,background:C.surfaceUp,border:`1px solid ${C.border}`,
+            borderRadius:8,padding:"7px 11px",color:C.text,fontFamily:C.F,fontSize:11,outline:"none"}}/>
+        <input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}
+          style={{background:C.surfaceUp,border:`1px solid ${C.border}`,
+            borderRadius:8,padding:"7px 9px",color:C.text,fontFamily:C.F,fontSize:11,outline:"none"}}/>
+        <button type="submit"
+          style={{background:"rgba(245,158,11,.1)",border:`1px solid ${C.amber}30`,
+            color:C.amber,borderRadius:8,padding:"7px 14px",cursor:"pointer",
+            fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0}}>
+          Add
+        </button>
+      </form>
+    </CCard>
+  );
+}
+
+function ClientActivitySection({ client, onAdd }){
+  const [type, setType] = useState("call");
+  const [summary, setSummary] = useState("");
+  const activities = client.activities||[];
+
+  function submit(e){
+    e.preventDefault();
+    if(!summary.trim()) return;
+    onAdd({ type, summary:summary.trim() });
+    setSummary("");
+  }
+
+  return(
+    <CCard accent={C.violet}>
+      <CLabel color={C.violet}>ACTIVITY TIMELINE</CLabel>
+      <form onSubmit={submit} style={{marginBottom:14}}>
+        <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+          {ACTIVITY_TYPES.map(t=>(
+            <button key={t.id} type="button" onClick={()=>setType(t.id)}
+              style={{padding:"5px 10px",borderRadius:7,
+                border:`1px solid ${type===t.id?C.violet+"50":C.border}`,
+                background:type===t.id?`${C.violet}12`:"transparent",
+                color:type===t.id?C.violet:C.textDim,cursor:"pointer",
+                fontSize:10,fontFamily:C.F,fontWeight:600}}>
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:7}}>
+          <input value={summary} onChange={e=>setSummary(e.target.value)}
+            placeholder="What happened? — e.g. 'Called to discuss offer, wants to think it over'"
+            style={{flex:1,background:C.surfaceUp,border:`1px solid ${C.border}`,
+              borderRadius:8,padding:"8px 11px",color:C.text,fontFamily:C.F,fontSize:11,outline:"none"}}/>
+          <button type="submit"
+            style={{background:"rgba(139,92,246,.1)",border:`1px solid ${C.violet}30`,
+              color:C.violet,borderRadius:8,padding:"8px 16px",cursor:"pointer",
+              fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0}}>
+            Log
+          </button>
+        </div>
+      </form>
+
+      {activities.length===0?(
+        <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0,lineHeight:1.6}}>
+          No activity logged yet. Every call, text, email, or showing you log here builds a real history SPARK uses to know when this relationship is going cold.
+        </p>
+      ):(
+        <div style={{display:"flex",flexDirection:"column",gap:0}}>
+          {activities.map((a,i)=>{
+            const meta = ACTIVITY_TYPES.find(t=>t.id===a.type)||ACTIVITY_TYPES[5];
+            return(
+              <div key={a.id||i} style={{display:"flex",gap:10,paddingBottom:i<activities.length-1?12:0,
+                marginBottom:i<activities.length-1?12:0,
+                borderBottom:i<activities.length-1?`1px solid ${C.border}`:"none"}}>
+                <div style={{width:26,height:26,borderRadius:"50%",flexShrink:0,
+                  background:`${C.violet}12`,border:`1px solid ${C.violet}24`,
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}}>
+                  {meta.icon}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
+                    <span style={{fontFamily:C.F,fontSize:9,color:C.violet,fontWeight:700,letterSpacing:.5}}>
+                      {meta.label.toUpperCase()}
+                    </span>
+                    <span style={{fontFamily:C.F,fontSize:9,color:C.textDim,flexShrink:0}}>
+                      {new Date(a.date).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
+                    </span>
+                  </div>
+                  <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"3px 0 0",lineHeight:1.5}}>{a.summary}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </CCard>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TOOL 4 — CSV IMPORT — bring in your existing CRM's client list
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -937,6 +1266,7 @@ function ClientImport({ user, onImported }){
       motivation:"", notes:c.notes, lastContact:now,
       nextAction:"Reach out to confirm details after import", aiAction:"",
       createdAt:now, source:"csv_import",
+      activities:[], tags:[], tasks:[],
     }));
     const merged = [...existing, ...newClients];
     lsSet(LS_KEY, merged);
