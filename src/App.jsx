@@ -6,6 +6,7 @@ import MarketPanel from "./features/MarketPanel";
 import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
 import AutopilotPanel from "./features/AutopilotPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -538,6 +539,109 @@ function CopyBtn({text,label}){
       style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,fontSize:10,padding:"4px 10px",borderRadius:6,cursor:"pointer",fontFamily:C.F,fontWeight:600,letterSpacing:1}}>
       {ok?"✓ COPIED":"COPY"}
     </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLIANCE BANNER — fair housing guardrail result, shown after generating
+// listing/MLS/open-house/neighborhood content. Reduces risk; does not
+// guarantee compliance — copy is deliberately careful about that framing.
+// ─────────────────────────────────────────────────────────────────────────────
+function ComplianceBanner({ running, result }){
+  const [expanded, setExpanded] = useState(false);
+  const toast = useToast();
+
+  if(running){
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:8,
+        background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+        borderRadius:10,padding:"9px 13px",marginBottom:14}}>
+        <div style={{width:12,height:12,borderRadius:"50%",
+          border:"2px solid rgba(99,102,241,.3)",borderTopColor:C.indigo,
+          animation:"spin .7s linear infinite"}}/>
+        <span style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>
+          Checking fair housing compliance...
+        </span>
+      </div>
+    );
+  }
+
+  if(!result) return null;
+  const risk = RISK_LABELS[result.overall_risk] || RISK_LABELS.clear;
+  const colorMap = { emerald:C.emerald, amber:C.amber, rose:"#f43f5e" };
+  const color = colorMap[risk.color] || C.emerald;
+  const flags = result.flags||[];
+
+  return(
+    <div style={{background:`${color}08`,border:`1px solid ${color}28`,
+      borderRadius:10,marginBottom:14,overflow:"hidden"}}>
+      <button onClick={()=>setExpanded(e=>!e)}
+        style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+          background:"transparent",border:"none",cursor:"pointer",padding:"10px 13px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:14}}>
+            {result.overall_risk==="clear"?"✅":result.overall_risk==="high_risk"?"🚫":"⚠️"}
+          </span>
+          <span style={{fontSize:11,color,fontFamily:C.F,fontWeight:700}}>
+            Fair Housing Check: {risk.label}
+          </span>
+          {flags.length>0&&(
+            <span style={{fontSize:9,color,fontFamily:C.F,fontWeight:700,
+              background:`${color}14`,border:`1px solid ${color}28`,
+              borderRadius:8,padding:"1px 7px"}}>
+              {flags.length} flag{flags.length!==1?"s":""}
+            </span>
+          )}
+        </div>
+        <span style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>{expanded?"Hide ▲":"Details ▼"}</span>
+      </button>
+
+      {expanded&&(
+        <div style={{padding:"0 13px 13px"}}>
+          {result.summary&&(
+            <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:"0 0 10px",lineHeight:1.6}}>
+              {result.summary}
+            </p>
+          )}
+          {flags.map((f,i)=>(
+            <div key={i} style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+              borderRadius:8,padding:"9px 11px",marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:5}}>
+                <span style={{fontFamily:C.F,fontSize:11,color:C.text,fontWeight:700,fontStyle:"italic"}}>
+                  "{f.phrase}"
+                </span>
+                <span style={{fontSize:8,color,fontFamily:C.F,fontWeight:700,
+                  background:`${color}14`,border:`1px solid ${color}28`,
+                  borderRadius:6,padding:"1px 6px",whiteSpace:"nowrap",flexShrink:0}}>
+                  {f.category}
+                </span>
+              </div>
+              <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"0 0 6px",lineHeight:1.5}}>
+                {f.reason}
+              </p>
+              {f.suggested_rewrite&&(
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,
+                  background:`${C.emerald}08`,border:`1px solid ${C.emerald}18`,
+                  borderRadius:7,padding:"6px 9px",marginTop:6}}>
+                  <span style={{fontFamily:C.F,fontSize:10,color:C.textMd,lineHeight:1.5}}>
+                    <strong style={{color:C.emerald}}>Suggested:</strong> {f.suggested_rewrite}
+                  </span>
+                  <button onClick={()=>{ navigator.clipboard.writeText(f.suggested_rewrite); toast("Rewrite copied — paste to replace"); }}
+                    style={{background:"transparent",border:`1px solid ${C.emerald}30`,color:C.emerald,
+                      borderRadius:5,padding:"2px 8px",cursor:"pointer",fontSize:8,fontFamily:C.F,
+                      fontWeight:700,flexShrink:0}}>
+                    COPY
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+          <p style={{fontFamily:C.F,fontSize:9,color:C.textDim,margin:"8px 0 0",lineHeight:1.5,fontStyle:"italic"}}>
+            This check reduces risk but isn't a legal guarantee — when in doubt, have your broker or legal counsel review before publishing.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1533,12 +1637,20 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
   const [justCompleted,setJustCompleted]=useState(false);
   const [historyCount,setHistoryCount]=useState(()=>getHistory().length);
   const genRef              =useRef(false);
+  const [compliance,   setCompliance]   = useState(null);
+  const [complianceRunning, setComplianceRunning] = useState(false);
+
+  // Content types with real fair housing exposure — public marketing copy
+  // describing a property or neighborhood. Scripts/objection-handling/
+  // client comms carry less direct exposure and aren't auto-checked, but
+  // can still be checked on demand elsewhere (e.g. Autopilot chat).
+  const COMPLIANCE_CHECK_TYPES = ["listing","mls_desc","open_house","lifestyle"];
 
   useEffect(()=>LS.set("sp_type",type),[type]);
   useEffect(()=>LS.set("sp_plat",platform),[platform]);
   useEffect(()=>LS.set("sp_inputs",inputs),[inputs]);
   useEffect(()=>{ if(!plan.contentTypes.includes(type)) setType("listing"); if(!plan.platforms.includes(platform)) setPlatform("TikTok"); },[planKey]);
-  useEffect(()=>{ setResult(null); setVid(null); },[type,platform]);
+  useEffect(()=>{ setResult(null); setVid(null); setCompliance(null); },[type,platform]);
 
   const typeLocked     = !plan.contentTypes.includes(type);
   const platformLocked = !plan.platforms.includes(platform);
@@ -1562,7 +1674,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
     if(typeLocked||platformLocked){ toast("Upgrade your plan to unlock this","error"); return; }
 
     genRef.current=true;
-    setGen(true); setResult(null); setVid(null); setTab("script");
+    setGen(true); setResult(null); setVid(null); setTab("script"); setCompliance(null);
 
     for(const [p,s] of STAGES){
       if(!genRef.current) break;
@@ -1577,6 +1689,19 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       await new Promise(r=>setTimeout(r,200));
       setResult(content);
       track("generation_completed", { content_type:type, platform, plan:planKey, cost, photo_count:photos.length });
+
+      // Auto-run fair housing compliance check for content types with real
+      // marketing/public exposure (listing copy, MLS descriptions, open
+      // house materials, neighborhood content). Runs in the background —
+      // never blocks the agent from seeing or using their content.
+      if(COMPLIANCE_CHECK_TYPES.includes(type)){
+        setComplianceRunning(true);
+        const textToReview = extractTextForReview(content);
+        runComplianceCheck(textToReview, CONTENT_TYPES[type]?.label||type)
+          .then(setCompliance)
+          .catch(e=>console.warn("Compliance check failed:", e.message))
+          .finally(()=>setComplianceRunning(false));
+      }
 
       // Save to content history
       saveGeneration({ type, inputs, platform, result:content, planKey });
@@ -2041,6 +2166,11 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 {vidState?.status==="generating"&&<Badge color={C.cyan}>🎬 RENDERING…</Badge>}
                 {vidState?.status==="ready"&&<Badge color={C.emerald}>🎬 VIDEO READY</Badge>}
               </div>
+
+              {/* Fair housing compliance check — only for content types with real marketing exposure */}
+              {COMPLIANCE_CHECK_TYPES.includes(type)&&(complianceRunning||compliance)&&(
+                <ComplianceBanner running={complianceRunning} result={compliance}/>
+              )}
 
               {/* Tab bar — premium pill style */}
               <div style={{display:"flex",background:"rgba(255,255,255,.025)",
