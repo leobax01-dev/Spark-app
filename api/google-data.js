@@ -362,6 +362,52 @@ async function handleAutopilot(action, email, body, res){
     return res.status(200).json({ captured:true });
   }
 
+  // ─── SEND IT FOR ME — agent-initiated email to their own client, sent via
+  // Resend but branded as coming from the agent, with reply-to set to the
+  // agent's own inbox so any response lands directly with them. This is
+  // the "action execution" piece of Autopilot — not just drafting a
+  // message, actually sending it, always with the agent's explicit
+  // confirmation on the exact wording before it goes out.
+  if(action==="send_message"){
+    const { agentName, recipientEmail, recipientName, subject, body: messageBody } = body;
+    if(!recipientEmail || !messageBody){
+      return res.status(400).json({ error:"Recipient email and message required" });
+    }
+    const apiKey = process.env.RESEND_API_KEY;
+    if(!apiKey) return res.status(500).json({ error:"Email sending not configured" });
+
+    const fromName = agentName ? `${agentName} via SPARK` : "SPARK";
+    const htmlBody = String(messageBody)
+      .split("\n\n").map(p=>`<p style="margin:0 0 14px;">${p.replace(/\n/g,"<br/>")}</p>`).join("");
+
+    try{
+      const r = await fetch("https://api.resend.com/emails",{
+        method:"POST",
+        headers:{ "Authorization":`Bearer ${apiKey}`, "Content-Type":"application/json" },
+        body: JSON.stringify({
+          from: `${fromName} <notifications@usesparkai.app>`,
+          to: recipientEmail,
+          reply_to: email, // agent's own email — replies go straight to them
+          subject: subject || "Following up",
+          html: `<div style="font-family:-apple-system,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:560px;">
+            ${htmlBody}
+            <p style="margin-top:24px;color:#888;font-size:12px;">Sent via SPARK on behalf of ${agentName||"your agent"}. Reply directly to this email to reach them.</p>
+          </div>`,
+        }),
+      });
+      if(!r.ok){
+        const errBody = await r.text().catch(()=>"");
+        console.error("Send message failed:", r.status, errBody);
+        return res.status(502).json({ error:"Email failed to send" });
+      }
+    }catch(e){
+      console.error("Send message error:", e.message);
+      return res.status(500).json({ error:e.message });
+    }
+
+    return res.status(200).json({ sent:true });
+  }
+
   if(action==="save_weekly_report"){
     const { weekStart, report } = body;
     if(!weekStart||!report) return res.status(400).json({ error:"weekStart and report required" });
@@ -426,7 +472,7 @@ export default async function handler(req, res){
     "save_run","load_latest","load_history","sync_data","load_data",
     "save_weekly_report","load_weekly_reports",
     "save_conversation","load_conversations",
-    "get_public_profile","capture_lead",
+    "get_public_profile","capture_lead","send_message",
   ];
   if(autopilotActions.includes(action)){
     try{ return await handleAutopilot(action, userEmail, req.body, res); }
