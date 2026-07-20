@@ -2,7 +2,7 @@
 // Market & Business Intelligence — Neighborhood Report, Lead Response, Business Dashboard
 // Standalone feature file — imported into App.jsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -22,6 +22,33 @@ const LS_KEY_PIPELINE_VALUE = "spark_pipeline_value_v1";
 
 function lsGet(key, fallback){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch{ return fallback; } }
 function lsSet(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch{} }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLOUD SYNC — Supabase is source of truth; localStorage is a fast local cache
+// ─────────────────────────────────────────────────────────────────────────────
+async function cloudLoad(email){
+  if(!email) return null;
+  try{
+    const r = await fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email, action:"load_data" }),
+    });
+    const d = await r.json();
+    return d?.data||null;
+  }catch(e){ console.warn("Cloud load failed:",e.message); return null; }
+}
+
+async function cloudSync(email, patch){
+  if(!email) return false;
+  try{
+    const r = await fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email, action:"sync_data", ...patch }),
+    });
+    const d = await r.json();
+    return !!d?.synced;
+  }catch(e){ console.warn("Cloud sync failed:",e.message); return false; }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED UI
@@ -575,7 +602,7 @@ Return ONLY valid JSON:
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 3 — BUSINESS PERFORMANCE DASHBOARD
 // ─────────────────────────────────────────────────────────────────────────────
-function BusinessDashboard(){
+function BusinessDashboard({ user }){
   const [goals, setGoals]     = useState(()=>lsGet(LS_KEY_GOALS, {
     monthlyGciTarget:"", avgCommission:"", conversionRate:"",
     currentMonth:"", yearToDate:"", closingsTarget:""
@@ -585,9 +612,41 @@ function BusinessDashboard(){
   const [adding,   setAdding]   = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [loading,  setLoading]  = useState(false);
+  const [syncStatus, setSyncStatus] = useState("idle");
+  const hydrated = useRef(false);
+
+  // On mount — pull from cloud (source of truth), reconcile with local cache
+  useEffect(()=>{
+    if(!user?.email){ hydrated.current=true; return; }
+    (async ()=>{
+      const cloud = await cloudLoad(user.email);
+      if(cloud){
+        if(cloud.pipeline?.length>0 || pipeline.length===0){
+          setPipeline(cloud.pipeline||[]);
+          lsSet(LS_KEY_PIPELINE_VALUE, cloud.pipeline||[]);
+        }
+        if(cloud.goals && Object.keys(cloud.goals).length>0){
+          setGoals(cloud.goals);
+          lsSet(LS_KEY_GOALS, cloud.goals);
+        }
+      }
+      hydrated.current = true;
+    })();
+  },[]);
 
   useEffect(()=>{ lsSet(LS_KEY_GOALS, goals); }, [goals]);
   useEffect(()=>{ lsSet(LS_KEY_PIPELINE_VALUE, pipeline); }, [pipeline]);
+
+  // Debounced cloud sync whenever goals or pipeline change
+  useEffect(()=>{
+    if(!hydrated.current || !user?.email) return;
+    setSyncStatus("syncing");
+    const timeout = setTimeout(async ()=>{
+      const ok = await cloudSync(user.email, { goals, pipeline });
+      setSyncStatus(ok?"synced":"offline");
+    }, 900);
+    return ()=>clearTimeout(timeout);
+  },[goals, pipeline]);
 
   function setGoal(k){ return v=>setGoals(p=>({...p,[k]:v})); }
 
@@ -641,6 +700,17 @@ Return ONLY valid JSON:
 
   return(
     <div style={{animation:"fadeUp .35s ease"}}>
+      {/* Sync status */}
+      {user?.email&&(
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8,alignItems:"center",gap:5}}>
+          <div style={{width:5,height:5,borderRadius:"50%",
+            background:syncStatus==="synced"?C.emerald:syncStatus==="syncing"?C.amber:syncStatus==="offline"?C.rose:C.textDim,
+            boxShadow:syncStatus==="synced"?`0 0 5px ${C.emerald}`:"none"}}/>
+          <span style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>
+            {syncStatus==="synced"?"Synced to cloud":syncStatus==="syncing"?"Syncing...":syncStatus==="offline"?"Offline — saved locally":""}
+          </span>
+        </div>
+      )}
       {/* Goals */}
       <MCard accent={C.indigo}>
         <MLabel color={C.indigo}>MONTHLY GOALS</MLabel>
@@ -851,7 +921,7 @@ export default function MarketPanel({ user, planKey }){
 
       {tool==="leads"     && <LeadResponse/>}
       {tool==="report"    && <NeighborhoodReport/>}
-      {tool==="dashboard" && <BusinessDashboard/>}
+      {tool==="dashboard" && <BusinessDashboard user={user}/>}
     </div>
   );
 }
