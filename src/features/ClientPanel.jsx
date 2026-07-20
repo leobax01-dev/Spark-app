@@ -794,6 +794,315 @@ Return ONLY valid JSON:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TOOL 4 — CSV IMPORT — bring in your existing CRM's client list
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Dependency-free CSV parser — handles quoted fields, embedded commas/newlines,
+// and escaped quotes ("") so this works on real-world exports without adding
+// a new npm dependency.
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = "", inQuotes = false;
+  for(let i=0; i<text.length; i++){
+    const ch = text[i], next = text[i+1];
+    if(inQuotes){
+      if(ch==='"' && next==='"'){ field+='"'; i++; }
+      else if(ch==='"'){ inQuotes=false; }
+      else field += ch;
+    } else {
+      if(ch==='"') inQuotes = true;
+      else if(ch===','){ row.push(field); field=""; }
+      else if(ch==='\n'||ch==='\r'){
+        if(ch==='\r' && next==='\n') i++;
+        row.push(field); field="";
+        if(row.length>1||row[0]!=="") rows.push(row);
+        row=[];
+      } else field += ch;
+    }
+  }
+  if(field!==""||row.length>0){ row.push(field); rows.push(row); }
+  if(rows.length===0) return { headers:[], rows:[] };
+  return { headers: rows[0].map(h=>h.trim()), rows: rows.slice(1).filter(r=>r.some(c=>c.trim()!=="")) };
+}
+
+// Fuzzy header matching — different CRMs name columns differently
+// (Follow Up Boss: "First Name"/"Last Name", kvCORE: "Name", Google
+// Contacts export: "Given Name" — this covers the common patterns).
+const FIELD_PATTERNS = {
+  name:      [/^full ?name$/i, /^name$/i, /^client ?name$/i, /^contact ?name$/i],
+  firstName: [/^first ?name$/i, /^given ?name$/i, /^fname$/i],
+  lastName:  [/^last ?name$/i, /^family ?name$/i, /^surname$/i, /^lname$/i],
+  email:     [/^e-?mail/i, /^primary ?e-?mail/i, /^email ?1$/i],
+  phone:     [/^phone/i, /^mobile/i, /^cell/i, /^phone ?1$/i, /^primary ?phone/i],
+  type:      [/^type$/i, /^lead ?type$/i, /^client ?type$/i, /^role$/i],
+  stage:     [/^stage$/i, /^status$/i, /^lead ?status$/i, /^pipeline ?stage$/i],
+  property:  [/^property/i, /^address/i, /^listing/i],
+  notes:     [/^notes?$/i, /^description$/i, /^comments?$/i, /^remarks?$/i],
+  budget:    [/^budget$/i, /^price ?range$/i, /^value$/i],
+  timeline:  [/^timeline$/i, /^timeframe$/i],
+};
+
+function autoDetectMapping(headers){
+  const mapping = {};
+  for(const [field, patterns] of Object.entries(FIELD_PATTERNS)){
+    const match = headers.find(h=>patterns.some(p=>p.test(h.trim())));
+    if(match) mapping[field] = match;
+  }
+  return mapping;
+}
+
+function normalizeStage(raw){
+  const v = (raw||"").toLowerCase().trim();
+  if(!v) return "prospect";
+  if(/closed|sold|won/.test(v)) return "closed";
+  if(/contract|pending|escrow/.test(v)) return "contract";
+  if(/active|client|working|hot|warm/.test(v)) return "active";
+  return "prospect";
+}
+function normalizeType(raw){
+  const v = (raw||"").toLowerCase().trim();
+  if(/sell/.test(v)) return "seller";
+  return "buyer";
+}
+
+function ClientImport({ user, onImported }){
+  const [file, setFile] = useState(null);
+  const [parsed, setParsed] = useState(null);      // { headers, rows }
+  const [mapping, setMapping] = useState({});
+  const [step, setStep] = useState("upload");        // upload | map | preview | done
+  const [importing, setImporting] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
+  const [skippedCount, setSkippedCount] = useState(0);
+  const fileInputRef = useRef(null);
+
+  function handleFile(f){
+    if(!f) return;
+    setFile(f);
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const result = parseCSV(e.target.result);
+      setParsed(result);
+      setMapping(autoDetectMapping(result.headers));
+      setStep("map");
+    };
+    reader.readAsText(f);
+  }
+
+  function buildPreviewClients(){
+    if(!parsed) return [];
+    const existing = lsGet(LS_KEY, []);
+    const existingContacts = new Set(existing.flatMap(c=>[c.email?.toLowerCase(), c.phone?.replace(/\D/g,"")].filter(Boolean)));
+
+    return parsed.rows.map(row=>{
+      const get = field=>{
+        const header = mapping[field];
+        if(!header) return "";
+        const idx = parsed.headers.indexOf(header);
+        return idx>=0 ? (row[idx]||"").trim() : "";
+      };
+      let name = get("name");
+      if(!name){
+        const first = get("firstName"), last = get("lastName");
+        name = [first,last].filter(Boolean).join(" ");
+      }
+      const email = get("email");
+      const phone = get("phone");
+      const isDuplicate = (email && existingContacts.has(email.toLowerCase())) ||
+                           (phone && existingContacts.has(phone.replace(/\D/g,"")));
+      return {
+        name: name || "(no name)",
+        email, phone,
+        type: normalizeType(get("type")),
+        stage: normalizeStage(get("stage")),
+        property: get("property"),
+        budget: get("budget"),
+        timeline: get("timeline"),
+        notes: get("notes"),
+        isDuplicate,
+        hasName: !!name,
+      };
+    });
+  }
+
+  function handleImport(skipDuplicates){
+    setImporting(true);
+    const preview = buildPreviewClients();
+    const toImport = preview.filter(c=>c.hasName && (!skipDuplicates || !c.isDuplicate));
+    const existing = lsGet(LS_KEY, []);
+    const now = new Date().toISOString();
+    const newClients = toImport.map((c,i)=>({
+      id: `import_${Date.now()}_${i}`,
+      name:c.name, phone:c.phone, email:c.email, type:c.type, stage:c.stage,
+      property:c.property, budget:c.budget, timeline:c.timeline,
+      motivation:"", notes:c.notes, lastContact:now,
+      nextAction:"Reach out to confirm details after import", aiAction:"",
+      createdAt:now, source:"csv_import",
+    }));
+    const merged = [...existing, ...newClients];
+    lsSet(LS_KEY, merged);
+    if(user?.email) cloudSync(user.email, { clients: merged });
+
+    setImportedCount(newClients.length);
+    setSkippedCount(preview.length - newClients.length);
+    setStep("done");
+    setImporting(false);
+    onImported?.(merged);
+  }
+
+  const preview = step==="preview" ? buildPreviewClients() : [];
+  const validCount = preview.filter(c=>c.hasName).length;
+  const dupCount = preview.filter(c=>c.hasName && c.isDuplicate).length;
+
+  return(
+    <CCard accent={C.emerald}>
+      <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginBottom:6}}>
+        Import from your current CRM
+      </div>
+      <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 18px",lineHeight:1.6}}>
+        Export your contacts as a CSV from Follow Up Boss, kvCORE, Wise Agent, Google Contacts, or any spreadsheet — SPARK will read it and bring your whole book of business in, in one shot.
+      </p>
+
+      {step==="upload"&&(
+        <div>
+          <input ref={fileInputRef} type="file" accept=".csv,text/csv" style={{display:"none"}}
+            onChange={e=>handleFile(e.target.files?.[0])}/>
+          <button onClick={()=>fileInputRef.current?.click()}
+            style={{width:"100%",background:"rgba(16,185,129,.06)",border:`2px dashed ${C.emerald}40`,
+              borderRadius:12,padding:"32px 20px",cursor:"pointer",textAlign:"center"}}>
+            <div style={{fontSize:32,marginBottom:10}}>📁</div>
+            <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.emerald,marginBottom:4}}>
+              Click to choose a CSV file
+            </div>
+            <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>
+              Or drag and drop it here
+            </div>
+          </button>
+        </div>
+      )}
+
+      {step==="map"&&parsed&&(
+        <div>
+          <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:14}}>
+            Found {parsed.rows.length} rows in {file?.name}. Confirm the columns look right — SPARK auto-detected these:
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+            {Object.entries(FIELD_PATTERNS).filter(([f])=>["name","firstName","lastName","email","phone","type","stage"].includes(f)).map(([field])=>(
+              <div key={field} style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:90,fontFamily:C.F,fontSize:11,color:C.textMd,fontWeight:600,flexShrink:0,textTransform:"capitalize"}}>
+                  {field.replace(/([A-Z])/g," $1")}
+                </div>
+                <select value={mapping[field]||""} onChange={e=>setMapping(m=>({...m,[field]:e.target.value||undefined}))}
+                  style={{flex:1,background:C.surfaceUp,border:`1px solid ${C.border}`,borderRadius:7,
+                    padding:"6px 10px",color:C.text,fontFamily:C.F,fontSize:11,outline:"none"}}>
+                  <option value="">— not mapped —</option>
+                  {parsed.headers.map(h=><option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>{ setStep("upload"); setParsed(null); }}
+              style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,
+                borderRadius:8,padding:"9px 16px",cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:12}}>
+              Start over
+            </button>
+            <button onClick={()=>setStep("preview")}
+              style={{flex:1,background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,border:"none",
+                color:"#fff",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:12}}>
+              Preview Import →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step==="preview"&&(
+        <div>
+          <div style={{display:"flex",gap:10,marginBottom:14}}>
+            <div style={{flex:1,background:"rgba(16,185,129,.06)",border:`1px solid ${C.emerald}20`,borderRadius:9,padding:"10px 12px",textAlign:"center"}}>
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.emerald}}>{validCount}</div>
+              <div style={{fontFamily:C.F,fontSize:9,color:C.textDim}}>ready to import</div>
+            </div>
+            {dupCount>0&&(
+              <div style={{flex:1,background:"rgba(245,158,11,.06)",border:`1px solid ${C.amber}20`,borderRadius:9,padding:"10px 12px",textAlign:"center"}}>
+                <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.amber}}>{dupCount}</div>
+                <div style={{fontFamily:C.F,fontSize:9,color:C.textDim}}>possible duplicates</div>
+              </div>
+            )}
+          </div>
+
+          <div style={{maxHeight:280,overflowY:"auto",border:`1px solid ${C.border}`,borderRadius:9,marginBottom:14}}>
+            {preview.slice(0,50).map((c,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",
+                borderBottom:i<preview.length-1?`1px solid ${C.border}`:"none",
+                opacity:c.hasName?1:.4}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:C.F,fontSize:11,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {c.name}
+                  </div>
+                  <div style={{fontFamily:C.F,fontSize:9,color:C.textDim}}>
+                    {c.email||c.phone||"no contact info"} · {c.type} · {c.stage}
+                  </div>
+                </div>
+                {c.isDuplicate&&(
+                  <span style={{fontSize:8,color:C.amber,fontFamily:C.F,fontWeight:700,
+                    background:`${C.amber}14`,border:`1px solid ${C.amber}28`,borderRadius:6,padding:"1px 6px"}}>
+                    DUPLICATE?
+                  </span>
+                )}
+              </div>
+            ))}
+            {preview.length>50&&(
+              <div style={{padding:"8px 11px",textAlign:"center",fontFamily:C.F,fontSize:10,color:C.textDim}}>
+                + {preview.length-50} more rows
+              </div>
+            )}
+          </div>
+
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>setStep("map")} disabled={importing}
+              style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,
+                borderRadius:8,padding:"9px 16px",cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:12}}>
+              Back
+            </button>
+            {dupCount>0&&(
+              <button onClick={()=>handleImport(true)} disabled={importing}
+                style={{background:"rgba(255,255,255,.05)",border:`1px solid ${C.border}`,color:C.textMd,
+                  borderRadius:8,padding:"9px 14px",cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:11}}>
+                Skip duplicates
+              </button>
+            )}
+            <button onClick={()=>handleImport(false)} disabled={importing}
+              style={{flex:1,background:importing?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+                border:"none",color:importing?C.textDim:"#fff",borderRadius:8,padding:"9px 16px",
+                cursor:importing?"default":"pointer",fontFamily:C.F,fontWeight:700,fontSize:12}}>
+              {importing?"Importing...":`Import ${validCount} Clients`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step==="done"&&(
+        <div style={{textAlign:"center",padding:"20px 0"}}>
+          <div style={{fontSize:40,marginBottom:14}}>✅</div>
+          <div style={{fontFamily:C.F,fontWeight:700,fontSize:15,color:C.text,marginBottom:6}}>
+            {importedCount} client{importedCount!==1?"s":""} imported
+          </div>
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:"0 0 18px"}}>
+            {skippedCount>0?`${skippedCount} skipped (missing name or excluded as duplicates). `:""}
+            Head to your Pipeline to see them, or let Autopilot analyze your business now that it has real data.
+          </p>
+          <button onClick={()=>{ setStep("upload"); setFile(null); setParsed(null); setMapping({}); }}
+            style={{background:"rgba(255,255,255,.05)",border:`1px solid ${C.border}`,color:C.textMd,
+              borderRadius:8,padding:"9px 20px",cursor:"pointer",fontFamily:C.F,fontWeight:600,fontSize:12}}>
+            Import another file
+          </button>
+        </div>
+      )}
+    </CCard>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN CLIENT PANEL
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ClientPanel({ user, planKey }){
@@ -803,12 +1112,13 @@ export default function ClientPanel({ user, planKey }){
     {id:"briefing",  label:"Daily Briefing", icon:"☀️", color:C.indigo,  desc:"Your AI morning action plan"},
     {id:"pipeline",  label:"Pipeline",       icon:"📊", color:C.violet,  desc:"Track & manage all clients"},
     {id:"notes",     label:"Note Analyzer",  icon:"🧠", color:C.cyan,    desc:"Turn rough notes into intel"},
+    {id:"import",    label:"Import CRM",     icon:"📥", color:C.emerald, desc:"Bring in your existing clients"},
   ];
 
   return(
     <div style={{paddingBottom:40}}>
       {/* Tool selector */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>(
           <div key={t.id} onClick={()=>setTool(t.id)}
             style={{padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
@@ -828,6 +1138,7 @@ export default function ClientPanel({ user, planKey }){
       {tool==="briefing" && <DailyBriefing/>}
       {tool==="pipeline" && <ClientPipeline user={user}/>}
       {tool==="notes"    && <DealNotes/>}
+      {tool==="import"   && <ClientImport user={user}/>}
     </div>
   );
 }
