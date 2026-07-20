@@ -1668,6 +1668,81 @@ Return ONLY this JSON:
   return parsed;
 }
 
+const COORDINATOR_KEY = "spark_transaction_coordinator_v1"; // cached coordinator state per client
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI TRANSACTION COORDINATOR — tracks contingency deadlines for under-
+// contract deals and drafts the next stakeholder updates (client, lender/
+// title, co-op agent) grounded in exactly where the transaction stands.
+// ─────────────────────────────────────────────────────────────────────────────
+const MILESTONE_DEFS = [
+  { key:"offer",       label:"Accepted Offer",     icon:"✅", offsetFrom:"offer", offsetDays:0 },
+  { key:"inspection",  label:"Inspection Deadline",icon:"🔍", offsetFrom:"offer", offsetDays:10 },
+  { key:"title",       label:"Title Search Due",   icon:"📋", offsetFrom:"offer", offsetDays:14 },
+  { key:"appraisal",   label:"Appraisal Deadline", icon:"🏠", offsetFrom:"offer", offsetDays:21 },
+  { key:"financing",   label:"Financing Deadline", icon:"💰", offsetFrom:"offer", offsetDays:25 },
+  { key:"walkthrough", label:"Final Walkthrough",  icon:"👀", offsetFrom:"close", offsetDays:-2 },
+  { key:"closing",     label:"Closing Day",        icon:"🏆", offsetFrom:"close", offsetDays:0 },
+];
+
+function calculateTransactionMilestones(offerDate, closeDate){
+  const offer = new Date(offerDate);
+  const close = new Date(closeDate);
+  if(isNaN(offer.getTime())||isNaN(close.getTime())) return null;
+  const addDays=(d,n)=>{ const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  return MILESTONE_DEFS.map(def=>{
+    const anchor = def.offsetFrom==="offer" ? offer : close;
+    const date = addDays(anchor, def.offsetDays);
+    const daysUntil = Math.round((date-today)/864e5);
+    const status = daysUntil<0 ? "overdue" : daysUntil<=3 ? "urgent" : "upcoming";
+    return { ...def, date: date.toISOString(), daysUntil, status };
+  });
+}
+
+// The "current" milestone is the first one not yet safely in the past —
+// i.e. the next thing the agent actually needs to act on.
+function getCurrentMilestone(milestones){
+  if(!milestones) return null;
+  const activeOnes = milestones.filter(m=>m.status==="overdue"||m.status==="urgent");
+  if(activeOnes.length) return activeOnes[0]; // most urgent first (list is chronological)
+  const upcoming = milestones.find(m=>m.status==="upcoming");
+  return upcoming || milestones[milestones.length-1];
+}
+
+async function generateStakeholderUpdates(client, milestone, allMilestones, voice){
+  const ctx = [
+    `Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}`,
+    `Client: ${client.name}, ${client.type||"?"}, property: ${client.property||"unknown"}`,
+    `Current milestone: ${milestone.label}, ${milestone.status==="overdue"?`OVERDUE by ${Math.abs(milestone.daysUntil)} days`:milestone.status==="urgent"?`due in ${milestone.daysUntil} days — urgent`:`due in ${milestone.daysUntil} days`}`,
+    `Deal notes: ${client.notes?.slice(0,200)||"none"}`,
+    `Full timeline: ${allMilestones.map(m=>`${m.label} (${m.status})`).join(", ")}`,
+  ].join("\n");
+
+  const r = await fetch("/api/claude",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      system:"You are SPARK's AI Transaction Coordinator. You track real estate contingency deadlines and draft the exact updates an agent needs to send to keep a deal moving — to the client, to the lender/title company, and to the co-op agent on the other side. Each message should be appropriately toned for its audience: warm and reassuring for the client, professional and action-oriented for lender/title, collaborative and status-focused for the co-op agent. Be specific to the actual milestone and its urgency. Return ONLY valid compact JSON.",
+      messages:[{role:"user",content:`Draft the stakeholder updates needed right now for this transaction:\n\n${ctx}\n\nReturn ONLY this JSON:
+{"risk_flag":null or "a specific concern if the notes or timeline suggest something could go wrong with this milestone, otherwise null","client_update":"warm, reassuring update for the client about this milestone — ready to send","lender_title_update":"professional, action-oriented message to lender or title company pushing this milestone forward — ready to send","coop_agent_update":"collaborative status-check message to the co-op agent on the other side of the deal — ready to send","next_step":"the single most important thing the agent should personally do right now"}`}],
+      max_tokens:1400,
+    })
+  });
+  const d = await r.json();
+  const raw = d.content?.[0]?.text||"";
+  let parsed = null;
+  for(const attempt of [
+    ()=>JSON.parse(raw.trim()),
+    ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no"); },
+  ]){
+    try{ parsed=attempt(); break; }catch{}
+  }
+  if(!parsed) throw new Error("parse_failed");
+  return parsed;
+}
+
 const NEGOTIATION_KEY = "spark_negotiation_history_v1"; // last few negotiation sessions, local only
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2500,6 +2575,178 @@ function ListingPerformance({ data, onDiscuss }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TRANSACTION COORDINATOR — UI component
+// ─────────────────────────────────────────────────────────────────────────────
+const MILESTONE_STATUS_STYLE = {
+  overdue:  { color:C.rose,    label:"Overdue" },
+  urgent:   { color:C.amber,   label:"Urgent" },
+  upcoming: { color:C.emerald, label:"On Track" },
+};
+
+function TransactionCoordinator({ voice, onDiscuss }){
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [offerDate, setOfferDate] = useState("");
+  const [closeDate, setCloseDate] = useState("");
+  const [milestones, setMilestones] = useState(null);
+  const [updates, setUpdates] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const clients = apLsGet("spark_clients_v1", []);
+  const contractDeals = clients.filter(c=>c.stage==="contract");
+  const selectedClient = contractDeals.find(c=>c.id===selectedClientId);
+
+  useEffect(()=>{
+    if(offerDate && closeDate){
+      setMilestones(calculateTransactionMilestones(offerDate, closeDate));
+      setUpdates(null);
+    }
+  },[offerDate, closeDate]);
+
+  async function handleGetUpdates(){
+    if(!selectedClient || !milestones) return;
+    const current = getCurrentMilestone(milestones);
+    if(!current) return;
+    setLoading(true);
+    setError(null);
+    try{
+      const result = await generateStakeholderUpdates(selectedClient, current, milestones, voice);
+      setUpdates({ ...result, milestone: current });
+    }catch(e){
+      console.error("Coordinator error:",e);
+      setError("Couldn't draft updates right now — try again.");
+    }
+    setLoading(false);
+  }
+
+  const currentMilestone = milestones ? getCurrentMilestone(milestones) : null;
+
+  return(
+    <div>
+      <APCard accent={C.indigo}>
+        <APLabel color={C.indigo}>TRACK A TRANSACTION</APLabel>
+        {contractDeals.length===0?(
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0,lineHeight:1.6}}>
+            No deals under contract yet. Once a client's stage is set to "Contract" in Clients, they'll show up here.
+          </p>
+        ):(
+          <>
+            <select value={selectedClientId} onChange={e=>{ setSelectedClientId(e.target.value); setMilestones(null); setUpdates(null); }}
+              style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+                borderRadius:9,padding:"9px 12px",color:C.text,fontFamily:C.F,fontSize:12,outline:"none",marginBottom:12}}>
+              <option value="">Select an under-contract deal...</option>
+              {contractDeals.map(c=><option key={c.id} value={c.id}>{c.name} — {c.property||"property"}</option>)}
+            </select>
+
+            {selectedClientId&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div>
+                  <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:5}}>OFFER ACCEPTED</div>
+                  <input type="date" value={offerDate} onChange={e=>setOfferDate(e.target.value)}
+                    style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+                      borderRadius:8,padding:"8px 10px",color:C.text,fontFamily:C.F,fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:5}}>CLOSING DATE</div>
+                  <input type="date" value={closeDate} onChange={e=>setCloseDate(e.target.value)}
+                    style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+                      borderRadius:8,padding:"8px 10px",color:C.text,fontFamily:C.F,fontSize:12,outline:"none",boxSizing:"border-box"}}/>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </APCard>
+
+      {milestones&&(
+        <APCard accent={C.violet}>
+          <APLabel color={C.violet}>CONTINGENCY TIMELINE</APLabel>
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
+            {milestones.map((m,i)=>{
+              const style = MILESTONE_STATUS_STYLE[m.status];
+              const isCurrent = currentMilestone?.key===m.key;
+              return(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:10,
+                  background:isCurrent?`${style.color}08`:"rgba(255,255,255,.02)",
+                  border:`1px solid ${isCurrent?style.color+"30":C.border}`,
+                  borderRadius:8,padding:"8px 11px"}}>
+                  <span style={{fontSize:14}}>{m.icon}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:C.F,fontSize:11,fontWeight:isCurrent?700:600,color:C.text}}>{m.label}</div>
+                    <div style={{fontFamily:C.F,fontSize:9,color:C.textDim}}>
+                      {new Date(m.date).toLocaleDateString("en-US",{month:"short",day:"numeric"})}
+                    </div>
+                  </div>
+                  <span style={{fontSize:8,color:style.color,fontFamily:C.F,fontWeight:700,
+                    background:`${style.color}14`,border:`1px solid ${style.color}28`,
+                    borderRadius:7,padding:"2px 8px",letterSpacing:.5}}>
+                    {style.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {!updates&&(
+            <button onClick={handleGetUpdates} disabled={loading}
+              style={{width:"100%",marginTop:14,background:loading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                border:"none",color:loading?C.textDim:"#fff",borderRadius:10,padding:"11px 0",
+                cursor:loading?"default":"pointer",fontFamily:C.F,fontWeight:800,fontSize:12,
+                boxShadow:loading?"none":`0 4px 14px ${C.indigo}28`}}>
+              {loading?"Drafting updates...":"Draft Stakeholder Updates"}
+            </button>
+          )}
+          {error&&<p style={{fontFamily:C.F,fontSize:11,color:C.rose,marginTop:10}}>{error}</p>}
+        </APCard>
+      )}
+
+      {updates&&(
+        <div>
+          {updates.risk_flag&&(
+            <APCard accent={C.rose}>
+              <APLabel color={C.rose}>RISK FLAG</APLabel>
+              <p style={{fontFamily:C.F,fontSize:12,color:C.text,margin:0,lineHeight:1.6,fontWeight:600}}>
+                {updates.risk_flag}
+              </p>
+            </APCard>
+          )}
+
+          <APCard accent={C.emerald}>
+            <APLabel color={C.emerald}>NEXT STEP</APLabel>
+            <p style={{fontFamily:C.F,fontSize:13,color:C.text,margin:0,lineHeight:1.6,fontWeight:600}}>
+              {updates.next_step}
+            </p>
+          </APCard>
+
+          {[
+            { key:"client_update", label:"CLIENT UPDATE", color:C.indigo, icon:"👤" },
+            { key:"lender_title_update", label:"LENDER / TITLE UPDATE", color:C.amber, icon:"🏦" },
+            { key:"coop_agent_update", label:"CO-OP AGENT UPDATE", color:C.cyan, icon:"🤝" },
+          ].map(section=>(
+            <APCard key={section.key} accent={section.color}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <APLabel color={section.color}>{section.icon} {section.label}</APLabel>
+                <APCopyBtn text={updates[section.key]}/>
+              </div>
+              <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.65,whiteSpace:"pre-wrap"}}>
+                {updates[section.key]}
+              </p>
+            </APCard>
+          ))}
+
+          <button onClick={()=>onDiscuss(`I'm coordinating the ${selectedClient?.name} transaction — currently at the "${updates.milestone?.label}" milestone. Help me think through next steps.`)}
+            style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,
+              color:C.textDim,borderRadius:9,padding:"10px 0",cursor:"pointer",
+              fontFamily:C.F,fontWeight:600,fontSize:11}}>
+            Discuss this transaction with SPARK →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
@@ -2979,6 +3226,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const AP_TABS=[
     {id:"mission",  label:"Mission",  icon:"🎯"},
     {id:"deals",    label:"Deals",    icon:"📋"},
+    {id:"coordinator",label:"Coordinator",icon:"🧭"},
     {id:"negotiate",label:"Negotiate",icon:"🤝"},
     {id:"listings", label:"Listings", icon:"🏠", badge:listingPerf?.listings?.filter(l=>l.status!=="on_track")?.length||null},
     {id:"clients",  label:"Clients",  icon:"👥"},
@@ -3182,6 +3430,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
                 {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
+                {apTab==="coordinator"&&<TransactionCoordinator voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="negotiate"&&<NegotiationCopilot voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="listings" &&(
                   <div>
