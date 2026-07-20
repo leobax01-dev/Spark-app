@@ -2807,6 +2807,83 @@ function GoogleIntegration({ user }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INSTALL SPARK — PWA install prompt card
+// ─────────────────────────────────────────────────────────────────────────────
+function InstallSparkCard(){
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+  const [installing, setInstalling] = useState(false);
+
+  useEffect(()=>{
+    // Already running as an installed app?
+    const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches
+      || window.navigator.standalone===true;
+    if(standalone) setInstalled(true);
+
+    function onBeforeInstall(e){
+      e.preventDefault();
+      setDeferredPrompt(e);
+    }
+    function onInstalled(){
+      setInstalled(true);
+      setDeferredPrompt(null);
+    }
+    window.addEventListener("beforeinstallprompt", onBeforeInstall);
+    window.addEventListener("appinstalled", onInstalled);
+    return ()=>{
+      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  },[]);
+
+  async function handleInstall(){
+    if(!deferredPrompt) return;
+    setInstalling(true);
+    deferredPrompt.prompt();
+    try{ await deferredPrompt.userChoice; }catch{}
+    setDeferredPrompt(null);
+    setInstalling(false);
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent||"");
+
+  if(installed) return null; // already installed — no need to show this card
+
+  return(
+    <div style={{
+      background:`linear-gradient(135deg,${C.indigo}0e,${C.violet}08)`,
+      border:`1px solid ${C.indigo}28`,borderRadius:16,padding:"18px 18px",
+      marginBottom:16,display:"flex",alignItems:"center",gap:14}}>
+      <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
+        background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        fontSize:20,boxShadow:`0 4px 14px ${C.indigo}30`}}>⚡</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:3}}>
+          Install SPARK on your phone
+        </div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,lineHeight:1.5}}>
+          {isIOS
+            ? "Tap the Share icon, then \"Add to Home Screen\" — SPARK opens like a native app, full screen, one tap away."
+            : deferredPrompt
+              ? "One tap to add SPARK to your home screen — opens instantly, full screen, no browser bar."
+              : "Open SPARK in Chrome on your phone, then use your browser menu to \"Add to Home Screen.\""}
+        </div>
+      </div>
+      {!isIOS && deferredPrompt && (
+        <button onClick={handleInstall} disabled={installing}
+          style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+            border:"none",color:"#fff",borderRadius:9,padding:"9px 18px",
+            cursor:installing?"default":"pointer",fontFamily:C.F,fontWeight:700,
+            fontSize:12,flexShrink:0,boxShadow:`0 3px 12px ${C.indigo}30`}}>
+          {installing?"...":"Install"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
   const toast = useToast();
   const plan  = PLANS[planKey];
@@ -2979,6 +3056,9 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
           Sign Out
         </button>
       </div>
+
+      {/* Install SPARK as an app */}
+      <InstallSparkCard/>
 
       {/* Google Integration */}
       <GoogleIntegration user={user}/>
