@@ -1445,6 +1445,115 @@ For each, generate a specific reactivation opportunity. Return ONLY this JSON:
 function lsSetSphere(data){ apLsSet(SPHERE_KEY, data); }
 function lsGetSphere(){ return apLsGet(SPHERE_KEY, null); }
 
+const LISTING_KEY = "spark_listing_performance_v1"; // cached listing performance result
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LISTING PERFORMANCE AUTOPILOT — grounds AI insight in REAL market data
+// This is SPARK's first feature where the AI's analysis is fused with a
+// live external data pull (RentCast market statistics) rather than relying
+// only on what the agent typed. Same pattern extends to Sphere/Negotiate
+// next, and eventually to a true tool-use loop where Claude decides when
+// it needs fresh data instead of us pre-fetching for every call.
+// ─────────────────────────────────────────────────────────────────────────────
+function extractZip(propertyText){
+  if(!propertyText) return null;
+  const match = propertyText.match(/\b(\d{5})(?:-\d{4})?\b/);
+  return match ? match[1] : null;
+}
+
+async function fetchMarketStats(zipCode){
+  try{
+    const r = await fetch("/api/comps",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ action:"market_stats", zipCode }),
+    });
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(e){
+    console.warn("Market stats fetch failed:", e.message);
+    return null;
+  }
+}
+
+async function generateListingPerformance(clients, voice, email, apResult){
+  const listings = clients.filter(c=>c.type==="seller" && c.stage==="active");
+  if(listings.length===0){
+    return { listings:[], market_snapshot:null, summary:"No active listings to track right now.", generated:new Date().toISOString() };
+  }
+
+  // Pull REAL market data — dedupe by zip so we don't call the same zip twice
+  const zipCache = {};
+  for(const listing of listings){
+    const zip = extractZip(listing.property);
+    if(zip && !(zip in zipCache)){
+      zipCache[zip] = await fetchMarketStats(zip);
+    }
+  }
+
+  const ctx = listings.map((l,i)=>{
+    const zip = extractZip(l.property);
+    const stats = zip ? zipCache[zip] : null;
+    const trackedDays = daysSinceDate(l.createdAt);
+    return [
+      `${i+1}. ${l.name} — ${l.property||"address unknown"}`,
+      `   Tracked in SPARK for ${trackedDays ?? "unknown"} days (proxy for time on market — check notes for a more precise listed date if agent mentioned one)`,
+      `   Budget/list price: ${l.budget||"not entered"}`,
+      `   Notes: ${l.notes?.slice(0,150)||"none"}`,
+      stats ? `   REAL MARKET DATA for zip ${zip}: median days on market ${stats.medianDaysOnMarket??"?"}, median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median list price $${stats.medianListPrice?.toLocaleString()||"?"}, active listings in area: ${stats.activeListings??"?"}`
+        : `   No market data available for this address (zip not detected or lookup failed) — assess from notes only`,
+    ].join("\n");
+  }).join("\n\n");
+
+  const r = await fetch("/api/claude",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      system:"You are SPARK's Listing Performance Autopilot. You assess active listings against REAL local market data (provided below) to catch pricing and marketing problems before the seller gets frustrated. Ground every recommendation in the actual market numbers given — never invent statistics. If no market data is available for a listing, say so honestly rather than guessing. Return ONLY valid compact JSON.",
+      messages:[{role:"user",content:`Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}
+
+Assess these active listings:
+
+${ctx}
+
+Return ONLY this JSON:
+{"summary":"1-2 sentence honest overall read on how these listings are performing","listings":[{"name":"client name exactly as given","status":"on_track | needs_attention | price_risk","assessment":"specific 2-3 sentence read grounded in the real market data given — reference actual numbers when available","recommended_action":"specific action — a price adjustment with a real number, a marketing pivot, or 'hold steady' with reasoning","seller_update_script":"a warm, honest, ready-to-send update for the seller referencing real market context — not generic reassurance"}]}`}],
+      max_tokens:2000,
+    })
+  });
+  const d = await r.json();
+  const raw = d.content?.[0]?.text||"";
+  let parsed = null;
+  for(const attempt of [
+    ()=>JSON.parse(raw.trim()),
+    ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no"); },
+  ]){
+    try{ parsed=attempt(); break; }catch{}
+  }
+  if(!parsed) throw new Error("parse_failed");
+
+  // Attach real market stats + tracked days back for the UI
+  parsed.listings = (parsed.listings||[]).map(item=>{
+    const match = listings.find(l=>l.name===item.name);
+    const zip = match ? extractZip(match.property) : null;
+    return { ...item, trackedDays: match?daysSinceDate(match.createdAt):null, zip, marketStats: zip?zipCache[zip]:null, property: match?.property };
+  });
+  parsed.generated = new Date().toISOString();
+
+  apLsSet(LISTING_KEY, parsed);
+  if(email && apResult){
+    const mergedResult = { ...apResult, listing_performance: parsed };
+    apSync(email,"save_run",{
+      result: mergedResult,
+      clientCount: clients.length,
+      dealCount: apResult?.deal_intelligence?.deals?.length||0,
+      overallHealth: apResult?.deal_intelligence?.overall_health||"stable",
+    }).catch(()=>{});
+  }
+
+  return parsed;
+}
+
 const NEGOTIATION_KEY = "spark_negotiation_history_v1"; // last few negotiation sessions, local only
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2145,6 +2254,116 @@ function NegotiationCopilot({ voice, onDiscuss }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LISTING PERFORMANCE — UI component
+// ─────────────────────────────────────────────────────────────────────────────
+const LISTING_STATUS_STYLE = {
+  on_track:       { icon:"✅", color:C.emerald, label:"On Track" },
+  needs_attention:{ icon:"⚠️", color:C.amber,   label:"Needs Attention" },
+  price_risk:     { icon:"🔻", color:C.rose,    label:"Price Risk" },
+};
+
+function ListingPerformance({ data, onDiscuss }){
+  if(!data) return null;
+  const { listings=[], summary } = data;
+
+  if(listings.length===0){
+    return(
+      <APCard accent={C.indigo}>
+        <div style={{textAlign:"center",padding:"24px 0"}}>
+          <div style={{fontSize:36,marginBottom:12}}>🏠</div>
+          <p style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,margin:"0 0 8px"}}>
+            No active listings to track
+          </p>
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0,lineHeight:1.6}}>
+            {summary||"When you have active seller clients, SPARK will track their listing performance against real local market data."}
+          </p>
+        </div>
+      </APCard>
+    );
+  }
+
+  return(
+    <div>
+      {summary&&(
+        <APCard accent={C.indigo} style={{background:`linear-gradient(135deg,${C.indigo}08,${C.violet}04)`}}>
+          <APLabel color={C.indigo}>LISTING PERFORMANCE</APLabel>
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.65}}>{summary}</p>
+        </APCard>
+      )}
+
+      {listings.map((item,i)=>{
+        const style = LISTING_STATUS_STYLE[item.status]||LISTING_STATUS_STYLE.on_track;
+        return(
+          <APCard key={i} accent={style.color}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div>
+                <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>{item.name}</div>
+                {item.property&&<div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>{item.property}</div>}
+              </div>
+              <span style={{fontSize:9,color:style.color,fontFamily:C.F,fontWeight:700,
+                background:`${style.color}14`,border:`1px solid ${style.color}28`,
+                borderRadius:8,padding:"3px 10px",letterSpacing:.5,display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                {style.icon} {style.label}
+              </span>
+            </div>
+
+            {item.marketStats&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:8,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>MEDIAN DOM (AREA)</div>
+                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginTop:2}}>
+                    {item.marketStats.medianDaysOnMarket ?? "—"}{item.marketStats.medianDaysOnMarket ? "d" : ""}
+                  </div>
+                </div>
+                <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
+                  <div style={{fontSize:8,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>THIS LISTING</div>
+                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginTop:2}}>
+                    {item.trackedDays ?? "—"}{item.trackedDays!=null ? "d tracked" : ""}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 10px",lineHeight:1.6}}>
+              {item.assessment}
+            </p>
+
+            <div style={{background:`${style.color}06`,border:`1px solid ${style.color}18`,
+              borderRadius:9,padding:"10px 12px",marginBottom:8}}>
+              <div style={{fontSize:8,color:style.color,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:4}}>
+                RECOMMENDED ACTION
+              </div>
+              <p style={{fontFamily:C.F,fontSize:12,color:C.text,margin:0,lineHeight:1.6,fontWeight:600}}>
+                {item.recommended_action}
+              </p>
+            </div>
+
+            {item.seller_update_script&&(
+              <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                  <span style={{fontSize:8,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>SELLER UPDATE — READY TO SEND</span>
+                  <APCopyBtn text={item.seller_update_script}/>
+                </div>
+                <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+                  {item.seller_update_script}
+                </p>
+              </div>
+            )}
+
+            <button onClick={()=>onDiscuss(`I want to discuss the ${item.name} listing at ${item.property||"their property"}. SPARK's assessment: "${item.assessment}" Recommended action: "${item.recommended_action}". Help me think this through.`)}
+              style={{background:"transparent",border:`1px solid ${C.border}`,
+                color:C.textDim,borderRadius:7,padding:"4px 10px",cursor:"pointer",
+                fontSize:9,fontFamily:C.F,fontWeight:600}}>
+              Discuss with SPARK →
+            </button>
+          </APCard>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
@@ -2162,6 +2381,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [sphere,        setSphere]        = useState(()=>apLsGet(SPHERE_KEY,null));
   const [sphereLoading, setSphereLoading] = useState(false);
   const [sphereError,   setSphereError]   = useState(null);
+  const [listingPerf,        setListingPerf]        = useState(()=>apLsGet(LISTING_KEY,null));
+  const [listingPerfLoading, setListingPerfLoading] = useState(false);
+  const [listingPerfError,   setListingPerfError]   = useState(null);
 
   // Chat state
   const [messages,      setMessages]      = useState(()=>apLsGet(CHAT_KEY,[]));
@@ -2395,6 +2617,10 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         setSphere(d.latestRun.result.sphere_reactivation);
         apLsSet(SPHERE_KEY, d.latestRun.result.sphere_reactivation);
       }
+      if(d.latestRun.result?.listing_performance){
+        setListingPerf(d.latestRun.result.listing_performance);
+        apLsSet(LISTING_KEY, d.latestRun.result.listing_performance);
+      }
     }
     if(d?.memory){
       setDbMemory(d.memory);
@@ -2446,6 +2672,21 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setSphereError("Couldn't scan your sphere right now — try again.");
     }
     setSphereLoading(false);
+  }
+
+  async function runListingPerformance(){
+    if(listingPerfLoading) return;
+    setListingPerfLoading(true);
+    setListingPerfError(null);
+    try{
+      const clients = apLsGet("spark_clients_v1",[]);
+      const result  = await generateListingPerformance(clients, voice, user?.email, apResult);
+      setListingPerf(result);
+    }catch(e){
+      console.error("Listing performance error:",e);
+      setListingPerfError("Couldn't analyze your listings right now — try again.");
+    }
+    setListingPerfLoading(false);
   }
 
   async function fetchGoogleData(){
@@ -2599,6 +2840,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     {id:"mission",  label:"Mission",  icon:"🎯"},
     {id:"deals",    label:"Deals",    icon:"📋"},
     {id:"negotiate",label:"Negotiate",icon:"🤝"},
+    {id:"listings", label:"Listings", icon:"🏠", badge:listingPerf?.listings?.filter(l=>l.status!=="on_track")?.length||null},
     {id:"clients",  label:"Clients",  icon:"👥"},
     {id:"sphere",   label:"Sphere",   icon:"🔄", badge:sphere?.opportunities?.length||null},
     {id:"alerts",   label:"Alerts",   icon:"⚡"},
@@ -2801,6 +3043,61 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="negotiate"&&<NegotiationCopilot voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
+                {apTab==="listings" &&(
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                      <div>
+                        <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>
+                          Listing Performance
+                        </div>
+                        <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>
+                          {listingPerf
+                            ? `Analyzed ${new Date(listingPerf.generated).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})} · real market data`
+                            : "Not yet analyzed"}
+                        </div>
+                      </div>
+                      <button onClick={runListingPerformance} disabled={listingPerfLoading}
+                        style={{background:listingPerfLoading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.emerald})`,
+                          border:"none",color:listingPerfLoading?C.textDim:"#fff",
+                          borderRadius:9,padding:"8px 16px",cursor:listingPerfLoading?"default":"pointer",
+                          fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0,
+                          boxShadow:listingPerfLoading?"none":`0 3px 12px ${C.indigo}30`,transition:"all .2s"}}>
+                        {listingPerfLoading?"Analyzing...":listingPerf?"Refresh Analysis":"Analyze Listings"}
+                      </button>
+                    </div>
+
+                    {listingPerfError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{listingPerfError}</div>}
+
+                    {listingPerfLoading&&(
+                      <APCard accent={C.indigo}>
+                        <div style={{textAlign:"center",padding:"28px 0"}}>
+                          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
+                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.indigo,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                          </div>
+                          <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Pulling real market data...</p>
+                          <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>Checking local days-on-market and pricing trends for each listing</p>
+                        </div>
+                      </APCard>
+                    )}
+
+                    {!listingPerfLoading&&listingPerf&&(
+                      <ListingPerformance
+                        data={listingPerf}
+                        onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}
+                      />
+                    )}
+
+                    {!listingPerfLoading&&!listingPerf&&(
+                      <APCard accent={C.indigo}>
+                        <div style={{textAlign:"center",padding:"24px 0"}}>
+                          <div style={{fontSize:36,marginBottom:12}}>🏠</div>
+                          <p style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,margin:"0 0 8px"}}>Your listings haven't been analyzed yet</p>
+                          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:"0 0 16px",lineHeight:1.6,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>SPARK will pull real local market data for each active listing — median days on market, pricing trends — and tell you exactly where each one stands before the seller has to ask.</p>
+                        </div>
+                      </APCard>
+                    )}
+                  </div>
+                )}
                 {apTab==="clients"  &&<ClientScores     scores={apResult.client_scores}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="sphere"   &&(
                   <div>
