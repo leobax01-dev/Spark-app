@@ -1,21 +1,41 @@
 {
   "name": "SPARK — Real Estate AI",
   "short_name": "SPARK",
-  "description": "Turn any listing into viral video content in 60 seconds",
-  "start_url": "/",
+  "description": "The AI that runs your real estate business while you sell. Autopilot, negotiation strategy, sphere reactivation, and more — always on.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#08090e",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a12",
   "theme_color": "#6366f1",
+  "categories": ["business", "productivity"],
   "icons": [
+    { "src": "/icons/icon-16.png",  "sizes": "16x16",   "type": "image/png" },
+    { "src": "/icons/icon-32.png",  "sizes": "32x32",   "type": "image/png" },
+    { "src": "/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png" },
+    { "src": "/icons/icon-152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-167.png", "sizes": "167x167", "type": "image/png" },
+    { "src": "/icons/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-384.png", "sizes": "384x384", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
+      "name": "Autopilot",
+      "short_name": "Autopilot",
+      "description": "Open your daily mission and deal intelligence",
+      "url": "/?tab=autopilot",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "name": "Generate Content",
+      "short_name": "Generate",
+      "description": "Create listing content, scripts, and more",
+      "url": "/?tab=generate",
+      "icons": [{ "src": "/icons/icon-96.png", "sizes": "96x96" }]
     }
   ]
 }
