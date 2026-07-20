@@ -12,6 +12,56 @@ function getSupabase(){
   );
 }
 
+// ─── EMAIL NOTIFICATIONS (Resend HTTP API — no SDK needed) ───────────────────
+// Fires when Autopilot detects a critical deal risk. Silently skipped if
+// RESEND_API_KEY isn't set, so this never blocks or breaks a run save.
+async function sendCriticalRiskEmail(toEmail, risk, agentName){
+  const apiKey = process.env.RESEND_API_KEY;
+  if(!apiKey || !toEmail) return;
+
+  const firstName = agentName?.split(" ")[0] || "there";
+  const subject = `⚠️ Autopilot: ${risk.deal} needs attention`;
+  const html = `
+    <div style="font-family:-apple-system,'Segoe UI',sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0a0a12;color:#fff;border-radius:16px;">
+      <div style="display:inline-block;background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.3);color:#fb7185;font-size:11px;font-weight:700;letter-spacing:1.5px;padding:4px 12px;border-radius:20px;margin-bottom:16px;">
+        CRITICAL DEAL RISK
+      </div>
+      <h1 style="font-size:20px;margin:0 0 12px;color:#fff;">Hi ${firstName}, Autopilot found something urgent</h1>
+      <p style="font-size:15px;line-height:1.6;color:rgba(255,255,255,.7);margin:0 0 8px;">
+        <strong style="color:#fff;">${risk.deal}</strong>
+      </p>
+      <p style="font-size:14px;line-height:1.6;color:rgba(255,255,255,.6);margin:0 0 24px;">
+        ${risk.risk}
+      </p>
+      ${risk.action ? `
+      <div style="background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:10px;padding:14px 16px;margin-bottom:24px;">
+        <div style="font-size:10px;color:#a78bfa;font-weight:700;letter-spacing:1px;margin-bottom:6px;">RECOMMENDED ACTION</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;">${risk.action}</div>
+      </div>` : ""}
+      <a href="https://usesparkai.app" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 28px;border-radius:10px;">
+        Open Situation Room →
+      </a>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:28px;">
+        SPARK Autopilot is monitoring your pipeline 24/7. You're receiving this because a critical risk was detected on a Premium account.
+      </p>
+    </div>`;
+
+  try{
+    await fetch("https://api.resend.com/emails",{
+      method:"POST",
+      headers:{ "Authorization":`Bearer ${apiKey}`, "Content-Type":"application/json" },
+      body: JSON.stringify({
+        from: "SPARK Autopilot <autopilot@usesparkai.app>",
+        to: toEmail,
+        subject,
+        html,
+      }),
+    });
+  }catch(e){
+    console.error("Email notify error:", e.message);
+  }
+}
+
 // ─── GOOGLE HELPERS ───────────────────────────────────────────────────────────
 async function refreshAccessToken(refreshToken, clientId, clientSecret){
   const res = await fetch("https://oauth2.googleapis.com/token",{
@@ -107,7 +157,7 @@ async function handleAutopilot(action, email, body, res){
   const sb = getSupabase();
 
   if(action==="save_run"){
-    const { result, clientCount, dealCount, overallHealth, memory } = body;
+    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName } = body;
     if(!result) return res.status(400).json({ error:"Result required" });
 
     const { error: runError } = await sb.from("autopilot_runs").insert({
@@ -118,6 +168,12 @@ async function handleAutopilot(action, email, body, res){
       overall_health: overallHealth||"stable",
     });
     if(runError) console.error("Run save error:", runError.message);
+
+    // Fire critical-risk email if the client flagged this as a new alert-worthy risk
+    if(notifyEmail){
+      const topRisk = result?.deal_intelligence?.risks?.find(r=>r.severity==="high");
+      if(topRisk) await sendCriticalRiskEmail(email, topRisk, agentName);
+    }
 
     if(memory){
       const { data: existing } = await sb
