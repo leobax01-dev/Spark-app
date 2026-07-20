@@ -1445,6 +1445,60 @@ For each, generate a specific reactivation opportunity. Return ONLY this JSON:
 function lsSetSphere(data){ apLsSet(SPHERE_KEY, data); }
 function lsGetSphere(){ return apLsGet(SPHERE_KEY, null); }
 
+const NEGOTIATION_KEY = "spark_negotiation_history_v1"; // last few negotiation sessions, local only
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEGOTIATION COPILOT — live, on-demand coaching for offer/counter situations
+// ─────────────────────────────────────────────────────────────────────────────
+const NEGOTIATION_SITUATIONS = [
+  { id:"counter",     label:"Buyer/Seller Counter",     icon:"↔️" },
+  { id:"lowball",     label:"Low Offer Response",       icon:"📉" },
+  { id:"inspection",  label:"Inspection Repair Request", icon:"🔧" },
+  { id:"appraisal",   label:"Appraisal Gap",            icon:"📊" },
+  { id:"multiple",    label:"Multiple Offers",          icon:"🏆" },
+  { id:"other",       label:"Other Situation",          icon:"💬" },
+];
+
+async function generateNegotiationStrategy(situation, situationType, dealContext, voice){
+  const ctx = [
+    `Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, market: ${voice?.market||""}`,
+    `Situation type: ${NEGOTIATION_SITUATIONS.find(s=>s.id===situationType)?.label||"Negotiation"}`,
+    dealContext ? `Deal context: ${dealContext.name}, type: ${dealContext.type||"?"}, property: ${dealContext.property||"unknown"}, budget/value: ${dealContext.budget||"unknown"}, motivation: ${dealContext.motivation||"unknown"}, notes: ${dealContext.notes?.slice(0,200)||"none"}` : "No specific deal linked — general situation",
+    `The situation, in the agent's own words:\n${situation}`,
+  ].filter(Boolean).join("\n\n");
+
+  const r = await fetch("/api/claude",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      system:"You are SPARK's Negotiation Copilot — an elite real estate negotiation strategist. Agents bring you live, in-the-moment situations (a counter-offer, a lowball, a repair request, an appraisal gap) and you give them a sharp strategic read plus exact language to use. Be tactical and specific, not generic. Reference the actual numbers and details given. Return ONLY valid compact JSON.",
+      messages:[{role:"user",content:`Give the agent a full negotiation strategy for this situation:\n\n${ctx}\n\nReturn ONLY this JSON:
+{"the_read":"2-3 sentence sharp read on what's really happening here — what does the other side actually want, what's their likely leverage and pressure points","recommended_move":"the specific counter, number, or strategic response to make right now — be concrete","why_this_move":"1-2 sentences on why this is the right move given the leverage on both sides","script":"exact word-for-word language for the agent to say or send — ready to use, sounds natural not robotic","leverage_points":["specific leverage point 1 grounded in the situation","specific leverage point 2","specific leverage point 3 if applicable"],"walk_away_line":"the specific point or term past which the agent's client should not concede, and why","risk_if_too_soft":"what happens if they cave too easily here","risk_if_too_hard":"what happens if they push too hard and it backfires"}`}],
+      max_tokens:1600,
+    })
+  });
+  const d = await r.json();
+  const raw = d.content?.[0]?.text||"";
+  let parsed = null;
+  for(const attempt of [
+    ()=>JSON.parse(raw.trim()),
+    ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no"); },
+  ]){
+    try{ parsed=attempt(); break; }catch{}
+  }
+  if(!parsed) throw new Error("parse_failed");
+
+  parsed.situation_type = situationType;
+  parsed.deal_name = dealContext?.name || null;
+  parsed.generated = new Date().toISOString();
+
+  // Keep a short local history (last 5) — no Supabase table needed for this
+  const history = apLsGet(NEGOTIATION_KEY, []);
+  apLsSet(NEGOTIATION_KEY, [parsed, ...history].slice(0,5));
+
+  return parsed;
+}
+
 const WEEKLY_KEY = "spark_weekly_report_v1"; // cached weekly report
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1855,6 +1909,238 @@ function SphereReactivation({ sphere, onDiscuss, onCopyToast }){
           })}
         </div>
       </APCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NEGOTIATION COPILOT — UI component (input form + strategy output)
+// ─────────────────────────────────────────────────────────────────────────────
+function NegotiationCopilot({ voice, onDiscuss }){
+  const [situationType, setSituationType] = useState("counter");
+  const [situationText, setSituationText] = useState("");
+  const [selectedDealId, setSelectedDealId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [strategy, setStrategy] = useState(null);
+
+  const clients = apLsGet("spark_clients_v1", []);
+  const activeDeals = clients.filter(c=>c.stage==="active"||c.stage==="contract");
+
+  async function handleGenerate(){
+    if(!situationText.trim() || loading) return;
+    setLoading(true);
+    setError(null);
+    try{
+      const dealContext = activeDeals.find(d=>d.id===selectedDealId) || null;
+      const result = await generateNegotiationStrategy(situationText.trim(), situationType, dealContext, voice);
+      setStrategy(result);
+    }catch(e){
+      console.error("Negotiation strategy error:",e);
+      setError("Couldn't generate a strategy right now — try again.");
+    }
+    setLoading(false);
+  }
+
+  function reset(){
+    setStrategy(null);
+    setSituationText("");
+    setError(null);
+  }
+
+  return(
+    <div>
+      {!strategy&&(
+        <APCard accent={C.violet}>
+          <APLabel color={C.violet}>WHAT'S THE SITUATION?</APLabel>
+
+          {/* Situation type picker */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+            {NEGOTIATION_SITUATIONS.map(s=>(
+              <button key={s.id} onClick={()=>setSituationType(s.id)}
+                style={{padding:"6px 12px",borderRadius:9,
+                  border:`1px solid ${situationType===s.id?C.violet+"55":C.border}`,
+                  background:situationType===s.id?`${C.violet}12`:"transparent",
+                  color:situationType===s.id?C.violet:C.textDim,cursor:"pointer",
+                  fontSize:11,fontFamily:C.F,fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
+                <span>{s.icon}</span>{s.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Optional deal link */}
+          {activeDeals.length>0&&(
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:6}}>
+                LINK TO A DEAL (OPTIONAL — SHARPER STRATEGY)
+              </div>
+              <select value={selectedDealId} onChange={e=>setSelectedDealId(e.target.value)}
+                style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+                  borderRadius:9,padding:"9px 12px",color:C.text,fontFamily:C.F,fontSize:12,outline:"none"}}>
+                <option value="">No specific deal — general situation</option>
+                {activeDeals.map(d=><option key={d.id} value={d.id}>{d.name} — {d.property||"property"}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Situation description */}
+          <textarea value={situationText} onChange={e=>setSituationText(e.target.value)}
+            placeholder="Describe what's happening — e.g. 'Buyer countered our $650k asking with $610k, citing a similar sale that closed at $615k last month. Seller is firm but wants to close in 30 days.'"
+            rows={5}
+            style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+              borderRadius:10,padding:"12px 14px",color:C.text,fontFamily:C.F,fontSize:12,
+              resize:"vertical",lineHeight:1.6,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
+
+          {error&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:9,padding:"10px 12px",marginBottom:12,fontFamily:C.F,fontSize:11,color:C.rose}}>{error}</div>}
+
+          <button onClick={handleGenerate} disabled={!situationText.trim()||loading}
+            style={{width:"100%",background:situationText.trim()&&!loading?`linear-gradient(135deg,${C.violet},${C.indigo})`:"rgba(255,255,255,.05)",
+              border:"none",color:situationText.trim()&&!loading?"#fff":C.textDim,
+              borderRadius:10,padding:"12px 0",cursor:situationText.trim()&&!loading?"pointer":"default",
+              fontFamily:C.F,fontWeight:800,fontSize:13,
+              boxShadow:situationText.trim()&&!loading?`0 4px 16px ${C.violet}28`:"none",
+              display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            {loading?(
+              <>
+                <div style={{width:14,height:14,borderRadius:"50%",border:"2px solid rgba(255,255,255,.4)",borderTopColor:"#fff",animation:"spin .7s linear infinite"}}/>
+                Building strategy...
+              </>
+            ):(
+              <><span>🤝</span> Get Negotiation Strategy</>
+            )}
+          </button>
+        </APCard>
+      )}
+
+      {strategy&&(
+        <div style={{animation:"fadeUp .3s ease"}}>
+          {/* Header */}
+          <APCard accent={C.violet} style={{background:`linear-gradient(135deg,${C.violet}08,${C.surface})`}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:36,height:36,borderRadius:10,flexShrink:0,
+                  background:`linear-gradient(135deg,${C.violet},${C.indigo})`,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:16,boxShadow:`0 4px 12px ${C.violet}30`}}>🤝</div>
+                <div>
+                  <span style={{fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,
+                    background:`${C.violet}14`,border:`1px solid ${C.violet}28`,
+                    borderRadius:8,padding:"1px 8px",letterSpacing:1}}>
+                    NEGOTIATION STRATEGY
+                  </span>
+                  {strategy.deal_name&&(
+                    <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginTop:3}}>
+                      {strategy.deal_name}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button onClick={reset}
+                style={{background:"transparent",border:`1px solid ${C.border}`,
+                  color:C.textDim,borderRadius:8,padding:"5px 12px",cursor:"pointer",
+                  fontSize:10,fontFamily:C.F,fontWeight:600}}>
+                New situation
+              </button>
+            </div>
+          </APCard>
+
+          {/* The Read */}
+          <APCard accent={C.indigo}>
+            <APLabel color={C.indigo}>THE READ</APLabel>
+            <p style={{fontFamily:C.F,fontSize:13,color:C.text,margin:0,lineHeight:1.7,fontWeight:600}}>
+              {strategy.the_read}
+            </p>
+          </APCard>
+
+          {/* Recommended Move */}
+          <APCard accent={C.emerald}>
+            <APLabel color={C.emerald}>RECOMMENDED MOVE</APLabel>
+            <p style={{fontFamily:C.F,fontSize:14,color:C.text,margin:"0 0 8px",lineHeight:1.6,fontWeight:700}}>
+              {strategy.recommended_move}
+            </p>
+            {strategy.why_this_move&&(
+              <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0,lineHeight:1.6}}>
+                {strategy.why_this_move}
+              </p>
+            )}
+          </APCard>
+
+          {/* Script */}
+          {strategy.script&&(
+            <APCard accent={C.violet}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <APLabel color={C.violet}>SCRIPT — READY TO USE</APLabel>
+                <APCopyBtn text={strategy.script}/>
+              </div>
+              <div style={{background:`${C.violet}06`,border:`1px solid ${C.violet}18`,
+                borderRadius:9,padding:"12px 14px"}}>
+                <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+                  {strategy.script}
+                </p>
+              </div>
+            </APCard>
+          )}
+
+          {/* Leverage points */}
+          {strategy.leverage_points?.length>0&&(
+            <APCard accent={C.cyan}>
+              <APLabel color={C.cyan}>LEVERAGE POINTS</APLabel>
+              {strategy.leverage_points.map((lp,i)=>(
+                <div key={i} style={{display:"flex",gap:9,padding:"6px 0"}}>
+                  <div style={{width:16,height:16,borderRadius:"50%",flexShrink:0,
+                    background:`${C.cyan}14`,border:`1px solid ${C.cyan}28`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:8,color:C.cyan,fontWeight:800,marginTop:1}}>✓</div>
+                  <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.6}}>{lp}</p>
+                </div>
+              ))}
+            </APCard>
+          )}
+
+          {/* Walk-away line */}
+          {strategy.walk_away_line&&(
+            <APCard accent={C.rose}>
+              <APLabel color={C.rose}>WALK-AWAY LINE</APLabel>
+              <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.65}}>
+                {strategy.walk_away_line}
+              </p>
+            </APCard>
+          )}
+
+          {/* Risk both directions */}
+          {(strategy.risk_if_too_soft||strategy.risk_if_too_hard)&&(
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+              {strategy.risk_if_too_soft&&(
+                <div style={{background:`${C.amber}06`,border:`1px solid ${C.amber}18`,borderRadius:10,padding:"11px 13px"}}>
+                  <div style={{fontSize:8,color:C.amber,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:5}}>
+                    IF TOO SOFT
+                  </div>
+                  <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.55}}>
+                    {strategy.risk_if_too_soft}
+                  </p>
+                </div>
+              )}
+              {strategy.risk_if_too_hard&&(
+                <div style={{background:`${C.rose}06`,border:`1px solid ${C.rose}18`,borderRadius:10,padding:"11px 13px"}}>
+                  <div style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:5}}>
+                    IF TOO HARD
+                  </div>
+                  <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.55}}>
+                    {strategy.risk_if_too_hard}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button onClick={()=>onDiscuss(`I'm negotiating this situation: "${situationText}". SPARK's recommended move: "${strategy.recommended_move}". Help me think through how to execute this or handle pushback.`)}
+            style={{width:"100%",background:"transparent",border:`1px solid ${C.border}`,
+              color:C.textDim,borderRadius:9,padding:"10px 0",cursor:"pointer",
+              fontFamily:C.F,fontWeight:600,fontSize:11}}>
+            Discuss this further with SPARK →
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -2312,6 +2598,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const AP_TABS=[
     {id:"mission",  label:"Mission",  icon:"🎯"},
     {id:"deals",    label:"Deals",    icon:"📋"},
+    {id:"negotiate",label:"Negotiate",icon:"🤝"},
     {id:"clients",  label:"Clients",  icon:"👥"},
     {id:"sphere",   label:"Sphere",   icon:"🔄", badge:sphere?.opportunities?.length||null},
     {id:"alerts",   label:"Alerts",   icon:"⚡"},
@@ -2513,6 +2800,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
                 {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
+                {apTab==="negotiate"&&<NegotiationCopilot voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="clients"  &&<ClientScores     scores={apResult.client_scores}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="sphere"   &&(
                   <div>
