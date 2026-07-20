@@ -1,10 +1,43 @@
-// api/comps.js — RentCast comparable sales proxy
+// api/comps.js — RentCast comparable sales + market statistics proxy
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  const { address } = req.body;
-  if (!address) return res.status(400).json({ error: "Address required" });
   const apiKey = process.env.RENTCAST_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "RentCast API key not configured" });
+
+  // ─── MARKET STATISTICS — zip-code level market health ───────────────────
+  // Used by Listing Performance Autopilot to benchmark a listing's actual
+  // days-on-market against real local market data, not a guess.
+  if (req.body?.action === "market_stats") {
+    const { zipCode } = req.body;
+    if (!zipCode) return res.status(400).json({ error: "zipCode required" });
+
+    try {
+      const url = new URL("https://api.rentcast.io/v1/markets");
+      url.searchParams.set("zipCode", zipCode);
+      const r = await fetch(url.toString(), { headers: { "X-Api-Key": apiKey, "accept": "application/json" } });
+      if (!r.ok) return res.status(r.status).json({ error: `Market stats lookup failed: ${r.status}` });
+      const d = await r.json();
+
+      const sale = d?.saleData || {};
+      return res.status(200).json({
+        zipCode,
+        medianDaysOnMarket: sale.medianDaysOnMarket ?? sale.averageDaysOnMarket ?? null,
+        medianListPrice:    sale.medianListPrice ?? null,
+        medianSalePrice:    sale.medianSalePrice ?? null,
+        activeListings:     sale.totalListings ?? sale.newListings ?? null,
+        priceToListRatio:   sale.saleToListRatio ?? null,
+        marketTemperature:  sale.marketTemperature ?? null, // "hot"/"balanced"/"cold" if RentCast provides it
+        lastUpdated:        d?.lastUpdatedDate ?? null,
+      });
+    } catch (err) {
+      console.error("Market stats API error:", err);
+      return res.status(500).json({ error: "Internal error fetching market stats" });
+    }
+  }
+
+  // ─── COMPARABLE SALES (default/existing behavior) ────────────────────────
+  const { address } = req.body;
+  if (!address) return res.status(400).json({ error: "Address required" });
 
   try {
     // Step 1 — property lookup to get coordinates and details
