@@ -2535,8 +2535,9 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
 // ─────────────────────────────────────────────────────────────────────────────
 // AGENT VOICE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
-function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade}){
+function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
   const toast=useToast();
+  const [copiedLink, setCopiedLink] = useState(false);
   if(!PLANS[planKey].voiceMemory) return <UpgradePrompt feature="Agent Voice Memory" requiredPlan="pro" onUpgrade={onGoUpgrade}/>;
   const fields=[
     {k:"name",l:"YOUR NAME",p:"Sarah Johnson"},
@@ -2551,7 +2552,20 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade}){
     if(!voice.name||!voice.market){toast("Add your name and market first","error");return;}
     const saved={...voice,saved:true}; setVoice(saved); LS.set("sp_voice",saved);
     toast("Agent voice saved — all scripts will now sound like you ✓"); onSave();
+
+    // Sync the public-safe subset to Supabase so the lead capture page
+    // can show your name/brokerage without needing your login session.
+    if(user?.email){
+      fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          email:user.email, action:"sync_data",
+          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta },
+        }),
+      }).catch(()=>{});
+    }
   }
+  const leadLink = user?.email ? `https://usesparkai.app/?lead=${encodeURIComponent(user.email)}` : null;
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
       <p style={{fontSize:13,color:C.textMd,lineHeight:1.7,marginBottom:22,fontFamily:C.F}}>Set your profile once. Every script, hook, and caption will sound exactly like you — not generic AI copy.</p>
@@ -2565,6 +2579,32 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade}){
       <button className="btn-g" onClick={save} style={{marginTop:22,width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:14,boxShadow:"0 4px 18px rgba(99,102,241,.24)"}}>
         Save Agent Voice ⚡
       </button>
+
+      {voice.saved&&leadLink&&(
+        <div style={{marginTop:20,background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.18)",
+          borderRadius:12,padding:"16px 18px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <span style={{fontSize:16}}>🔗</span>
+            <span style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>Your lead capture page</span>
+          </div>
+          <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"0 0 10px",lineHeight:1.6}}>
+            Share this link anywhere — social bio, email signature, listing flyers. Anyone who fills it out becomes a new prospect in your pipeline instantly, and you get an email the moment they submit.
+          </p>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{flex:1,background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,
+              borderRadius:8,padding:"8px 12px",fontFamily:C.F,fontSize:11,color:C.textMd,
+              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+              {leadLink}
+            </div>
+            <button onClick={()=>{ navigator.clipboard.writeText(leadLink); setCopiedLink(true); toast("Link copied"); setTimeout(()=>setCopiedLink(false),2000); }}
+              style={{background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",
+                color:"#a5b4fc",borderRadius:8,padding:"8px 16px",cursor:"pointer",
+                fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0}}>
+              {copiedLink?"✓ Copied":"Copy Link"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4401,7 +4441,7 @@ function MainApp({user,onLogout}){
                 <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update and save to refresh</span>
               </div>
             )}
-            <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
+            <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade} user={user}/>
           </div>
         )}
 
@@ -4570,7 +4610,7 @@ function MainApp({user,onLogout}){
                       <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active</span>
                     </div>
                   )}
-                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
+                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade} user={user}/>
                 </div>
               )}
               
@@ -4631,7 +4671,7 @@ function MainApp({user,onLogout}){
                       <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update any field and save to refresh</span>
                     </div>
                   )}
-                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade}/>
+                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade} user={user}/>
                 </div>
               )}
               
@@ -5464,8 +5504,169 @@ function AuthPage({mode,onAuth,onSwitch}){
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC LEAD CAPTURE — no-auth page, the "front door" into SPARK. Loaded
+// when the URL includes ?lead=<agent-email>. Renders a lightweight, fully
+// public contact form; submissions are appended straight into the agent's
+// pipeline as a new prospect, with an instant email notification.
+// ─────────────────────────────────────────────────────────────────────────────
+function PublicLeadCapture({ agentEmail }){
+  const [agentProfile, setAgentProfile] = useState(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [name, setName]       = useState("");
+  const [phone, setPhone]     = useState("");
+  const [email, setEmail]     = useState("");
+  const [interest, setInterest] = useState("buying");
+  const [message, setMessage] = useState("");
+  const [honeypot, setHoneypot] = useState(""); // hidden — bots fill it, humans don't
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(()=>{
+    fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email:agentEmail, action:"get_public_profile" }),
+    })
+      .then(r=>r.json())
+      .then(d=>setAgentProfile(d?.profile||null))
+      .catch(()=>setAgentProfile(null))
+      .finally(()=>setLoadingProfile(false));
+  },[agentEmail]);
+
+  async function handleSubmit(e){
+    e.preventDefault();
+    if(!name.trim() || (!phone.trim() && !email.trim())){
+      setError("Please enter your name and a phone number or email so they can reach you.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try{
+      const r = await fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          email: agentEmail, action:"capture_lead",
+          name: name.trim(), phone: phone.trim(), leadEmail: email.trim(),
+          interest, message: message.trim(), honeypot,
+        }),
+      });
+      const d = await r.json();
+      if(!r.ok) throw new Error(d?.error||"Something went wrong");
+      setSubmitted(true);
+    }catch(err){
+      setError("Something went wrong — please try again, or reach out directly if you have their contact info.");
+    }
+    setSubmitting(false);
+  }
+
+  const agentName = agentProfile?.name || "this agent";
+  const agentFirst = agentProfile?.name?.split(" ")[0] || "them";
+
+  return(
+    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",
+      alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
+      <div style={{width:"100%",maxWidth:440}}>
+        <div style={{display:"flex",alignItems:"center",gap:9,justifyContent:"center",marginBottom:28}}>
+          <div style={{width:30,height:30,borderRadius:8,
+            background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>⚡</div>
+          <span style={{fontFamily:C.F,fontWeight:800,fontSize:15,color:"#fff",letterSpacing:-0.3}}>SPARK</span>
+        </div>
+
+        {submitted ? (
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:18,
+            padding:"40px 28px",textAlign:"center",animation:"fadeUp .3s ease"}}>
+            <div style={{fontSize:40,marginBottom:16}}>✅</div>
+            <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:20,color:"#fff",margin:"0 0 10px"}}>
+              You're all set
+            </h1>
+            <p style={{fontFamily:C.F,fontSize:14,color:"rgba(255,255,255,.6)",margin:0,lineHeight:1.6}}>
+              Thanks, {name.split(" ")[0]}! {agentFirst} will be in touch with you soon.
+            </p>
+          </div>
+        ) : (
+          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:18,padding:"32px 26px"}}>
+            {!loadingProfile&&(
+              <div style={{textAlign:"center",marginBottom:24}}>
+                <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:21,color:"#fff",margin:"0 0 6px",letterSpacing:-0.3}}>
+                  Get in touch with {agentName}
+                </h1>
+                {agentProfile?.brokerage&&(
+                  <p style={{fontFamily:C.F,fontSize:12,color:"rgba(255,255,255,.4)",margin:0}}>
+                    {agentProfile.brokerage}{agentProfile.market?` · ${agentProfile.market}`:""}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit}>
+              {/* Honeypot — invisible to humans, bots often fill every field */}
+              <input type="text" value={honeypot} onChange={e=>setHoneypot(e.target.value)}
+                tabIndex={-1} autoComplete="off"
+                style={{position:"absolute",left:"-9999px",width:1,height:1,opacity:0}}
+                aria-hidden="true"/>
+
+              <div style={{display:"flex",gap:6,marginBottom:14}}>
+                {[{v:"buying",l:"I'm buying"},{v:"selling",l:"I'm selling"}].map(o=>(
+                  <button key={o.v} type="button" onClick={()=>setInterest(o.v)}
+                    style={{flex:1,padding:"9px 0",borderRadius:9,
+                      border:`1px solid ${interest===o.v?"rgba(99,102,241,.5)":C.border}`,
+                      background:interest===o.v?"rgba(99,102,241,.12)":"transparent",
+                      color:interest===o.v?"#a5b4fc":"rgba(255,255,255,.5)",
+                      cursor:"pointer",fontFamily:C.F,fontSize:12,fontWeight:700}}>
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name"
+                style={inputStyle}/>
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Phone number"
+                type="tel" style={inputStyle}/>
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email"
+                type="email" style={inputStyle}/>
+              <textarea value={message} onChange={e=>setMessage(e.target.value)}
+                placeholder="What are you looking for? (optional)"
+                rows={3} style={{...inputStyle,resize:"vertical",fontFamily:C.F}}/>
+
+              {error&&(
+                <p style={{fontFamily:C.F,fontSize:12,color:"#fb7185",margin:"0 0 12px",lineHeight:1.5}}>{error}</p>
+              )}
+
+              <button type="submit" disabled={submitting}
+                style={{width:"100%",background:submitting?"rgba(255,255,255,.06)":"linear-gradient(135deg,#6366f1,#8b5cf6)",
+                  border:"none",color:"#fff",borderRadius:11,padding:"13px 0",
+                  cursor:submitting?"default":"pointer",fontFamily:C.F,fontWeight:800,fontSize:14,
+                  boxShadow:submitting?"none":"0 4px 16px rgba(99,102,241,.3)",marginTop:4}}>
+                {submitting?"Sending...":"Send"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        <p style={{textAlign:"center",fontFamily:C.F,fontSize:10,color:"rgba(255,255,255,.25)",marginTop:20}}>
+          Powered by SPARK
+        </p>
+      </div>
+    </div>
+  );
+}
+const inputStyle = {
+  width:"100%",background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,
+  borderRadius:10,padding:"11px 14px",color:"#fff",fontSize:13,fontFamily:C.F,
+  marginBottom:10,outline:"none",boxSizing:"border-box",
+};
+
 export default function App(){
   useStyles();
+
+  // Public lead-capture page — bypasses all auth/landing/app logic entirely.
+  // A stranger clicking an agent's shared link should never see a login
+  // screen or need an account. (Computed before hooks but only branched
+  // on in the return below, so hook call order stays unconditional.)
+  const leadParam = new URLSearchParams(window.location.search).get("lead");
+
   const [screen,setScreen]   =useState(()=>{
     const params = new URLSearchParams(window.location.search);
     if(params.get("google_connected")||params.get("google_error")||params.get("screen")==="login") return "auth";
@@ -5488,6 +5689,7 @@ export default function App(){
     }).catch(()=>{});
   },[]);
 
+  if(leadParam) return <PublicLeadCapture agentEmail={decodeURIComponent(leadParam)}/>;
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
   if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
