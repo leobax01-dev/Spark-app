@@ -1933,8 +1933,15 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       // Regenerate daily brief with new Autopilot context
       apLsSet(DAILY_BRIEF_KEY,null);
       triggerDailyBrief(apLsGet(CONV_KEY,[]),googleData);
+      // Email alert — only fire if the top critical risk is new since last alert
+      const topRisk = analysis?.deal_intelligence?.risks?.find(r=>r.severity==="high");
+      const riskSignature = topRisk ? `${topRisk.deal}::${topRisk.risk}`.slice(0,200) : null;
+      const lastAlerted = apLsGet("spark_last_alerted_risk", null);
+      const shouldNotify = !!(riskSignature && riskSignature !== lastAlerted);
+      if(shouldNotify) apLsSet("spark_last_alerted_risk", riskSignature);
+
       if(user?.email){
-        apSync(user.email,"save_run",{result:analysis,clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory})
+        apSync(user.email,"save_run",{result:analysis,clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory,notifyEmail:shouldNotify,agentName:voice?.name})
           .then(()=>{
             apSync(user.email,"load_history").then(h=>{ if(h?.runs) setRunHistory(h.runs); });
             syncAgentData(user.email);
@@ -2083,6 +2090,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
               <div style={{fontFamily:C.F,fontSize:9,marginTop:2,display:"flex",alignItems:"center",gap:5,color:apRunning?C.amber:apResult?C.emerald:C.textDim}}>
                 <div style={{width:4,height:4,borderRadius:"50%",background:apRunning?C.amber:apResult?C.emerald:C.textDim,animation:apRunning?"pulse 1s ease infinite":"none"}}/>
                 {apRunning?"Analyzing your business...":apResult?"Monitoring your business · Always on":"Ready to analyze"}
+                {isPremium&&apResult&&!apRunning&&(
+                  <span style={{color:C.textDim,marginLeft:2}}>· 📧 Email alerts on</span>
+                )}
               </div>
             </div>
           </div>
