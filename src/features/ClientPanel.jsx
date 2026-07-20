@@ -27,6 +27,33 @@ function lsGet(key, fallback){ try{ const v=localStorage.getItem(key); return v?
 function lsSet(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch{} }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CLOUD SYNC — Supabase is source of truth; localStorage is a fast local cache
+// ─────────────────────────────────────────────────────────────────────────────
+async function cloudLoad(email){
+  if(!email) return null;
+  try{
+    const r = await fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email, action:"load_data" }),
+    });
+    const d = await r.json();
+    return d?.data||null;
+  }catch(e){ console.warn("Cloud load failed:",e.message); return null; }
+}
+
+async function cloudSync(email, patch){
+  if(!email) return false;
+  try{
+    const r = await fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email, action:"sync_data", ...patch }),
+    });
+    const d = await r.json();
+    return !!d?.synced;
+  }catch(e){ console.warn("Cloud sync failed:",e.message); return false; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SHARED UI
 // ─────────────────────────────────────────────────────────────────────────────
 function CCard({children, accent=C.indigo, style={}}){
@@ -114,14 +141,43 @@ const BLANK_CLIENT = {
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 1 — CLIENT PIPELINE MANAGER
 // ─────────────────────────────────────────────────────────────────────────────
-function ClientPipeline(){
+function ClientPipeline({ user }){
   const [clients, setClients]   = useState(()=>lsGet(LS_KEY, []));
   const [view,    setView]      = useState("pipeline"); // pipeline | add | detail
   const [editing, setEditing]   = useState(null);
   const [loadingAi, setLoadingAi] = useState(null);
   const [filterStage, setFilterStage] = useState("all");
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle | syncing | synced | offline
+  const hydrated = useRef(false);
+
+  // On mount — pull from cloud (source of truth), reconcile with local cache
+  useEffect(()=>{
+    if(!user?.email){ hydrated.current=true; return; }
+    (async ()=>{
+      const cloud = await cloudLoad(user.email);
+      if(cloud?.clients){
+        // Cloud wins if it has data or is newer than what's cached; empty cloud + existing local = push local up
+        if(cloud.clients.length > 0 || clients.length === 0){
+          setClients(cloud.clients);
+          lsSet(LS_KEY, cloud.clients);
+        }
+      }
+      hydrated.current = true;
+    })();
+  },[]);
 
   useEffect(()=>{ lsSet(LS_KEY, clients); }, [clients]);
+
+  // Debounced cloud sync on every change (skip the initial hydration write)
+  useEffect(()=>{
+    if(!hydrated.current || !user?.email) return;
+    setSyncStatus("syncing");
+    const timeout = setTimeout(async ()=>{
+      const ok = await cloudSync(user.email, { clients });
+      setSyncStatus(ok?"synced":"offline");
+    }, 900);
+    return ()=>clearTimeout(timeout);
+  },[clients]);
 
   function saveClient(client){
     const isNew = !client.id;
@@ -288,8 +344,18 @@ Return ONLY valid JSON:
           <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text}}>
             {clients.length} client{clients.length!==1?"s":""}
           </div>
-          <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>
-            {clients.filter(c=>c.stage==="active").length} active · {clients.filter(c=>c.stage==="contract").length} under contract
+          <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2,display:"flex",alignItems:"center",gap:6}}>
+            <span>{clients.filter(c=>c.stage==="active").length} active · {clients.filter(c=>c.stage==="contract").length} under contract</span>
+            {user?.email&&(
+              <span style={{display:"flex",alignItems:"center",gap:3}}>
+                <div style={{width:5,height:5,borderRadius:"50%",
+                  background:syncStatus==="synced"?C.emerald:syncStatus==="syncing"?C.amber:syncStatus==="offline"?C.rose:C.textDim,
+                  boxShadow:syncStatus==="synced"?`0 0 5px ${C.emerald}`:"none"}}/>
+                <span style={{fontSize:8,color:C.textDim}}>
+                  {syncStatus==="synced"?"Synced":syncStatus==="syncing"?"Syncing...":syncStatus==="offline"?"Offline":""}
+                </span>
+              </span>
+            )}
           </div>
         </div>
         <CBtn small onClick={()=>{ setEditing({...BLANK_CLIENT}); setView("add"); }} color={C.indigo}>
@@ -792,7 +858,7 @@ export default function ClientPanel({ user, planKey }){
       </div>
 
       {tool==="briefing" && <DailyBriefing/>}
-      {tool==="pipeline" && <ClientPipeline/>}
+      {tool==="pipeline" && <ClientPipeline user={user}/>}
       {tool==="notes"    && <DealNotes/>}
     </div>
   );
