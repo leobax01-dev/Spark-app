@@ -1334,6 +1334,117 @@ function TypingIndicator(){
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN UNIFIED COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
+const SPHERE_KEY = "spark_sphere_reactivation_v1"; // cached sphere reactivation result
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPHERE REACTIVATION ENGINE — surfaces dormant relationships worth reviving
+// ─────────────────────────────────────────────────────────────────────────────
+function daysSinceDate(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return null;
+  return Math.round((Date.now()-d.getTime())/864e5);
+}
+
+// Pure JS, instant, no AI — scans the client book for reactivation triggers.
+// Runs client-side against whatever clients are currently loaded.
+function computeSphereCandidates(clients){
+  const candidates = [];
+  clients.forEach(c=>{
+    const anchor = c.lastContact || c.createdAt;
+    const days = daysSinceDate(anchor);
+    if(days===null) return;
+
+    if(c.stage==="closed"){
+      // Past clients — anniversary and check-in triggers
+      if(days>=330 && days<=395){
+        candidates.push({ client:c, days, trigger:"1-Year Home Anniversary", priority:1 });
+      } else if(days>=700 && days<=760){
+        candidates.push({ client:c, days, trigger:"2-Year Check-In", priority:2 });
+      } else if(days>=1060 && days<=1120){
+        candidates.push({ client:c, days, trigger:"3-Year Check-In", priority:2 });
+      } else if(days>=150 && days<330){
+        candidates.push({ client:c, days, trigger:"Post-Close Market Update", priority:3 });
+      } else if(days>395 && days%365<30 === false && days>760){
+        // Catch-all for long-dormant past clients not on a clean anniversary
+        if(days>1120) candidates.push({ client:c, days, trigger:"Long-Dormant Past Client", priority:4 });
+      }
+    } else if((c.stage==="prospect"||c.stage==="active") && days>=120){
+      // Cold leads / stalled relationships — different kind of reactivation
+      candidates.push({ client:c, days, trigger:"Cold Lead Reactivation", priority: days>240?1:2 });
+    }
+  });
+
+  // Sort by priority (1 = most urgent/valuable), then by days descending within tier
+  candidates.sort((a,b)=> a.priority-b.priority || b.days-a.days);
+  return candidates;
+}
+
+async function generateSphereReactivation(clients, voice, email, apResult){
+  const candidates = computeSphereCandidates(clients);
+  if(candidates.length===0){
+    return { opportunities:[], sphere_summary:"No dormant relationships detected right now — the sphere is well-tended.", total_dormant:0, generated:new Date().toISOString() };
+  }
+
+  // Cap at the top 12 most valuable candidates so the prompt stays focused
+  const top = candidates.slice(0,12);
+  const ctx = top.map((cand,i)=>
+    `${i+1}. ${cand.client.name} — ${cand.trigger}, ${cand.days} days since last contact, type: ${cand.client.type||"?"}, property: ${cand.client.property||"unknown"}, notes: ${cand.client.notes?.slice(0,120)||"none"}`
+  ).join("\n");
+
+  const r = await fetch("/api/claude",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      system:"You are SPARK Autopilot's Sphere Reactivation Engine. Real estate's biggest missed opportunity is that most agents' past clients would use them again but never get re-contacted. Your job is to give the agent a specific, non-salesy, genuinely valuable reason to reach out to each dormant relationship, plus a ready-to-send message. Reference real names, timeframes, and property details. Return ONLY valid compact JSON.",
+      messages:[{role:"user",content:`Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, market: ${voice?.market||""}
+
+Here are dormant relationships detected in the agent's book of business:
+${ctx}
+
+For each, generate a specific reactivation opportunity. Return ONLY this JSON:
+{"sphere_summary":"1-2 sentence honest read on the state of the agent's sphere right now","opportunities":[{"name":"client name exactly as given","trigger":"the trigger type as given","why_now":"specific, genuine reason this is a good moment to reach out — reference their actual situation, not generic","message":"a warm, non-salesy, ready-to-send text or email — short, personal, easy to say yes to, NOT pushy or sales-y","ask":"the soft ask embedded in the message, e.g. 'offering a free market update' or 'checking in, no agenda'"}],"top_pick":"name of the single most valuable person to reach out to today, and one sentence on why"}`}],
+      max_tokens:2200,
+    })
+  });
+  const d = await r.json();
+  const raw = d.content?.[0]?.text||"";
+  let parsed = null;
+  for(const attempt of [
+    ()=>JSON.parse(raw.trim()),
+    ()=>{ const f=raw.indexOf("{"),l=raw.lastIndexOf("}"); if(f!==-1&&l>f) return JSON.parse(raw.slice(f,l+1)); throw new Error("no"); },
+  ]){
+    try{ parsed=attempt(); break; }catch{}
+  }
+  if(!parsed) throw new Error("parse_failed");
+
+  // Attach trigger/days metadata back onto each opportunity for UI badges
+  parsed.opportunities = (parsed.opportunities||[]).map(op=>{
+    const match = top.find(t=>t.client.name===op.name);
+    return { ...op, days: match?.days, clientId: match?.client.id };
+  });
+  parsed.total_dormant = candidates.length;
+  parsed.generated = new Date().toISOString();
+
+  // Persist — merge into the existing Autopilot result blob and re-save via
+  // the already-wired save_run action, so no new table/API action is needed.
+  lsSetSphere(parsed);
+  if(email && apResult){
+    const mergedResult = { ...apResult, sphere_reactivation: parsed };
+    apSync(email,"save_run",{
+      result: mergedResult,
+      clientCount: clients.length,
+      dealCount: apResult?.deal_intelligence?.deals?.length||0,
+      overallHealth: apResult?.deal_intelligence?.overall_health||"stable",
+    }).catch(()=>{});
+  }
+
+  return parsed;
+}
+
+function lsSetSphere(data){ apLsSet(SPHERE_KEY, data); }
+function lsGetSphere(){ return apLsGet(SPHERE_KEY, null); }
+
 const WEEKLY_KEY = "spark_weekly_report_v1"; // cached weekly report
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1625,6 +1736,129 @@ function WeeklyReport({ report, weekLabel, onDiscuss }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SPHERE REACTIVATION — UI component
+// ─────────────────────────────────────────────────────────────────────────────
+const TRIGGER_STYLE = {
+  "1-Year Home Anniversary":   { icon:"🏠", color:C.emerald },
+  "2-Year Check-In":           { icon:"🏠", color:C.cyan },
+  "3-Year Check-In":           { icon:"🏠", color:C.cyan },
+  "Post-Close Market Update":  { icon:"📈", color:C.indigo },
+  "Long-Dormant Past Client":  { icon:"💤", color:C.amber },
+  "Cold Lead Reactivation":    { icon:"❄️", color:C.rose },
+};
+
+function SphereReactivation({ sphere, onDiscuss, onCopyToast }){
+  if(!sphere) return null;
+  const { opportunities=[], sphere_summary, top_pick, total_dormant=0 } = sphere;
+
+  if(opportunities.length===0){
+    return(
+      <APCard accent={C.emerald}>
+        <div style={{textAlign:"center",padding:"24px 0"}}>
+          <div style={{fontSize:36,marginBottom:12}}>✨</div>
+          <p style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,margin:"0 0 8px"}}>
+            Sphere is well-tended
+          </p>
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:0,lineHeight:1.6}}>
+            {sphere_summary||"No dormant relationships detected right now — every past client and lead has been contacted recently."}
+          </p>
+        </div>
+      </APCard>
+    );
+  }
+
+  return(
+    <div>
+      {/* Summary */}
+      <APCard accent={C.violet} style={{background:`linear-gradient(135deg,${C.violet}08,${C.indigo}04)`}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+          <div style={{width:40,height:40,borderRadius:11,flexShrink:0,
+            background:`linear-gradient(135deg,${C.violet},${C.indigo})`,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:18,boxShadow:`0 4px 14px ${C.violet}30`}}>🔄</div>
+          <div>
+            <span style={{fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,
+              background:`${C.violet}14`,border:`1px solid ${C.violet}28`,
+              borderRadius:8,padding:"1px 8px",letterSpacing:1}}>
+              SPHERE REACTIVATION
+            </span>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,color:C.text,marginTop:4}}>
+              {total_dormant} dormant relationship{total_dormant!==1?"s":""} detected
+            </div>
+          </div>
+        </div>
+        <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.65}}>
+          {sphere_summary}
+        </p>
+      </APCard>
+
+      {/* Top pick */}
+      {top_pick&&(
+        <APCard accent={C.emerald}>
+          <APLabel color={C.emerald}>TODAY'S TOP PICK</APLabel>
+          <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:0,lineHeight:1.6}}>
+            {top_pick}
+          </p>
+        </APCard>
+      )}
+
+      {/* Opportunities */}
+      <APCard accent={C.indigo}>
+        <APLabel color={C.indigo}>REACTIVATION OPPORTUNITIES</APLabel>
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          {opportunities.map((op,i)=>{
+            const style = TRIGGER_STYLE[op.trigger]||{icon:"👤",color:C.indigo};
+            return(
+              <div key={i} style={{background:"rgba(255,255,255,.02)",
+                border:`1px solid ${C.border}`,borderRadius:11,padding:"13px 14px",
+                animation:`slideR .2s ease ${i*.05}s both`}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:15}}>{style.icon}</span>
+                    <span style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>{op.name}</span>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:8,color:style.color,fontFamily:C.F,fontWeight:700,
+                      background:`${style.color}14`,border:`1px solid ${style.color}28`,
+                      borderRadius:8,padding:"2px 8px",letterSpacing:.5}}>
+                      {op.trigger}
+                    </span>
+                    {op.days!=null&&(
+                      <span style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>{op.days}d</span>
+                    )}
+                  </div>
+                </div>
+                <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:"0 0 10px",lineHeight:1.6}}>
+                  {op.why_now}
+                </p>
+                <div style={{background:`${style.color}06`,border:`1px solid ${style.color}18`,
+                  borderRadius:9,padding:"10px 12px",marginBottom:8}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                    <span style={{fontSize:8,color:style.color,fontFamily:C.F,fontWeight:700,letterSpacing:1.2}}>
+                      READY-TO-SEND MESSAGE
+                    </span>
+                    <APCopyBtn text={op.message}/>
+                  </div>
+                  <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+                    {op.message}
+                  </p>
+                </div>
+                <button onClick={()=>onDiscuss(`I want to reach out to ${op.name} — Autopilot flagged this as a "${op.trigger}" reactivation opportunity: ${op.why_now}. Help me refine this outreach or think through the conversation.`)}
+                  style={{background:"transparent",border:`1px solid ${C.border}`,
+                    color:C.textDim,borderRadius:7,padding:"4px 10px",cursor:"pointer",
+                    fontSize:9,fontFamily:C.F,fontWeight:600}}>
+                  Discuss with SPARK →
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </APCard>
+    </div>
+  );
+}
+
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
@@ -1639,6 +1873,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [weeklyReport, setWeeklyReport] = useState(()=>apLsGet(WEEKLY_KEY,null));
   const [weeklyLoading,setWeeklyLoading]= useState(false);
   const [weeklyError,  setWeeklyError]  = useState(null); // active risk for situation room
+  const [sphere,        setSphere]        = useState(()=>apLsGet(SPHERE_KEY,null));
+  const [sphereLoading, setSphereLoading] = useState(false);
+  const [sphereError,   setSphereError]   = useState(null);
 
   // Chat state
   const [messages,      setMessages]      = useState(()=>apLsGet(CHAT_KEY,[]));
@@ -1867,6 +2104,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         apLsSet(AP_KEY,d.latestRun.result);
         apLsSet(RUN_KEY,d.latestRun.run_at);
       }
+      // Sphere reactivation is stored inside the result blob — hydrate if present
+      if(d.latestRun.result?.sphere_reactivation){
+        setSphere(d.latestRun.result.sphere_reactivation);
+        apLsSet(SPHERE_KEY, d.latestRun.result.sphere_reactivation);
+      }
     }
     if(d?.memory){
       setDbMemory(d.memory);
@@ -1903,6 +2145,21 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setWeeklyError("Report generation failed — try again.");
     }
     setWeeklyLoading(false);
+  }
+
+  async function runSphereReactivation(){
+    if(sphereLoading) return;
+    setSphereLoading(true);
+    setSphereError(null);
+    try{
+      const clients = apLsGet("spark_clients_v1",[]);
+      const result  = await generateSphereReactivation(clients, voice, user?.email, apResult);
+      setSphere(result);
+    }catch(e){
+      console.error("Sphere reactivation error:",e);
+      setSphereError("Couldn't scan your sphere right now — try again.");
+    }
+    setSphereLoading(false);
   }
 
   async function fetchGoogleData(){
@@ -2056,6 +2313,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     {id:"mission",  label:"Mission",  icon:"🎯"},
     {id:"deals",    label:"Deals",    icon:"📋"},
     {id:"clients",  label:"Clients",  icon:"👥"},
+    {id:"sphere",   label:"Sphere",   icon:"🔄", badge:sphere?.opportunities?.length||null},
     {id:"alerts",   label:"Alerts",   icon:"⚡"},
     {id:"market",   label:"Market",   icon:"📈"},
     {id:"coaching", label:"Coaching", icon:"🏆"},
@@ -2256,6 +2514,61 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="clients"  &&<ClientScores     scores={apResult.client_scores}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
+                {apTab==="sphere"   &&(
+                  <div>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                      <div>
+                        <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>
+                          Sphere Reactivation
+                        </div>
+                        <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>
+                          {sphere
+                            ? `Scanned ${new Date(sphere.generated).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}`
+                            : "Not yet scanned"}
+                        </div>
+                      </div>
+                      <button onClick={runSphereReactivation} disabled={sphereLoading}
+                        style={{background:sphereLoading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.violet},${C.indigo})`,
+                          border:"none",color:sphereLoading?C.textDim:"#fff",
+                          borderRadius:9,padding:"8px 16px",cursor:sphereLoading?"default":"pointer",
+                          fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0,
+                          boxShadow:sphereLoading?"none":`0 3px 12px ${C.violet}30`,transition:"all .2s"}}>
+                        {sphereLoading?"Scanning...":sphere?"Rescan Sphere":"Scan My Sphere"}
+                      </button>
+                    </div>
+
+                    {sphereError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{sphereError}</div>}
+
+                    {sphereLoading&&(
+                      <APCard accent={C.violet}>
+                        <div style={{textAlign:"center",padding:"28px 0"}}>
+                          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
+                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.violet,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                          </div>
+                          <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Scanning your sphere...</p>
+                          <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>Finding past clients and cold leads worth reconnecting with</p>
+                        </div>
+                      </APCard>
+                    )}
+
+                    {!sphereLoading&&sphere&&(
+                      <SphereReactivation
+                        sphere={sphere}
+                        onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}
+                      />
+                    )}
+
+                    {!sphereLoading&&!sphere&&(
+                      <APCard accent={C.violet}>
+                        <div style={{textAlign:"center",padding:"24px 0"}}>
+                          <div style={{fontSize:36,marginBottom:12}}>🔄</div>
+                          <p style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,margin:"0 0 8px"}}>Your sphere hasn't been scanned yet</p>
+                          <p style={{fontFamily:C.F,fontSize:12,color:C.textDim,margin:"0 0 16px",lineHeight:1.6,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>SPARK will scan your past clients and cold leads for reactivation opportunities — home anniversaries, market check-ins, and dormant relationships worth a warm reach-out.</p>
+                        </div>
+                      </APCard>
+                    )}
+                  </div>
+                )}
                 {apTab==="alerts"   &&<RelationshipAlerts alerts={apResult.relationship_alerts} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="market"   &&<MarketCoachingForecast market={apResult.market_intelligence} coaching={null} forecast={null} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="coaching" &&<MarketCoachingForecast market={null} coaching={apResult.coaching_insight} forecast={apResult.performance_forecast} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
