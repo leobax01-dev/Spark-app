@@ -3,6 +3,7 @@
 // Standalone feature file — imported into App.jsx
 
 import { useState, useEffect, useRef } from "react";
+import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -19,39 +20,6 @@ const C = {
 
 const LS_KEY = "spark_clients_v1";
 const BRIEFING_KEY = "spark_briefing_v1";
-
-// ─────────────────────────────────────────────────────────────────────────────
-// LOCAL STORAGE HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-function lsGet(key, fallback){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fallback; }catch{ return fallback; } }
-function lsSet(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch{} }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CLOUD SYNC — Supabase is source of truth; localStorage is a fast local cache
-// ─────────────────────────────────────────────────────────────────────────────
-async function cloudLoad(email){
-  if(!email) return null;
-  try{
-    const r = await fetch("/api/google-data",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ email, action:"load_data" }),
-    });
-    const d = await r.json();
-    return d?.data||null;
-  }catch(e){ console.warn("Cloud load failed:",e.message); return null; }
-}
-
-async function cloudSync(email, patch){
-  if(!email) return false;
-  try{
-    const r = await fetch("/api/google-data",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ email, action:"sync_data", ...patch }),
-    });
-    const d = await r.json();
-    return !!d?.synced;
-  }catch(e){ console.warn("Cloud sync failed:",e.message); return false; }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED UI
