@@ -5,6 +5,7 @@ import ClientPanel from "./features/ClientPanel";
 import MarketPanel from "./features/MarketPanel";
 import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
 import AutopilotPanel from "./features/AutopilotPanel";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -4197,7 +4198,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
       </div>
     </div>
   );
@@ -4365,7 +4366,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
             </div>
           </div>
           <MobileNav/>
@@ -4426,7 +4427,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
-              {tab==="autopilot"&&<AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/>}{tab==="transactions"&&<TransactionPanel user={user} planKey={planKey}/>}{tab==="clients"&&<ClientPanel user={user} planKey={planKey}/>}{tab==="market"&&<MarketPanel user={user} planKey={planKey}/>}{tab==="calculator"&&<CommissionCalculator user={user} planKey={planKey}/>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
             </div>
           </div>
         </div>
