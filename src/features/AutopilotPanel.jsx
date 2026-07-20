@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { lsGet as apLsGet, lsSet as apLsSet, cloudSync as apCloudSync } from "../utils/storage";
+import { runComplianceCheck } from "../utils/compliance";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -1273,11 +1274,25 @@ function RunHistory({ runs, memory, conversations }){
 function ChatMessage({ msg, onRegenerate, onSaveNote }){
   const [copied,setCopied]=useState(false);
   const [showActions,setShowActions]=useState(false);
+  const [complianceResult, setComplianceResult] = useState(null);
+  const [complianceChecking, setComplianceChecking] = useState(false);
   const isUser=msg.role==="user";
   const formattedContent = msg.content.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>");
 
   function copyText(){
     navigator.clipboard.writeText(msg.content).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
+  }
+
+  async function checkCompliance(){
+    if(complianceChecking) return;
+    setComplianceChecking(true);
+    try{
+      const result = await runComplianceCheck(msg.content, "SPARK chat response");
+      setComplianceResult(result);
+    }catch(e){
+      console.warn("Compliance check failed:", e.message);
+    }
+    setComplianceChecking(false);
   }
 
   return(
@@ -1310,8 +1325,8 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
         </div>
         {!isUser&&!msg.streaming&&showActions&&(
           <div style={{display:"flex",gap:5,marginTop:6,flexWrap:"wrap"}}>
-            {[{label:copied?"✓ Copied":"Copy",fn:copyText},{label:"Save note",fn:()=>onSaveNote(msg.content)},{label:"Regenerate",fn:onRegenerate}].map((a,i)=>(
-              <button key={i} onClick={a.fn}
+            {[{label:copied?"✓ Copied":"Copy",fn:copyText},{label:"Save note",fn:()=>onSaveNote(msg.content)},{label:"Regenerate",fn:onRegenerate},{label:complianceChecking?"Checking...":"Check compliance",fn:checkCompliance}].map((a,i)=>(
+              <button key={i} onClick={a.fn} disabled={a.label==="Checking..."}
                 style={{background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,
                   color:C.textDim,borderRadius:8,padding:"3px 9px",cursor:"pointer",
                   fontSize:9,fontFamily:C.F,fontWeight:600,transition:"all .12s"}}
@@ -1322,6 +1337,29 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
             ))}
           </div>
         )}
+        {complianceResult&&!isUser&&(()=>{
+          const riskColor = complianceResult.overall_risk==="high_risk"?C.rose:complianceResult.overall_risk==="caution"?C.amber:C.emerald;
+          return(
+            <div style={{marginTop:8,background:`${riskColor}08`,border:`1px solid ${riskColor}24`,
+              borderRadius:9,padding:"9px 12px",maxWidth:"100%"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:complianceResult.flags?.length?6:0}}>
+                <span style={{fontSize:12}}>{complianceResult.overall_risk==="clear"?"✅":complianceResult.overall_risk==="high_risk"?"🚫":"⚠️"}</span>
+                <span style={{fontSize:10,color:riskColor,fontFamily:C.F,fontWeight:700}}>
+                  Fair Housing: {complianceResult.overall_risk==="clear"?"Looks Clear":complianceResult.overall_risk==="high_risk"?"High Risk":"Review Suggested"}
+                </span>
+              </div>
+              {complianceResult.summary&&(
+                <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"0 0 6px",lineHeight:1.5}}>{complianceResult.summary}</p>
+              )}
+              {(complianceResult.flags||[]).map((f,i)=>(
+                <div key={i} style={{fontSize:10,color:C.textMd,fontFamily:C.F,marginBottom:4,lineHeight:1.5}}>
+                  <strong style={{fontStyle:"italic"}}>"{f.phrase}"</strong> — {f.reason}
+                  {f.suggested_rewrite&&<div style={{color:C.emerald,marginTop:2}}>Suggested: {f.suggested_rewrite}</div>}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
