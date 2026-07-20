@@ -4,6 +4,7 @@
 // Starter/Pro: SPARK Assistant chat with full business context (no Autopilot report)
 
 import { useState, useEffect, useRef } from "react";
+import { lsGet as apLsGet, lsSet as apLsSet, cloudSync as apCloudSync } from "../utils/storage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -25,8 +26,7 @@ const CHAT_KEY    = "spark_autopilot_chat_v1";
 const NOTES_KEY   = "spark_assistant_notes_v1";
 const CONV_KEY    = "spark_conv_memory_v1"; // cached conversation summaries
 
-const apLsGet=(key,fb)=>{ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):fb; }catch(e){ return fb; } };
-const apLsSet=(key,val)=>{ try{ localStorage.setItem(key,JSON.stringify(val)); }catch(e){} };
+// apLsGet / apLsSet now imported from ../utils/storage (see top of file)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONVERSATION MEMORY — summarize + persist sessions
