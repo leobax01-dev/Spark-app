@@ -667,6 +667,113 @@ function APCopyBtn({ text }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SEND IT FOR ME — real one-click send via Resend, with a deliberate
+// confirm-and-edit step before anything actually goes out. This is the
+// "action execution" piece of Autopilot: not just drafting a message, but
+// actually sending it — while keeping the agent in control of the exact
+// wording and recipient right up until the moment they click Confirm.
+// ─────────────────────────────────────────────────────────────────────────────
+function SendItForMe({ recipientName, recipientEmail, defaultSubject, message, agentEmail, agentName }){
+  const [open, setOpen] = useState(false);
+  const [toEmail, setToEmail] = useState(recipientEmail||"");
+  const [subject, setSubject] = useState(defaultSubject||"Following up");
+  const [body, setBody] = useState(message||"");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleSend(){
+    if(!toEmail.trim() || !body.trim()){
+      setError("A recipient email and message are required.");
+      return;
+    }
+    setSending(true);
+    setError(null);
+    try{
+      const r = await fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          email: agentEmail, action:"send_message",
+          agentName, recipientEmail:toEmail.trim(), recipientName,
+          subject: subject.trim(), body: body.trim(),
+        }),
+      });
+      const d = await r.json();
+      if(!r.ok) throw new Error(d?.error||"Send failed");
+      setSent(true);
+    }catch(e){
+      setError("Couldn't send — check the email address and try again.");
+    }
+    setSending(false);
+  }
+
+  if(sent){
+    return(
+      <div style={{display:"flex",alignItems:"center",gap:6,
+        background:`${C.emerald}10`,border:`1px solid ${C.emerald}28`,
+        borderRadius:7,padding:"5px 11px",fontSize:10,color:C.emerald,
+        fontFamily:C.F,fontWeight:700}}>
+        ✓ Sent to {toEmail}
+      </div>
+    );
+  }
+
+  if(!open){
+    return(
+      <button onClick={()=>setOpen(true)}
+        style={{background:`${C.emerald}10`,border:`1px solid ${C.emerald}28`,
+          color:C.emerald,borderRadius:7,padding:"4px 11px",cursor:"pointer",
+          fontSize:9,fontFamily:C.F,fontWeight:700,letterSpacing:.3,
+          display:"flex",alignItems:"center",gap:4}}>
+        📤 Send It For Me
+      </button>
+    );
+  }
+
+  return(
+    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.emerald}28`,
+      borderRadius:10,padding:"12px 13px",marginTop:8}}>
+      <div style={{fontSize:9,color:C.emerald,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:8}}>
+        SEND VIA SPARK — review before sending
+      </div>
+      <input value={toEmail} onChange={e=>setToEmail(e.target.value)} placeholder="Recipient email"
+        style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+          borderRadius:7,padding:"7px 10px",color:C.text,fontFamily:C.F,fontSize:11,
+          outline:"none",boxSizing:"border-box",marginBottom:7}}/>
+      <input value={subject} onChange={e=>setSubject(e.target.value)} placeholder="Subject"
+        style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+          borderRadius:7,padding:"7px 10px",color:C.text,fontFamily:C.F,fontSize:11,
+          outline:"none",boxSizing:"border-box",marginBottom:7}}/>
+      <textarea value={body} onChange={e=>setBody(e.target.value)} rows={4}
+        style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+          borderRadius:7,padding:"8px 10px",color:C.text,fontFamily:C.F,fontSize:11,
+          outline:"none",boxSizing:"border-box",resize:"vertical",lineHeight:1.6,marginBottom:8}}/>
+      {error&&<p style={{fontFamily:C.F,fontSize:10,color:C.rose,margin:"0 0 8px"}}>{error}</p>}
+      <div style={{display:"flex",gap:7}}>
+        <button onClick={()=>setOpen(false)} disabled={sending}
+          style={{background:"transparent",border:`1px solid ${C.border}`,color:C.textDim,
+            borderRadius:7,padding:"6px 13px",cursor:"pointer",fontSize:10,fontFamily:C.F,fontWeight:600}}>
+          Cancel
+        </button>
+        <button onClick={handleSend} disabled={sending}
+          style={{flex:1,background:sending?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+            border:"none",color:sending?C.textDim:"#fff",borderRadius:7,padding:"6px 13px",
+            cursor:sending?"default":"pointer",fontSize:10,fontFamily:C.F,fontWeight:700}}>
+          {sending?"Sending...":"Confirm & Send"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function findClientEmail(name){
+  if(!name) return "";
+  const clients = apLsGet("spark_clients_v1", []);
+  const match = clients.find(c=>c.name && (c.name===name || c.name.includes(name) || name.includes(c.name)));
+  return match?.email || "";
+}
+
 function UrgencyBadge({ urgency }){
   const m={critical:{color:C.rose,label:"CRITICAL"},high:{color:C.amber,label:"HIGH"},medium:{color:C.indigo,label:"MEDIUM"},low:{color:C.textDim,label:"LOW"}}[urgency?.toLowerCase()]||{color:C.indigo,label:"MEDIUM"};
   return <span style={{fontSize:8,color:m.color,fontFamily:C.F,fontWeight:700,background:`${m.color}12`,border:`1px solid ${m.color}28`,borderRadius:8,padding:"2px 7px",letterSpacing:1,flexShrink:0}}>{m.label}</span>;
@@ -936,7 +1043,7 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
   );
 }
 
-function MissionSection({ mission, runTime, onDiscuss }){
+function MissionSection({ mission, runTime, onDiscuss, user, voice }){
   if(!mission) return null;
   const uc={critical:C.rose,high:C.amber,medium:C.indigo};
   return(
@@ -988,6 +1095,9 @@ function MissionSection({ mission, runTime, onDiscuss }){
                     <APCopyBtn text={item.message}/>
                   </div>
                   <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.65,whiteSpace:"pre-wrap"}}>{item.message}</p>
+                  <SendItForMe recipientName={item.client} recipientEmail={findClientEmail(item.client)}
+                    defaultSubject={item.action} message={item.message}
+                    agentEmail={user?.email} agentName={voice?.name}/>
                 </div>
               )}
             </div>
@@ -1093,7 +1203,7 @@ function ClientScores({ scores, onDiscuss }){
   );
 }
 
-function RelationshipAlerts({ alerts, onDiscuss }){
+function RelationshipAlerts({ alerts, onDiscuss, user, voice }){
   if(!alerts?.length) return null;
   const tm={overdue:{icon:"⚠️",color:C.rose,label:"OVERDUE"},referral_window:{icon:"🤝",color:C.amber,label:"REFERRAL WINDOW"},anniversary:{icon:"🎉",color:C.emerald,label:"ANNIVERSARY"},re_engage:{icon:"💬",color:C.indigo,label:"RE-ENGAGE"}};
   return(
@@ -1119,6 +1229,9 @@ function RelationshipAlerts({ alerts, onDiscuss }){
                     <APCopyBtn text={alert.message}/>
                   </div>
                   <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.65}}>{alert.message}</p>
+                  <SendItForMe recipientName={alert.client} recipientEmail={findClientEmail(alert.client)}
+                    defaultSubject={t.label==="OVERDUE"?"Checking in":"Following up"} message={alert.message}
+                    agentEmail={user?.email} agentName={voice?.name}/>
                 </div>
               )}
             </div>
@@ -2122,7 +2235,7 @@ const TRIGGER_STYLE = {
   "Cold Lead Reactivation":    { icon:"❄️", color:C.rose },
 };
 
-function SphereReactivation({ sphere, onDiscuss, onCopyToast }){
+function SphereReactivation({ sphere, onDiscuss, onCopyToast, user, voice }){
   if(!sphere) return null;
   const { opportunities=[], sphere_summary, top_pick, total_dormant=0 } = sphere;
 
@@ -2217,6 +2330,9 @@ function SphereReactivation({ sphere, onDiscuss, onCopyToast }){
                   <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
                     {op.message}
                   </p>
+                  <SendItForMe recipientName={op.name} recipientEmail={findClientEmail(op.name)}
+                    defaultSubject={op.trigger} message={op.message}
+                    agentEmail={user?.email} agentName={voice?.name}/>
                 </div>
                 <button onClick={()=>onDiscuss(`I want to reach out to ${op.name} — Autopilot flagged this as a "${op.trigger}" reactivation opportunity: ${op.why_now}. Help me refine this outreach or think through the conversation.`)}
                   style={{background:"transparent",border:`1px solid ${C.border}`,
@@ -3428,7 +3544,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   ))}
                 </div>
 
-                {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
+                {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} user={user} voice={voice}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="coordinator"&&<TransactionCoordinator voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="negotiate"&&<NegotiationCopilot voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
@@ -3529,6 +3645,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                       <SphereReactivation
                         sphere={sphere}
                         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}
+                        user={user} voice={voice}
                       />
                     )}
 
@@ -3543,7 +3660,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                     )}
                   </div>
                 )}
-                {apTab==="alerts"   &&<RelationshipAlerts alerts={apResult.relationship_alerts} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
+                {apTab==="alerts"   &&<RelationshipAlerts alerts={apResult.relationship_alerts} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} user={user} voice={voice}/>}
                 {apTab==="market"   &&<MarketCoachingForecast market={apResult.market_intelligence} coaching={null} forecast={null} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="coaching" &&<MarketCoachingForecast market={null} coaching={apResult.coaching_insight} forecast={apResult.performance_forecast} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="weekly"   &&(
