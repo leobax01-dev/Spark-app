@@ -6,15 +6,16 @@
 import { useState, useEffect, useRef } from "react";
 import { lsGet as apLsGet, lsSet as apLsSet, cloudSync as apCloudSync } from "../utils/storage";
 import { runComplianceCheck } from "../utils/compliance";
+import Icon from "../components/Icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#04040a", surface:"#08080f", surfaceUp:"#0d0d1a", surfaceHigh:"#111122",
-  border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.10)",
-  indigo:"#6366f1", indigoLt:"#818cf8", violet:"#8b5cf6",
-  cyan:"#22d3ee", emerald:"#10b981", amber:"#f59e0b", rose:"#f43f5e",
+  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
+  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
+  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
+  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -2889,6 +2890,81 @@ function TransactionCoordinator({ voice, onDiscuss }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVATION CHECKLIST — with 12+ features shipped across Autopilot alone,
+// discoverability is now a real risk. This surfaces genuine setup progress
+// (checked against real state, not guessed) and links straight into each
+// feature so nothing built gets left undiscovered.
+// ─────────────────────────────────────────────────────────────────────────────
+function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab }){
+  const [dismissed, setDismissed] = useState(()=>apLsGet("sp_onboarding_dismissed", false));
+
+  const clients = apLsGet("spark_clients_v1", []);
+  const steps = [
+    { id:"voice",   label:"Set your agent voice profile",      done:!!voice?.saved,
+      action:()=>onNavigate("settings") },
+    { id:"clients", label:"Add or import your clients",         done:clients.length>0,
+      action:()=>onNavigate("clients") },
+    { id:"run",     label:"Run Autopilot for the first time",   done:!!apResult,
+      action:()=>onOpenTab?.("mission") },
+    { id:"share",   label:"Share your lead capture page",       done:!!apLsGet("sp_lead_page_shared", false),
+      action:()=>onNavigate("settings") },
+    { id:"google",  label:"Connect Google Calendar & Gmail",    done:!!apLsGet("spark_google_connected", false),
+      action:()=>onNavigate("settings") },
+    { id:"pwa",     label:"Install SPARK on your phone",        done:!!apLsGet("sp_pwa_installed", false),
+      action:()=>onNavigate("settings") },
+  ];
+
+  const doneCount = steps.filter(s=>s.done).length;
+  const allDone = doneCount===steps.length;
+
+  if(dismissed || allDone) return null;
+
+  function dismiss(){
+    apLsSet("sp_onboarding_dismissed", true);
+    setDismissed(true);
+  }
+
+  return(
+    <div style={{background:`linear-gradient(135deg,${C.indigo}08,${C.violet}05)`,
+      border:`1px solid ${C.indigo}20`,borderRadius:14,padding:"14px 16px",
+      marginBottom:14,position:"relative"}}>
+      <button onClick={dismiss}
+        style={{position:"absolute",top:10,right:10,background:"transparent",
+          border:"none",color:C.textDim,cursor:"pointer",fontSize:14,opacity:.5,lineHeight:1}}>
+        ×
+      </button>
+
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+        <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>
+          Getting SPARK set up
+        </div>
+        <div style={{flex:1,height:5,background:"rgba(255,255,255,.06)",borderRadius:4,overflow:"hidden"}}>
+          <div style={{width:`${(doneCount/steps.length)*100}%`,height:"100%",
+            background:`linear-gradient(90deg,${C.indigo},${C.violet})`,
+            borderRadius:4,transition:"width .3s ease"}}/>
+        </div>
+        <span style={{fontFamily:C.F,fontSize:10,color:C.textDim,flexShrink:0}}>
+          {doneCount}/{steps.length}
+        </span>
+      </div>
+
+      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {steps.filter(s=>!s.done).slice(0,3).map(s=>(
+          <div key={s.id} onClick={s.action}
+            style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",
+              padding:"4px 0"}}>
+            <div style={{width:14,height:14,borderRadius:"50%",flexShrink:0,
+              border:`1.5px solid ${C.indigo}50`,background:"transparent"}}/>
+            <span style={{fontFamily:C.F,fontSize:11,color:C.textMd}}>{s.label}</span>
+            <span style={{fontFamily:C.F,fontSize:9,color:C.indigoLt,marginLeft:"auto",flexShrink:0}}>→</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
@@ -3366,22 +3442,25 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const currentMode  = MODES[mode];
 
   const AP_TABS=[
-    {id:"mission",  label:"Mission",  icon:"🎯"},
-    {id:"deals",    label:"Deals",    icon:"📋"},
-    {id:"coordinator",label:"Coordinator",icon:"🧭"},
-    {id:"negotiate",label:"Negotiate",icon:"🤝"},
-    {id:"listings", label:"Listings", icon:"🏠", badge:listingPerf?.listings?.filter(l=>l.status!=="on_track")?.length||null},
-    {id:"clients",  label:"Clients",  icon:"👥"},
-    {id:"sphere",   label:"Sphere",   icon:"🔄", badge:sphere?.opportunities?.length||null},
-    {id:"alerts",   label:"Alerts",   icon:"⚡"},
-    {id:"market",   label:"Market",   icon:"📈"},
-    {id:"coaching", label:"Coaching", icon:"🏆"},
-    {id:"weekly",   label:"Weekly",   icon:"📊", badge:weeklyReport?"✓":null},
-    {id:"history",  label:"History",  icon:"📅", count:runHistory.length},
+    {id:"mission",  label:"Mission",  icon:"Mission"},
+    {id:"deals",    label:"Deals",    icon:"Deals"},
+    {id:"coordinator",label:"Coordinator",icon:"Coordinator"},
+    {id:"negotiate",label:"Negotiate",icon:"Negotiate"},
+    {id:"listings", label:"Listings", icon:"Listings", badge:listingPerf?.listings?.filter(l=>l.status!=="on_track")?.length||null},
+    {id:"clients",  label:"Client Scores", icon:"Clients"},
+    {id:"sphere",   label:"Sphere",   icon:"Sphere", badge:sphere?.opportunities?.length||null},
+    {id:"alerts",   label:"Alerts",   icon:"Alerts"},
+    {id:"market",   label:"Market Pulse", icon:"Market"},
+    {id:"coaching", label:"Coaching", icon:"Coaching"},
+    {id:"weekly",   label:"Weekly",   icon:"Weekly", badge:weeklyReport?"✓":null},
+    {id:"history",  label:"History",  icon:"History", count:runHistory.length},
   ];
 
   return(
     <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 170px)",minHeight:500,position:"relative"}}>
+
+      <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
+        onNavigate={onNavigate} onOpenTab={setApTab}/>
 
       {/* ── TOP HEADER ── */}
       <div style={{flexShrink:0,marginBottom:12}}>
@@ -3396,8 +3475,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
               background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:18,boxShadow:`0 4px 14px ${C.indigo}40`,
-              animation:apRunning?"spin 2s linear infinite":"none"}}>🤖</div>
+              boxShadow:`0 4px 14px ${C.indigo}40`,
+              animation:apRunning?"spin 2s linear infinite":"none"}}><Icon.Sparkle size={19} color="#fff"/></div>
             <div>
               <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,color:C.text,
                 display:"flex",alignItems:"center",gap:6}}>
@@ -3438,7 +3517,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
               </div>
             ))}
             <div style={{marginLeft:"auto",display:"flex",gap:8}}>
-              {[{id:"intelligence",label:"🤖 Intelligence",disabled:!apResult&&!hasEnoughData},{id:"chat",label:"💬 Chat"}].map(v=>(
+              {[{id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},{id:"chat",label:"Chat"}].map(v=>(
                 <button key={v.id} onClick={()=>!v.disabled&&setView(v.id)}
                   style={{background:view===v.id?`${C.indigo}14`:"transparent",border:`1px solid ${view===v.id?C.indigo+"44":C.border}`,color:view===v.id?C.indigoLt:C.textDim,borderRadius:8,padding:"4px 12px",cursor:v.disabled?"default":"pointer",fontSize:10,fontFamily:C.F,fontWeight:700,opacity:v.disabled?.4:1,transition:"all .14s"}}>
                   {v.label}
@@ -3476,7 +3555,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             {/* Premium with no data */}
             {isPremium&&!hasEnoughData&&!apResult&&(
               <div style={{textAlign:"center",padding:"32px 16px",animation:"fadeUp .4s ease"}}>
-                <div style={{width:64,height:64,borderRadius:18,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,boxShadow:`0 8px 28px ${C.indigo}40`}}>🤖</div>
+                <div style={{width:64,height:64,borderRadius:18,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${C.indigo}40`}}><Icon.Bot size={30} color="#fff"/></div>
                 <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,margin:"0 0 10px"}}>Autopilot is ready.</h3>
                 <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:"0 0 20px",lineHeight:1.7,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>Add your clients and deals so Autopilot has real data to analyze. The more context you provide, the more powerful it becomes.</p>
                 {[{icon:"👥",label:"Add your clients",desc:"Clients tab → Pipeline Manager",tab:"clients"},{icon:"📋",label:"Add your deals",desc:"Market tab → My Business → Add Deal",tab:"market"},{icon:"🎯",label:"Set your GCI goal",desc:"Market tab → My Business → Goals",tab:"market"}].map((s,i)=>(
@@ -3555,19 +3634,22 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
                 {/* Tab nav */}
                 <div style={{display:"flex",gap:5,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
-                  {AP_TABS.map(t=>(
+                  {AP_TABS.map(t=>{
+                    const TabIcon = Icon[t.icon];
+                    return(
                     <button key={t.id} onClick={()=>{ setApTab(t.id); setSituationRoom(null); }}
                       style={{padding:"7px 12px",borderRadius:10,flexShrink:0,
                         border:`1px solid ${apTab===t.id?C.indigo+"44":C.border}`,
                         background:apTab===t.id?`${C.indigo}10`:"transparent",
                         color:apTab===t.id?C.indigoLt:C.textDim,cursor:"pointer",
                         fontSize:10,fontFamily:C.F,fontWeight:700,whiteSpace:"nowrap",
-                        transition:"all .14s",display:"flex",alignItems:"center",gap:5}}>
-                      {t.icon} {t.label}
+                        transition:"all .14s",display:"flex",alignItems:"center",gap:6}}>
+                      {TabIcon&&<TabIcon size={13} color="currentColor"/>} {t.label}
                       {t.count>0&&<span style={{fontSize:8,background:C.indigo,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.count}</span>}
                       {t.badge&&<span style={{fontSize:8,background:C.emerald,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.badge}</span>}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} user={user} voice={voice}/>}
@@ -3755,7 +3837,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
               <div style={{background:`linear-gradient(135deg,${C.violet}10,${C.indigo}08)`,border:`1px solid ${C.violet}28`,borderRadius:18,padding:"36px 24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
                 <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",width:250,height:250,borderRadius:"50%",pointerEvents:"none",background:`radial-gradient(circle,${C.violet}14,transparent 70%)`}}/>
                 <div style={{position:"relative"}}>
-                  <div style={{width:60,height:60,borderRadius:16,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26,boxShadow:`0 8px 28px ${C.indigo}40`}}>🤖</div>
+                  <div style={{width:60,height:60,borderRadius:16,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${C.indigo}40`}}><Icon.Bot size={28} color="#fff"/></div>
                   <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`${C.violet}12`,border:`1px solid ${C.violet}28`,borderRadius:14,padding:"3px 12px",marginBottom:12,fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>✦ PREMIUM EXCLUSIVE</div>
                   <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:20,color:C.text,margin:"0 0 10px",letterSpacing:"-0.02em"}}>Autopilot Intelligence</h3>
                   <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 20px",lineHeight:1.7,maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>Upgrade to Premium to unlock the full Autopilot intelligence report — daily mission, deal risk detection, client probability scores, relationship alerts, market intelligence, and AI coaching — all in one view.</p>
