@@ -9,10 +9,10 @@ import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 // DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#04040a", surface:"#08080f", surfaceUp:"#0d0d1a", surfaceHigh:"#111122",
-  border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.10)",
-  indigo:"#6366f1", indigoLt:"#818cf8", violet:"#8b5cf6",
-  cyan:"#22d3ee", emerald:"#10b981", amber:"#f59e0b", rose:"#f43f5e",
+  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
+  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
+  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
+  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
