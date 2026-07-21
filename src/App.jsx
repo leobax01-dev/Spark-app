@@ -35,11 +35,11 @@ function resetAnalytics(){
 // ─────────────────────────────────────────────────────────────────────────────
 const FONTS_URL = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
 const C = {
-  bg:"#04040a", surface:"#08080f", surfaceUp:"#0d0d1a", surfaceHigh:"#111122",
-  border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.10)", borderHi:"rgba(255,255,255,0.18)",
-  indigo:"#6366f1", indigoLt:"#818cf8", indigoD:"#4f52c9",
-  violet:"#8b5cf6", cyan:"#22d3ee", emerald:"#10b981",
-  amber:"#f59e0b", rose:"#f43f5e", sky:"#38bdf8",
+  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
+  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)", borderHi:"rgba(255,255,255,0.20)",
+  indigo:"#4F6BFF", indigoLt:"#8CA0FF", indigoD:"#33469E",
+  violet:"#4257DB", cyan:"#38BDF8", emerald:"#22C55E",
+  amber:"#F5A623", rose:"#EF4444", sky:"#38BDF8",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)", textFaint:"rgba(255,255,255,0.06)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -48,7 +48,7 @@ const C = {
 
 const GLOBAL_CSS = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#050507;-webkit-font-smoothing:antialiased}
+  html,body{height:100%;background:#0a0a0d;-webkit-font-smoothing:antialiased}
   ::-webkit-scrollbar{width:2px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:2px}
@@ -71,44 +71,44 @@ const GLOBAL_CSS = `
   @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
   .nav-item{transition:all .18s ease}
   .nav-item:hover{background:rgba(255,255,255,0.04)!important;color:rgba(255,255,255,.9)!important}
-  .nav-item.active{background:rgba(99,102,241,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.22)!important}
+  .nav-item.active{background:rgba(79, 107, 255,.1)!important;color:#B8C6FF!important;border-color:rgba(79, 107, 255,.22)!important}
   .btn-g{transition:all .2s ease}
-  .btn-g:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 32px rgba(99,102,241,.28)!important;filter:brightness(1.08)}
+  .btn-g:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 32px rgba(79, 107, 255,.28)!important;filter:brightness(1.08)}
   .btn-g:active:not(:disabled){transform:translateY(0);filter:brightness(.96)}
   .btn-g:disabled{opacity:.38;cursor:not-allowed!important}
   .btn-o{transition:all .18s ease}
   .btn-o:hover{border-color:rgba(255,255,255,.18)!important;color:rgba(255,255,255,.92)!important;background:rgba(255,255,255,.03)!important}
-  .ifield:focus{border-color:rgba(99,102,241,.5)!important;box-shadow:0 0 0 3px rgba(99,102,241,.08)!important;outline:none}
+  .ifield:focus{border-color:rgba(79, 107, 255,.5)!important;box-shadow:0 0 0 3px rgba(79, 107, 255,.08)!important;outline:none}
   .tab-b{transition:all .16s}
   .tab-b:hover{color:rgba(255,255,255,.85)!important}
   .card-h{transition:all .22s ease}
   .card-h:hover{transform:translateY(-3px);border-color:rgba(255,255,255,.1)!important;background:rgba(255,255,255,.025)!important}
   .cp-b{transition:all .2s ease}
-  .cp-b:hover{border-color:rgba(99,102,241,.35)!important;transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)!important}
+  .cp-b:hover{border-color:rgba(79, 107, 255,.35)!important;transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.3)!important}
   .copy-b{transition:all .16s}
-  .copy-b:hover{background:rgba(99,102,241,.1)!important;border-color:rgba(99,102,241,.3)!important;color:#a5b4fc!important}
+  .copy-b:hover{background:rgba(79, 107, 255,.1)!important;border-color:rgba(79, 107, 255,.3)!important;color:#B8C6FF!important}
   .up-tease{transition:all .2s;cursor:pointer}
   .up-tease:hover{border-color:rgba(245,158,11,.4)!important;background:rgba(245,158,11,.06)!important}
   .plat-b{transition:all .18s}
   .plat-b:hover:not([data-locked="true"]){transform:translateY(-1px)}
   .photo-thumb{transition:all .2s;cursor:pointer}
-  .photo-thumb:hover{transform:scale(1.05);border-color:rgba(99,102,241,.5)!important}
+  .photo-thumb:hover{transform:scale(1.05);border-color:rgba(79, 107, 255,.5)!important}
   .drop-zone{transition:all .24s}
-  .drop-zone.drag-over{border-color:rgba(99,102,241,.6)!important;background:rgba(99,102,241,.07)!important}
+  .drop-zone.drag-over{border-color:rgba(79, 107, 255,.6)!important;background:rgba(79, 107, 255,.07)!important}
   .carousel-arrow{transition:all .2s;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:rgba(255,255,255,.35);cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;width:38px;height:38px;flex-shrink:0}
-  .carousel-arrow:hover{background:rgba(99,102,241,.14)!important;border-color:rgba(99,102,241,.35)!important;color:#a5b4fc!important;transform:scale(1.1)}
+  .carousel-arrow:hover{background:rgba(79, 107, 255,.14)!important;border-color:rgba(79, 107, 255,.35)!important;color:#B8C6FF!important;transform:scale(1.1)}
   .carousel-dot{transition:all .24s;cursor:pointer;border-radius:4px;flex-shrink:0}
   .premium-card{transition:all .22s ease;position:relative}
-  .premium-card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.1),transparent);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0;transition:opacity .3s}
+  .premium-card::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(79, 107, 255,.2),rgba(66, 87, 219,.1),transparent);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0;transition:opacity .3s}
   .premium-card:hover::before{opacity:1}
   .feature-row{transition:all .16s}
   .feature-row:hover{background:rgba(255,255,255,.018)!important}
   .signout-btn{transition:all .18s;cursor:pointer}
-  .signout-btn:hover{color:#f43f5e!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
+  .signout-btn:hover{color:#EF4444!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
   @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-  @keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 20px 4px rgba(99,102,241,.15)}}
+  @keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(79, 107, 255,0)}50%{box-shadow:0 0 20px 4px rgba(79, 107, 255,.15)}}
   @keyframes progressBar{from{width:0}to{width:100%}}
-  .tab-b.active-tab{background:rgba(99,102,241,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.25)!important}
+  .tab-b.active-tab{background:rgba(79, 107, 255,.1)!important;color:#B8C6FF!important;border-color:rgba(79, 107, 255,.25)!important}
   .mobile-nav-btn{transition:all .14s ease}
   .mobile-nav-btn:active{transform:scale(.88)}
   .rblock{transition:border-color .14s,box-shadow .14s}
@@ -116,7 +116,7 @@ const GLOBAL_CSS = `
   .copy-b:active{transform:scale(.94)}
   .gen-btn-animated{background-size:200% 200%;animation:gradientShift 3s ease infinite}
   .card-h:hover:not([data-locked="true"]){transform:translateY(-2px)!important;box-shadow:0 8px 28px rgba(0,0,0,.28)!important}
-  input:focus,textarea:focus{border-color:rgba(99,102,241,.45)!important;box-shadow:0 0 0 3px rgba(99,102,241,.09)!important;background:rgba(99,102,241,.02)!important}
+  input:focus,textarea:focus{border-color:rgba(79, 107, 255,.45)!important;box-shadow:0 0 0 3px rgba(79, 107, 255,.09)!important;background:rgba(79, 107, 255,.02)!important}
   @keyframes floatUp{0%{opacity:0;transform:translateY(0) scale(1)}70%{opacity:1}100%{opacity:0;transform:translateY(-60px) scale(.7)}}
   @keyframes celebPop{0%{opacity:0;transform:scale(0.4) translateY(8px)}60%{opacity:1;transform:scale(1.08) translateY(-2px)}80%{transform:scale(.97)}100%{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes glowRing{0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)}70%{box-shadow:0 0 0 14px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
@@ -192,7 +192,7 @@ const CONTENT_TYPES = {
   open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"starter"},
   objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"starter"},
   scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"starter"},
-  comms:       {label:"Client Communication",  icon:"💬",color:"#f43f5e", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
+  comms:       {label:"Client Communication",  icon:"💬",color:"#EF4444", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
   education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"starter"},
   market:      {label:"Market Update",         icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
   lifestyle:   {label:"Neighborhood Story",    icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
@@ -491,7 +491,7 @@ function ToastContainer(){
     <div style={{position:"fixed",bottom:24,right:20,zIndex:9999,display:"flex",flexDirection:"column",gap:8,maxWidth:320}}>
       {toasts.map(t=>(
         <div key={t.id} style={{
-          background:t.type==="error"?"rgba(244,63,94,.12)":t.type==="info"?"rgba(99,102,241,.12)":"rgba(16,185,129,.12)",
+          background:t.type==="error"?"rgba(244,63,94,.12)":t.type==="info"?"rgba(79, 107, 255,.12)":"rgba(16,185,129,.12)",
           border:`1px solid ${t.type==="error"?C.rose:t.type==="info"?C.indigo:C.emerald}44`,
           color:t.type==="error"?C.rose:t.type==="info"?C.indigoLt:C.emerald,
           padding:"11px 16px",borderRadius:10,fontSize:13,fontFamily:C.F,fontWeight:600,
@@ -508,8 +508,8 @@ function ToastContainer(){
 function OrbBg(){
   return(
     <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:-1}}>
-      <div style={{position:"absolute",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle,rgba(99,102,241,.07) 0%,transparent 65%)",top:"-20%",left:"-15%",animation:"orb1 28s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,.05) 0%,transparent 65%)",bottom:"-10%",right:"-10%",animation:"orb2 32s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle,rgba(79, 107, 255,.07) 0%,transparent 65%)",top:"-20%",left:"-15%",animation:"orb1 28s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(66, 87, 219,.05) 0%,transparent 65%)",bottom:"-10%",right:"-10%",animation:"orb2 32s ease-in-out infinite"}}/>
       <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.03) 0%,transparent 65%)",top:"40%",left:"50%",animation:"orb3 22s ease-in-out infinite"}}/>
       <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.008) 60px,rgba(255,255,255,.008) 61px),repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.008) 60px,rgba(255,255,255,.008) 61px)"}}/>
     </div>
@@ -518,7 +518,7 @@ function OrbBg(){
 function Logo({small}){
   return(
     <div style={{display:"flex",alignItems:"center",gap:10}}>
-      <div style={{width:small?30:36,height:small?30:36,borderRadius:9,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:small?14:17,boxShadow:"0 0 0 1px rgba(99,102,241,.3), 0 4px 20px rgba(99,102,241,.3)",flexShrink:0}}>⚡</div>
+      <div style={{width:small?30:36,height:small?30:36,borderRadius:9,background:"linear-gradient(135deg,#4F6BFF,#4257DB)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:small?14:17,boxShadow:"0 0 0 1px rgba(79, 107, 255,.3), 0 4px 20px rgba(79, 107, 255,.3)",flexShrink:0}}>⚡</div>
       <div>
         <div style={{fontFamily:C.F,fontWeight:800,fontSize:small?14:16,color:C.text,letterSpacing:.5}}>SPARK</div>
         <div style={{fontFamily:C.F,fontSize:8,color:C.textDim,letterSpacing:2.5,marginTop:-1}}>REAL ESTATE AI</div>
@@ -527,7 +527,7 @@ function Logo({small}){
   );
 }
 function Shimmer({children,style={}}){
-  return <span style={{background:"linear-gradient(90deg,#6366f1,#a5b4fc,#8b5cf6,#6366f1)",backgroundSize:"200% auto",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite",...style}}>{children}</span>;
+  return <span style={{background:"linear-gradient(90deg,#4F6BFF,#B8C6FF,#4257DB,#4F6BFF)",backgroundSize:"200% auto",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite",...style}}>{children}</span>;
 }
 function Badge({color=C.indigo,children}){
   return <span style={{background:color+"14",border:`1px solid ${color}35`,color,fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:20,fontFamily:C.F,letterSpacing:1.8,whiteSpace:"nowrap",backdropFilter:"blur(4px)"}}>{children}</span>;
@@ -557,7 +557,7 @@ function ComplianceBanner({ running, result }){
         background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
         borderRadius:10,padding:"9px 13px",marginBottom:14}}>
         <div style={{width:12,height:12,borderRadius:"50%",
-          border:"2px solid rgba(99,102,241,.3)",borderTopColor:C.indigo,
+          border:"2px solid rgba(79, 107, 255,.3)",borderTopColor:C.indigo,
           animation:"spin .7s linear infinite"}}/>
         <span style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>
           Checking fair housing compliance...
@@ -568,7 +568,7 @@ function ComplianceBanner({ running, result }){
 
   if(!result) return null;
   const risk = RISK_LABELS[result.overall_risk] || RISK_LABELS.clear;
-  const colorMap = { emerald:C.emerald, amber:C.amber, rose:"#f43f5e" };
+  const colorMap = { emerald:C.emerald, amber:C.amber, rose:"#EF4444" };
   const color = colorMap[risk.color] || C.emerald;
   const flags = result.flags||[];
 
@@ -687,7 +687,7 @@ function DownloadButton({url, isImage}){
 
   return(
     <button className="btn-g" onClick={handleDownload} disabled={state==="fetching"}
-      style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:state==="fetching"?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:state==="fetching"?0.7:1}}>
+      style={{width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:state==="fetching"?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:state==="fetching"?0.7:1}}>
       {state==="fetching" ? "Preparing download..." : state==="done" ? "✓ Downloaded" : `⬇ ${isImage?"Download Image":"Download Video"}`}
     </button>
   );
@@ -723,7 +723,7 @@ function UpgradePrompt({feature,requiredPlan,onUpgrade}){
       <div style={{fontSize:22,marginBottom:8}}>🔒</div>
       <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.amber,marginBottom:6}}>{feature} requires {p.name} plan</div>
       <div style={{fontFamily:C.F,fontSize:12,color:C.textMd,marginBottom:14,lineHeight:1.55}}>Upgrade to {p.name} (${p.price}/mo) to unlock.</div>
-      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:C.F}}>Upgrade to {p.name} →</div>
+      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#F5A623,#d97706)",color:"#fff",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:C.F}}>Upgrade to {p.name} →</div>
     </div>
   );
 }
@@ -810,7 +810,7 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
             LISTING PHOTOS
           </div>
           <span style={{fontSize:9,color:C.indigo,fontFamily:C.F,fontWeight:600,
-            background:"rgba(99,102,241,.1)",border:"1px solid rgba(99,102,241,.2)",
+            background:"rgba(79, 107, 255,.1)",border:"1px solid rgba(79, 107, 255,.2)",
             borderRadius:10,padding:"1px 7px"}}>
             {photos.length}/{maxPhotos}
           </span>
@@ -842,9 +842,9 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
                 style={{
                   position:"relative",width:88,height:88,
                   borderRadius:10,overflow:"hidden",flexShrink:0,
-                  border:`2px solid ${isHero?"#f59e0b":hovered?C.indigo+"80":C.border}`,
+                  border:`2px solid ${isHero?"#F5A623":hovered?C.indigo+"80":C.border}`,
                   boxShadow:isHero?`0 0 16px rgba(245,158,11,.28)`:
-                    hovered?`0 4px 16px rgba(99,102,241,.2)`:"none",
+                    hovered?`0 4px 16px rgba(79, 107, 255,.2)`:"none",
                   animation:"photoIn .22s ease both",
                   transition:"border-color .16s, box-shadow .16s"}}>
 
@@ -861,7 +861,7 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
                 {/* Hero crown badge */}
                 {isHero&&(
                   <div style={{position:"absolute",top:5,left:5,
-                    background:"linear-gradient(135deg,#f59e0b,#d97706)",
+                    background:"linear-gradient(135deg,#F5A623,#d97706)",
                     borderRadius:5,padding:"2px 6px",
                     fontSize:8,color:"#fff",fontWeight:800,
                     fontFamily:C.F,letterSpacing:.5,
@@ -912,18 +912,18 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
           {photos.length<maxPhotos&&(
             <button onClick={()=>inputRef.current?.click()}
               style={{width:88,height:88,borderRadius:10,
-                border:`2px dashed rgba(99,102,241,.3)`,
-                background:"rgba(99,102,241,.04)",
+                border:`2px dashed rgba(79, 107, 255,.3)`,
+                background:"rgba(79, 107, 255,.04)",
                 cursor:"pointer",display:"flex",flexDirection:"column",
                 alignItems:"center",justifyContent:"center",gap:5,
                 color:C.indigoLt,flexShrink:0,transition:"all .18s"}}
               onMouseEnter={e=>{
-                e.currentTarget.style.borderColor="rgba(99,102,241,.6)";
-                e.currentTarget.style.background="rgba(99,102,241,.08)";
+                e.currentTarget.style.borderColor="rgba(79, 107, 255,.6)";
+                e.currentTarget.style.background="rgba(79, 107, 255,.08)";
               }}
               onMouseLeave={e=>{
-                e.currentTarget.style.borderColor="rgba(99,102,241,.3)";
-                e.currentTarget.style.background="rgba(99,102,241,.04)";
+                e.currentTarget.style.borderColor="rgba(79, 107, 255,.3)";
+                e.currentTarget.style.background="rgba(79, 107, 255,.04)";
               }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" strokeWidth="2" strokeLinecap="round"
@@ -947,7 +947,7 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
             borderRadius:14,padding:"32px 20px",textAlign:"center",
             cursor:"pointer",position:"relative",overflow:"hidden",
             border:`1.5px dashed ${dragging?C.indigo:C.border}`,
-            background:dragging?"rgba(99,102,241,.06)":"rgba(255,255,255,.01)",
+            background:dragging?"rgba(79, 107, 255,.06)":"rgba(255,255,255,.01)",
             transition:"all .22s"}}>
 
           {/* Film frame corners */}
@@ -978,8 +978,8 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
 
           {/* Cinematic video pill */}
           <div style={{display:"inline-flex",gap:6,alignItems:"center",
-            background:`linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.06))`,
-            border:"1px solid rgba(99,102,241,.22)",
+            background:`linear-gradient(135deg,rgba(79, 107, 255,.1),rgba(66, 87, 219,.06))`,
+            border:"1px solid rgba(79, 107, 255,.22)",
             borderRadius:20,padding:"5px 14px"}}>
             <span style={{width:5,height:5,borderRadius:"50%",
               background:C.indigoLt,flexShrink:0,
@@ -1025,7 +1025,7 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
 
   if(vidState.status==="generating"){
     return(
-      <div style={{background:"rgba(99,102,241,.05)",border:"1px solid rgba(99,102,241,.15)",borderRadius:12,padding:"28px 22px",textAlign:"center",animation:"fadeIn .2s ease"}}>
+      <div style={{background:"rgba(79, 107, 255,.05)",border:"1px solid rgba(79, 107, 255,.15)",borderRadius:12,padding:"28px 22px",textAlign:"center",animation:"fadeIn .2s ease"}}>
         <div style={{position:"relative",width:64,height:64,margin:"0 auto 16px"}}>
           <ProgressRing pct={vidState.pct} size={64}/>
           <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.indigoLt,fontFamily:C.F,fontWeight:700}}>{vidState.pct}%</div>
@@ -1050,7 +1050,7 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
           </span>
         </div>
         {isImage && (
-          <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.15)",borderRadius:8,padding:"9px 13px",marginBottom:12,fontSize:12,color:"#f59e0b",fontFamily:C.F}}>
+          <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.15)",borderRadius:8,padding:"9px 13px",marginBottom:12,fontSize:12,color:"#F5A623",fontFamily:C.F}}>
             ⚠ Video render unavailable — showing the generated still image instead.
           </div>
         )}
@@ -1424,14 +1424,14 @@ function OnboardingModal({planKey,onClose}){
           <button className="btn-g" onClick={isLast?handleLaunch:()=>setStep(s=>s+1)}
             style={{flex:1,
               background:isLast
-                ?"linear-gradient(135deg,#10b981,#6366f1)"
-                :"linear-gradient(135deg,#6366f1,#8b5cf6)",
+                ?"linear-gradient(135deg,#22C55E,#4F6BFF)"
+                :"linear-gradient(135deg,#4F6BFF,#4257DB)",
               border:"none",color:"#fff",padding:"13px 0",borderRadius:10,
               cursor:"pointer",fontWeight:800,fontSize:14,fontFamily:C.F,
               letterSpacing:.2,
               boxShadow:isLast
                 ?"0 6px 24px rgba(16,185,129,.3)"
-                :"0 6px 24px rgba(99,102,241,.28)",
+                :"0 6px 24px rgba(79, 107, 255,.28)",
               transition:"all .22s ease"}}>
             {isLast
               ?"🚀 Start Generating"
@@ -1464,7 +1464,7 @@ function OnboardingModal({planKey,onClose}){
 // CONFETTI PARTICLES — celebration burst on generation complete
 // ─────────────────────────────────────────────────────────────────────────────
 function ConfettiParticles(){
-  const COLORS=["#6366f1","#8b5cf6","#10b981","#22d3ee","#f59e0b","#f43f5e","#818cf8"];
+  const COLORS=["#4F6BFF","#4257DB","#22C55E","#38BDF8","#F5A623","#EF4444","#8CA0FF"];
   const particles=Array.from({length:22},(_,i)=>{
     const angle=Math.random()*360;
     const dist=60+Math.random()*80;
@@ -1531,7 +1531,7 @@ const EMPTY_STATE_DEMOS={
   comms:{
     headline:"Post-Showing Follow-Up",
     lines:["Subject: Great to show you 123 Ocean Drive today, [Name]","Body: It was wonderful walking through the property with you...","Text: Hey [Name]! Thanks for the tour today — any questions? 🏡"],
-    label:"SAMPLE CLIENT COMMUNICATION",color:"#f43f5e",
+    label:"SAMPLE CLIENT COMMUNICATION",color:"#EF4444",
     hint:"Enter context and SPARK writes personalized email, text, and phone scripts",
   },
   education:{
@@ -1903,9 +1903,9 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
         <button onClick={()=>setGenView("generate")}
           style={{flex:1,padding:"9px 0",borderRadius:7,
             background:genView==="generate"
-              ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
+              ?"linear-gradient(135deg,rgba(79, 107, 255,.14),rgba(66, 87, 219,.08))"
               :"transparent",
-            border:genView==="generate"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
+            border:genView==="generate"?"1px solid rgba(79, 107, 255,.25)":"1px solid transparent",
             color:genView==="generate"?C.indigoLt:C.textDim,
             cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F,
             transition:"all .16s ease"}}>
@@ -1914,9 +1914,9 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
         <button onClick={()=>setGenView("history")}
           style={{flex:1,padding:"9px 0",borderRadius:7,
             background:genView==="history"
-              ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
+              ?"linear-gradient(135deg,rgba(79, 107, 255,.14),rgba(66, 87, 219,.08))"
               :"transparent",
-            border:genView==="history"?"1px solid rgba(99,102,241,.25)":"1px solid transparent",
+            border:genView==="history"?"1px solid rgba(79, 107, 255,.25)":"1px solid transparent",
             color:genView==="history"?C.indigoLt:C.textDim,
             cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:C.F,
             transition:"all .16s ease",
@@ -2017,7 +2017,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:600}}>Agent voice active — {voice.name||""} · {voice.market||""}</span>
                   </div>
                 ):(
-                  <div style={{padding:"7px 11px",background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:7}}>
+                  <div style={{padding:"7px 11px",background:"rgba(79, 107, 255,.06)",border:"1px solid rgba(79, 107, 255,.15)",borderRadius:7}}>
                     <span style={{fontSize:11,color:C.indigoLt,fontFamily:C.F}}>Set up Agent Voice in the sidebar for personalised scripts</span>
                   </div>
                 )
@@ -2082,7 +2082,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               style={{
                 width:"100%",
                 background:canGen
-                  ?"linear-gradient(135deg,#6366f1,#8b5cf6,#6366f1)"
+                  ?"linear-gradient(135deg,#4F6BFF,#4257DB,#4F6BFF)"
                   :C.surface,
                 backgroundSize:"200% 200%",
                 border:canGen?"none":`1px solid ${C.border}`,
@@ -2091,7 +2091,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 cursor:canGen?"pointer":"not-allowed",
                 fontFamily:C.F,fontWeight:800,fontSize:15,
                 letterSpacing:.3,
-                boxShadow:canGen?"0 6px 24px rgba(99,102,241,.3),0 0 0 1px rgba(99,102,241,.3)":"none",
+                boxShadow:canGen?"0 6px 24px rgba(79, 107, 255,.3),0 0 0 1px rgba(79, 107, 255,.3)":"none",
                 transition:"all .22s cubic-bezier(.34,1.56,.64,1)",
               }}>
               {credits<=0
@@ -2102,11 +2102,11 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
             </button>
           ):(
             <div style={{
-              background:`linear-gradient(135deg,${C.surface},rgba(99,102,241,.04))`,
-              border:`1px solid rgba(99,102,241,.18)`,
+              background:`linear-gradient(135deg,${C.surface},rgba(79, 107, 255,.04))`,
+              border:`1px solid rgba(79, 107, 255,.18)`,
               borderRadius:14,padding:"28px 22px",
               textAlign:"center",animation:"fadeIn .2s ease",
-              boxShadow:"0 8px 32px rgba(99,102,241,.08)"}}>
+              boxShadow:"0 8px 32px rgba(79, 107, 255,.08)"}}>
               <div style={{position:"relative",width:60,height:60,margin:"0 auto 16px"}}>
                 <ProgressRing pct={pct}/>
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",
@@ -2184,14 +2184,14 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     <button key={t} className={`tab-b${active?" active-tab":""}`}
                       onClick={()=>setTab(t)}
                       style={{flex:1,padding:"8px 4px",borderRadius:7,
-                        border:`1px solid ${active?"rgba(99,102,241,.28)":"transparent"}`,
+                        border:`1px solid ${active?"rgba(79, 107, 255,.28)":"transparent"}`,
                         background:active
-                          ?"linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.08))"
+                          ?"linear-gradient(135deg,rgba(79, 107, 255,.14),rgba(66, 87, 219,.08))"
                           :"transparent",
                         color:active?C.indigoLt:C.textDim,
                         cursor:"pointer",fontSize:9,fontWeight:700,
                         fontFamily:C.F,letterSpacing:.8,
-                        boxShadow:active?"0 2px 8px rgba(99,102,241,.15)":"none",
+                        boxShadow:active?"0 2px 8px rgba(79, 107, 255,.15)":"none",
                         position:"relative",
                         transition:"all .16s ease"}}>
                       {t.replace(/_/g," ").toUpperCase()}
@@ -2215,7 +2215,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     <pre style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,whiteSpace:"pre-wrap",lineHeight:1.9}}>{result.script}</pre>
                   </RBlock>
                   {result.posting_tip&&(
-                    <div style={{background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:8,padding:"10px 13px"}}>
+                    <div style={{background:"rgba(79, 107, 255,.06)",border:"1px solid rgba(79, 107, 255,.15)",borderRadius:8,padding:"10px 13px"}}>
                       <span style={{fontSize:9,color:C.indigo,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>POSTING TIP — </span>
                       <span style={{fontSize:12,color:C.textMd,fontFamily:C.F}}>{result.posting_tip}</span>
                     </div>
@@ -2438,7 +2438,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 <RBlock accent={C.indigo} label="DISCOVERY QUESTIONS">
                   {(result.discovery_questions||[]).map((q,i)=>(
                     <div key={i} style={{display:"flex",gap:11,padding:"11px 0",borderBottom:`1px solid ${C.border}`,animation:`slideR .2s ease ${i*.04}s both`}}>
-                      <div style={{minWidth:27,height:27,borderRadius:"50%",background:`rgba(99,102,241,.07)`,border:`1px solid rgba(99,102,241,.2)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.indigo,fontFamily:C.F,fontWeight:700,flexShrink:0}}>{i+1}</div>
+                      <div style={{minWidth:27,height:27,borderRadius:"50%",background:`rgba(79, 107, 255,.07)`,border:`1px solid rgba(79, 107, 255,.2)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:C.indigo,fontFamily:C.F,fontWeight:700,flexShrink:0}}>{i+1}</div>
                       <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.5,alignSelf:"center",fontStyle:"italic"}}>"{q}"</p>
                       <CopyBtn text={q} label="Copied"/>
                     </div>
@@ -2473,7 +2473,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               {/* ── CLIENT COMMUNICATION TABS ── */}
               {tab==="email"&&type==="comms"&&(
                 <div style={{animation:"scaleIn .22s ease"}}>
-                  <RBlock accent={"#f43f5e"} label="SUBJECT LINE" action={<CopyBtn text={result.subject_line||""} label="Subject copied"/>}>
+                  <RBlock accent={"#EF4444"} label="SUBJECT LINE" action={<CopyBtn text={result.subject_line||""} label="Subject copied"/>}>
                     <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,margin:0}}>{result.subject_line}</p>
                   </RBlock>
                   <RBlock accent={C.indigo} label="EMAIL" action={<CopyBtn text={result.email_body||""} label="Email copied"/>}>
@@ -2493,7 +2493,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:8}}>{(result.text_version||"").length} / 160 chars</div>
                   </RBlock>
                   {result.personal_touch&&(
-                    <RBlock accent={"#f43f5e"} label="PERSONALIZATION TIP">
+                    <RBlock accent={"#EF4444"} label="PERSONALIZATION TIP">
                       <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.6}}>{result.personal_touch}</p>
                     </RBlock>
                   )}
@@ -2511,7 +2511,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                   <RBlock accent={C.violet} label="3-TOUCH FOLLOW-UP SEQUENCE">
                     {(result.follow_up_sequence||[]).map((touch,i)=>(
                       <div key={i} style={{display:"flex",gap:12,padding:"13px 0",borderBottom:`1px solid ${C.border}`,animation:`slideR .2s ease ${i*.06}s both`}}>
-                        <div style={{minWidth:52,height:28,borderRadius:6,background:"rgba(139,92,246,.08)",border:"1px solid rgba(139,92,246,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.violet,fontFamily:C.F,fontWeight:700,flexShrink:0,letterSpacing:.5}}>
+                        <div style={{minWidth:52,height:28,borderRadius:6,background:"rgba(66, 87, 219,.08)",border:"1px solid rgba(66, 87, 219,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:C.violet,fontFamily:C.F,fontWeight:700,flexShrink:0,letterSpacing:.5}}>
                           {["DAY 1","DAY 3","DAY 7"][i]||`DAY ${[1,3,7][i]}`}
                         </div>
                         <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.5,alignSelf:"center"}}>{touch}</p>
@@ -2576,12 +2576,12 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
           </div>
         ))}
       </div>
-      <button className="btn-g" onClick={save} style={{marginTop:22,width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:14,boxShadow:"0 4px 18px rgba(99,102,241,.24)"}}>
+      <button className="btn-g" onClick={save} style={{marginTop:22,width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:14,boxShadow:"0 4px 18px rgba(79, 107, 255,.24)"}}>
         Save Agent Voice ⚡
       </button>
 
       {voice.saved&&leadLink&&(
-        <div style={{marginTop:20,background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.18)",
+        <div style={{marginTop:20,background:"rgba(79, 107, 255,.06)",border:"1px solid rgba(79, 107, 255,.18)",
           borderRadius:12,padding:"16px 18px"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
             <span style={{fontSize:16}}>🔗</span>
@@ -2596,9 +2596,9 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
               overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
               {leadLink}
             </div>
-            <button onClick={()=>{ navigator.clipboard.writeText(leadLink); setCopiedLink(true); toast("Link copied"); setTimeout(()=>setCopiedLink(false),2000); }}
-              style={{background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",
-                color:"#a5b4fc",borderRadius:8,padding:"8px 16px",cursor:"pointer",
+            <button onClick={()=>{ navigator.clipboard.writeText(leadLink); setCopiedLink(true); toast("Link copied"); LS.set("sp_lead_page_shared",true); setTimeout(()=>setCopiedLink(false),2000); }}
+              style={{background:"rgba(79, 107, 255,.15)",border:"1px solid rgba(79, 107, 255,.3)",
+                color:"#B8C6FF",borderRadius:8,padding:"8px 16px",cursor:"pointer",
                 fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0}}>
               {copiedLink?"✓ Copied":"Copy Link"}
             </button>
@@ -2754,7 +2754,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
           marginBottom:22,textAlign:"center",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",
             width:200,height:200,borderRadius:"50%",pointerEvents:"none",
-            background:"radial-gradient(circle,rgba(99,102,241,.12),transparent 70%)"}}/>
+            background:"radial-gradient(circle,rgba(79, 107, 255,.12),transparent 70%)"}}/>
           <div style={{position:"relative"}}>
             <div style={{fontSize:32,marginBottom:10}}>⚡</div>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,marginBottom:8,
@@ -2774,10 +2774,10 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
               ))}
             </div>
             <button className="btn-g" onClick={()=>{ track("upgrade_clicked",{ plan:intendedPlan, source:"trial_paywall", credits_at_click:0, current_plan:"trial" }); goStripe(PLANS[intendedPlan].stripeLink, userEmail||""); }}
-              style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",
+              style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
                 color:"#fff",padding:"13px 32px",borderRadius:10,cursor:"pointer",
                 fontWeight:800,fontSize:14,fontFamily:C.F,
-                boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 6px 22px rgba(99,102,241,.3)"}}>
+                boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 6px 22px rgba(79, 107, 255,.3)"}}>
               Upgrade to Premium — $129/month ⚡
             </button>
             <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"10px 0 0"}}>
@@ -2818,7 +2818,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:11}}>
         {CREDIT_PACKS.map((pk,i)=>(
           <button key={i} className="cp-b" onClick={()=>{ goStripe(pk.stripeLink, userEmail||""); }}
-            style={{background:C.surface,border:`1px solid ${pk.hot?"rgba(99,102,241,.28)":C.border}`,borderRadius:10,padding:"16px 10px",textAlign:"center",cursor:"pointer",position:"relative",animation:`fadeUp .3s ease ${i*.06}s both`}}>
+            style={{background:C.surface,border:`1px solid ${pk.hot?"rgba(79, 107, 255,.28)":C.border}`,borderRadius:10,padding:"16px 10px",textAlign:"center",cursor:"pointer",position:"relative",animation:`fadeUp .3s ease ${i*.06}s both`}}>
             {pk.hot&&<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:"#fff",fontSize:7,fontWeight:800,padding:"2px 8px",borderRadius:8,letterSpacing:.8,whiteSpace:"nowrap",fontFamily:C.F}}>BEST VALUE</div>}
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:26,color:C.indigo}}>{pk.credits}</div>
             <div style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,marginBottom:6}}>CREDITS</div>
@@ -2953,8 +2953,8 @@ function GoogleIntegration({ user }){
           ].map((f,i)=>(
             <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
               <div style={{width:14,height:14,borderRadius:"50%",flexShrink:0,
-                marginTop:2,background:"rgba(99,102,241,.12)",
-                border:"1px solid rgba(99,102,241,.2)",
+                marginTop:2,background:"rgba(79, 107, 255,.12)",
+                border:"1px solid rgba(79, 107, 255,.2)",
                 display:"flex",alignItems:"center",justifyContent:"center",
                 fontSize:7,color:C.indigoLt}}>✓</div>
               <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,lineHeight:1.5}}>{f}</span>
@@ -2989,7 +2989,7 @@ function InstallSparkCard(){
     // Already running as an installed app?
     const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches
       || window.navigator.standalone===true;
-    if(standalone) setInstalled(true);
+    if(standalone){ setInstalled(true); LS.set("sp_pwa_installed",true); }
 
     function onBeforeInstall(e){
       e.preventDefault();
@@ -2998,6 +2998,7 @@ function InstallSparkCard(){
     function onInstalled(){
       setInstalled(true);
       setDeferredPrompt(null);
+      LS.set("sp_pwa_installed",true);
     }
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
@@ -3409,7 +3410,7 @@ function AffiliatePanel({ user, planKey }){
       </div>
 
       {/* Referral link card */}
-      <div style={{background:`linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06))`,border:`1px solid rgba(99,102,241,.22)`,borderRadius:14,padding:22,marginBottom:18}}>
+      <div style={{background:`linear-gradient(135deg,rgba(79, 107, 255,.08),rgba(66, 87, 219,.06))`,border:`1px solid rgba(79, 107, 255,.22)`,borderRadius:14,padding:22,marginBottom:18}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,flexWrap:"wrap",gap:8}}>
           <div>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:16,marginBottom:4}}>Your Referral Link</div>
@@ -3422,7 +3423,7 @@ function AffiliatePanel({ user, planKey }){
             {refLink}
           </div>
           <button className="btn-g" onClick={copyLink}
-            style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
+            style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
             Copy Link
           </button>
         </div>
@@ -3460,7 +3461,7 @@ function AffiliatePanel({ user, planKey }){
           })}
         </div>
         {nextTier&&(
-          <div style={{marginTop:14,padding:"9px 13px",background:"rgba(99,102,241,.06)",border:`1px solid ${nextTier.color}44`,borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
+          <div style={{marginTop:14,padding:"9px 13px",background:"rgba(79, 107, 255,.06)",border:`1px solid ${nextTier.color}44`,borderRadius:8,fontSize:12,color:C.textMd,fontFamily:C.F}}>
             <strong style={{color:nextTier.color}}>{nextTier.min - stats.activeRefs} more active referrals</strong> to unlock {nextTier.name} at {nextTier.pct}% commission — that is an extra <strong style={{color:C.text}}>${((nextTier.pct-currentTier.pct)/100*stats.activeRefs*49).toFixed(0)}/mo</strong> on your current base.
           </div>
         )}
@@ -3492,13 +3493,13 @@ function AffiliatePanel({ user, planKey }){
         <div style={{display:"flex",gap:7,marginBottom:14,flexWrap:"wrap"}}>
           {SOCIAL_SCRIPTS.map((s,i)=>(
             <button key={i} onClick={()=>setActiveScript(i)}
-              style={{padding:"5px 12px",borderRadius:18,border:`1px solid ${activeScript===i?"rgba(99,102,241,.5)":C.border}`,background:activeScript===i?"rgba(99,102,241,.1)":"transparent",color:activeScript===i?C.indigoLt:C.textDim,cursor:"pointer",fontSize:11,fontFamily:C.F,fontWeight:activeScript===i?700:400,transition:"all .14s",display:"flex",alignItems:"center",gap:5}}>
+              style={{padding:"5px 12px",borderRadius:18,border:`1px solid ${activeScript===i?"rgba(79, 107, 255,.5)":C.border}`,background:activeScript===i?"rgba(79, 107, 255,.1)":"transparent",color:activeScript===i?C.indigoLt:C.textDim,cursor:"pointer",fontSize:11,fontFamily:C.F,fontWeight:activeScript===i?700:400,transition:"all .14s",display:"flex",alignItems:"center",gap:5}}>
               <span>{s.icon}</span>{s.platform}
             </button>
           ))}
         </div>
         {SOCIAL_SCRIPTS[activeScript].hook&&(
-          <div style={{background:"rgba(99,102,241,.06)",border:"1px solid rgba(99,102,241,.15)",borderRadius:7,padding:"8px 12px",marginBottom:10}}>
+          <div style={{background:"rgba(79, 107, 255,.06)",border:"1px solid rgba(79, 107, 255,.15)",borderRadius:7,padding:"8px 12px",marginBottom:10}}>
             <div style={{fontSize:9,color:C.indigo,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:4}}>HOOK</div>
             <p style={{fontFamily:C.F,fontSize:13,fontWeight:700,color:C.text,margin:0}}>"{SOCIAL_SCRIPTS[activeScript].hook}"</p>
           </div>
@@ -3511,7 +3512,7 @@ function AffiliatePanel({ user, planKey }){
         </div>
         <div style={{display:"flex",gap:9}}>
           <button className="btn-g" onClick={copyScript}
-            style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"10px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F}}>
+            style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"10px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F}}>
             Copy {SOCIAL_SCRIPTS[activeScript].platform} Script
           </button>
           <button className="btn-o" onClick={copyLink}
@@ -3532,7 +3533,7 @@ function AffiliatePanel({ user, planKey }){
           ].map((s,i)=>(
             <div key={i} style={{padding:"16px 14px",background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:10}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <div style={{width:22,height:22,borderRadius:6,background:"rgba(99,102,241,.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:800}}>{s.n}</div>
+                <div style={{width:22,height:22,borderRadius:6,background:"rgba(79, 107, 255,.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:800}}>{s.n}</div>
                 <span style={{fontSize:18}}>{s.icon}</span>
               </div>
               <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:6}}>{s.title}</div>
@@ -3571,7 +3572,7 @@ function AffiliatePanel({ user, planKey }){
             <input className="ifield" type="email" value={payoutEmail} onChange={e=>setPayoutEmail(e.target.value)} placeholder="your@paypal.com or @venmo"
               style={{flex:1,minWidth:220,background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F}}/>
             <button className="btn-g" onClick={requestPayout} disabled={stats.pendingPayout<25}
-              style={{background:stats.pendingPayout>=25?"linear-gradient(135deg,#6366f1,#8b5cf6)":C.surface,border:stats.pendingPayout>=25?"none":`1px solid ${C.border}`,color:stats.pendingPayout>=25?"#fff":C.textDim,padding:"10px 22px",borderRadius:8,cursor:stats.pendingPayout>=25?"pointer":"not-allowed",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
+              style={{background:stats.pendingPayout>=25?"linear-gradient(135deg,#4F6BFF,#4257DB)":C.surface,border:stats.pendingPayout>=25?"none":`1px solid ${C.border}`,color:stats.pendingPayout>=25?"#fff":C.textDim,padding:"10px 22px",borderRadius:8,cursor:stats.pendingPayout>=25?"pointer":"not-allowed",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
               {stats.pendingPayout>=25?`Request $${stats.pendingPayout.toFixed(2)} Payout`:"Min. $25 Required"}
             </button>
           </div>
@@ -3710,7 +3711,7 @@ function CommissionCalculator({user, planKey}){
           ))}
         </div>
         <button onClick={calculate}
-          style={{width:"100%",marginTop:16,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
+          style={{width:"100%",marginTop:16,background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
           🧮 Calculate
         </button>
       </div>
@@ -3729,7 +3730,7 @@ function CommissionCalculator({user, planKey}){
                 ["E&O / Fees",`-${fmt(calc.eAndO)}`,C.rose,false],
                 ["Net Before Tax",fmt(calc.netBeforeTax),C.cyan,true],
                 [`Tax (${calc.taxRate}%)`,`-${fmt(calc.taxAmt)}`,C.rose,false],
-                ["🏦 NET TAKE-HOME",fmt(calc.netAfterTax),"#10b981",true],
+                ["🏦 NET TAKE-HOME",fmt(calc.netAfterTax),"#22C55E",true],
               ].map(([label,val,color,bold])=>(
                 <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
                   <span style={{fontFamily:C.F,fontSize:bold?14:13,color:bold?C.text:C.textMd,fontWeight:bold?700:400}}>{label}</span>
@@ -3749,7 +3750,7 @@ function CommissionCalculator({user, planKey}){
                 ["Property Tax",`${fmt(calc.monthlyTax)}/mo`,C.textMd,false],
                 ["Homeowners Insurance",`${fmt(calc.monthlyIns)}/mo`,C.textMd,false],
                 ["HOA",`${fmt(calc.monthlyHoa)}/mo`,C.textMd,false],
-                ["💰 TOTAL MONTHLY",`${fmt(calc.totalMonthly)}/mo`,"#10b981",true],
+                ["💰 TOTAL MONTHLY",`${fmt(calc.totalMonthly)}/mo`,"#22C55E",true],
                 ["Income Needed (28% rule)",`${fmt(calc.incomeNeeded)}/yr`,C.violet,true],
               ].map(([label,val,color,bold])=>(
                 <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
@@ -3763,7 +3764,7 @@ function CommissionCalculator({user, planKey}){
           {/* AI Explainer */}
           {!aiExplain&&(
             <button onClick={generateAiExplainer} disabled={loadingAi}
-              style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:loadingAi?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:loadingAi?.7:1,marginBottom:16}}>
+              style={{width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:loadingAi?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:loadingAi?.7:1,marginBottom:16}}>
               {loadingAi?"✨ Generating AI Explainer...":"✨ Generate AI Client Explainer"}
             </button>
           )}
@@ -3931,7 +3932,7 @@ function useNotifications({ credits, planKey, onNavigate }){
             id,
             type:"warning",
             icon:"🤖",
-            color:"#8b5cf6",
+            color:"#4257DB",
             title:`Autopilot: ${critRisks[0].deal} at risk`,
             body:critRisks[0].risk?.slice(0,80)||"Open Autopilot for details",
             action:"Open Situation Room",
@@ -4164,11 +4165,11 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
         {/* CTA */}
         <button onClick={onUpgrade}
           style={{width:"100%",
-            background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
+            background:"linear-gradient(135deg,#4F6BFF,#4257DB)",
             border:"none",color:"#fff",padding:"15px 0",borderRadius:12,
             cursor:"pointer",fontWeight:800,fontSize:15,fontFamily:C.F,
             letterSpacing:.3,marginBottom:10,
-            boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 8px 28px rgba(99,102,241,.35)",
+            boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 8px 28px rgba(79, 107, 255,.35)",
             transition:"all .2s ease"}}>
           Upgrade to Pro — ${plan.price}/month ⚡
         </button>
@@ -4184,7 +4185,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
               style={{background:C.surface,border:`1px solid ${C.border}`,
                 borderRadius:10,padding:"10px 12px",cursor:"pointer",
                 textAlign:"center",transition:"all .16s"}}
-              onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(99,102,241,.3)"}
+              onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(79, 107, 255,.3)"}
               onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
               <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,color:C.text}}>
                 {pack.credits} credits
@@ -4363,7 +4364,7 @@ function MainApp({user,onLogout}){
             {item.id==="autopilot"&&planKey!=="premium"&&(
               <div style={{position:"absolute",top:6,right:"calc(50% - 14px)",
                 fontSize:7,color:C.violet,fontFamily:C.F,fontWeight:700,
-                background:"rgba(139,92,246,.15)",border:"1px solid rgba(139,92,246,.25)",
+                background:"rgba(66, 87, 219,.15)",border:"1px solid rgba(66, 87, 219,.25)",
                 borderRadius:4,padding:"0px 3px",letterSpacing:.3}}>✦</div>
             )}
             {item.id==="autopilot"&&planKey==="premium"&&(()=>{ try{ return localStorage.getItem("spark_autopilot_last_run"); }catch(e){ return null; } })()&&(
@@ -4486,7 +4487,7 @@ function MainApp({user,onLogout}){
               {item.id==="autopilot"&&planKey!=="premium"&&(
                 <span style={{marginLeft:"auto",fontSize:7,color:C.violet,
                   fontFamily:C.F,fontWeight:700,letterSpacing:.5,
-                  background:`rgba(139,92,246,.1)`,border:"1px solid rgba(139,92,246,.2)",
+                  background:`rgba(66, 87, 219,.1)`,border:"1px solid rgba(66, 87, 219,.2)",
                   padding:"1px 5px",borderRadius:4}}>✦ PRO</span>
               )}
               {item.id==="autopilot"&&planKey==="premium"&&(
@@ -4521,8 +4522,8 @@ function MainApp({user,onLogout}){
             boxShadow:plan.credits>=999?`0 0 6px ${C.violet}60`:`0 0 6px ${credits<5?C.rose:plan.accent}60`}}/>
         </div>
         <button className="btn-o" onClick={()=>setTab("settings")}
-          style={{width:"100%",background:"rgba(99,102,241,.05)",
-            border:`1px solid rgba(99,102,241,.18)`,
+          style={{width:"100%",background:"rgba(79, 107, 255,.05)",
+            border:`1px solid rgba(79, 107, 255,.18)`,
             color:C.indigoLt,borderRadius:7,padding:"6px 0",
             fontSize:9,cursor:"pointer",fontFamily:C.F,
             fontWeight:700,letterSpacing:1.5}}>
@@ -4634,8 +4635,8 @@ function MainApp({user,onLogout}){
                       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
                         <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:0,lineHeight:1.2}}>{TITLES[tab]}</h1>
                         {planKey==="premium"&&(
-                          <span style={{fontSize:9,color:"#8b5cf6",fontFamily:C.F,fontWeight:700,
-                            background:"rgba(139,92,246,.1)",border:"1px solid rgba(139,92,246,.25)",
+                          <span style={{fontSize:9,color:"#4257DB",fontFamily:C.F,fontWeight:700,
+                            background:"rgba(66, 87, 219,.1)",border:"1px solid rgba(66, 87, 219,.25)",
                             borderRadius:8,padding:"2px 9px",letterSpacing:1.5}}>✦ PREMIUM</span>
                         )}
                       </div>
@@ -4646,8 +4647,8 @@ function MainApp({user,onLogout}){
                         background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",
                         borderRadius:10,padding:"6px 12px"}}>
                         <div style={{width:6,height:6,borderRadius:"50%",
-                          background:"#10b981",boxShadow:"0 0 6px #10b981"}}/>
-                        <span style={{fontSize:10,color:"#10b981",fontFamily:C.F,fontWeight:700}}>
+                          background:"#22C55E",boxShadow:"0 0 6px #22C55E"}}/>
+                        <span style={{fontSize:10,color:"#22C55E",fontFamily:C.F,fontWeight:700}}>
                           Active · Monitoring
                         </span>
                       </div>
@@ -4810,10 +4811,10 @@ function LandingPage({onStart}){
                 padding:"7px 14px",borderRadius:8,cursor:"pointer",
                 fontSize:13,fontWeight:500,fontFamily:C.F}}>Sign in</button>
             <button onClick={()=>onStart("signup")}
-              style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",
+              style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
                 color:"#fff",padding:"8px 20px",borderRadius:8,cursor:"pointer",
                 fontSize:13,fontWeight:700,fontFamily:C.F,
-                boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 4px 16px rgba(99,102,241,.25)"}}>
+                boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 4px 16px rgba(79, 107, 255,.25)"}}>
               Start free ⚡
             </button>
           </div>
@@ -4822,7 +4823,7 @@ function LandingPage({onStart}){
         {/* HERO */}
         <div style={{padding:"96px 24px 80px",maxWidth:820,margin:"0 auto",textAlign:"center"}}>
           <div style={{display:"inline-flex",alignItems:"center",gap:6,
-            background:"rgba(99,102,241,.07)",border:"1px solid rgba(99,102,241,.18)",
+            background:"rgba(79, 107, 255,.07)",border:"1px solid rgba(79, 107, 255,.18)",
             borderRadius:20,padding:"5px 16px",fontSize:10,color:C.indigoLt,
             letterSpacing:2,fontWeight:700,marginBottom:24,animation:anim()}}>
             🤖 THE AI OPERATING SYSTEM FOR REAL ESTATE AGENTS
@@ -4840,10 +4841,10 @@ function LandingPage({onStart}){
           </p>
           <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:16,animation:anim(.2)}}>
             <button onClick={()=>onStart("signup")}
-              style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",
+              style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
                 color:"#fff",padding:"16px 36px",borderRadius:12,cursor:"pointer",
                 fontWeight:800,fontSize:16,fontFamily:C.F,letterSpacing:.2,
-                boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 10px 36px rgba(99,102,241,.3)"}}>
+                boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 10px 36px rgba(79, 107, 255,.3)"}}>
               Start free — no card required ⚡
             </button>
           </div>
@@ -5078,12 +5079,12 @@ function LandingPage({onStart}){
 
         {/* FINAL CTA */}
         <div style={{padding:"0 24px 104px",maxWidth:640,margin:"0 auto",textAlign:"center"}}>
-          <div style={{background:`linear-gradient(135deg,rgba(99,102,241,.09),rgba(139,92,246,.06))`,
-            border:`1px solid rgba(99,102,241,.22)`,borderRadius:22,padding:"56px 36px",
+          <div style={{background:`linear-gradient(135deg,rgba(79, 107, 255,.09),rgba(66, 87, 219,.06))`,
+            border:`1px solid rgba(79, 107, 255,.22)`,borderRadius:22,padding:"56px 36px",
             position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:"-30%",left:"50%",transform:"translateX(-50%)",
               width:300,height:300,borderRadius:"50%",
-              background:"radial-gradient(circle,rgba(99,102,241,.12),transparent 70%)",
+              background:"radial-gradient(circle,rgba(79, 107, 255,.12),transparent 70%)",
               pointerEvents:"none"}}/>
             <div style={{position:"relative"}}>
               <div style={{fontSize:36,marginBottom:16}}>⚡</div>
@@ -5096,10 +5097,10 @@ function LandingPage({onStart}){
                 10 free credits. No card. No commitment. In 30 seconds you'll see why agents call SPARK the last real estate tool they'll ever need.
               </p>
               <button onClick={()=>onStart("signup")}
-                style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",
+                style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
                   color:"#fff",padding:"16px 40px",borderRadius:12,cursor:"pointer",
                   fontWeight:800,fontSize:16,fontFamily:C.F,letterSpacing:.2,
-                  boxShadow:"0 0 0 1px rgba(99,102,241,.4),0 10px 36px rgba(99,102,241,.3)",
+                  boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 10px 36px rgba(79, 107, 255,.3)",
                   marginBottom:16}}>
                 Start for free ⚡
               </button>
@@ -5316,7 +5317,7 @@ function AuthPage({mode,onAuth,onSwitch}){
         {/* ── VERIFY EMAIL SCREEN ── */}
         {view==="verify_email"&&(
           <div style={{textAlign:"center",animation:"scaleIn .3s ease"}}>
-            <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(99,102,241,.1)",border:"1px solid rgba(99,102,241,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 20px"}}>✉️</div>
+            <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(79, 107, 255,.1)",border:"1px solid rgba(79, 107, 255,.25)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 20px"}}>✉️</div>
             <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:22,marginBottom:10,color:C.text}}>Check your inbox</h2>
             <p style={{fontFamily:C.F,fontSize:14,color:C.textMd,lineHeight:1.65,marginBottom:6}}>
               We sent a confirmation link to<br/>
@@ -5332,7 +5333,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                 const {error}=await sb.auth.resend({ type:"signup", email });
                 if(error) toast(error.message,"error");
                 else toast("Confirmation email resent ✓");
-              }} style={{background:"rgba(99,102,241,.1)",border:"1px solid rgba(99,102,241,.25)",color:C.indigoLt,padding:"11px 0",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F,fontWeight:600}}>
+              }} style={{background:"rgba(79, 107, 255,.1)",border:"1px solid rgba(79, 107, 255,.25)",color:C.indigoLt,padding:"11px 0",borderRadius:9,cursor:"pointer",fontSize:13,fontFamily:C.F,fontWeight:600}}>
                 Resend confirmation email
               </button>
               <button onClick={()=>{ setView("auth"); onSwitch(); }}
@@ -5375,11 +5376,11 @@ function AuthPage({mode,onAuth,onSwitch}){
                 <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>EMAIL</div>
                 <input type="email" value={resetEmail} onChange={e=>setResetEmail(e.target.value)}
                   placeholder="your@email.com" autoComplete="email" style={inputStyle}
-                  onFocus={e=>e.target.style.borderColor="rgba(99,102,241,.5)"}
+                  onFocus={e=>e.target.style.borderColor="rgba(79, 107, 255,.5)"}
                   onBlur={e=>e.target.style.borderColor="rgba(255,255,255,.06)"}/>
               </div>
               <button onClick={sendReset} disabled={resetSending}
-                style={{width:"100%",background:"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:resetSending?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:resetSending?.7:1}}>
+                style={{width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:resetSending?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:resetSending?.7:1}}>
                 {resetSending?<><div style={{width:16,height:16,borderRadius:"50%",border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",animation:"spin .7s linear infinite"}}/>Sending...</>:"Send Reset Link"}
               </button>
               <div style={{textAlign:"center",marginTop:16}}>
@@ -5428,7 +5429,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                 <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>EMAIL</div>
                 <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
                   placeholder="sarah@kw.com" autoComplete="email" style={inputStyle}
-                  onFocus={e=>e.target.style.borderColor="rgba(99,102,241,.5)"}
+                  onFocus={e=>e.target.style.borderColor="rgba(79, 107, 255,.5)"}
                   onBlur={e=>e.target.style.borderColor="rgba(255,255,255,.06)"}/>
               </div>
 
@@ -5436,7 +5437,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                 <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>PASSWORD</div>
                 <input type="password" value={pass} onChange={e=>setPass(e.target.value)}
                   placeholder="min 6 characters" autoComplete={mode==="login"?"current-password":"new-password"} style={inputStyle}
-                  onFocus={e=>e.target.style.borderColor="rgba(99,102,241,.5)"}
+                  onFocus={e=>e.target.style.borderColor="rgba(79, 107, 255,.5)"}
                   onBlur={e=>e.target.style.borderColor="rgba(255,255,255,.06)"}/>
               </div>
 
@@ -5470,7 +5471,7 @@ function AuthPage({mode,onAuth,onSwitch}){
               )}
 
               <button onClick={submit} disabled={loading}
-                style={{width:"100%",background:loading?"rgba(99,102,241,.5)":"linear-gradient(135deg,#6366f1,#8b5cf6)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 18px rgba(99,102,241,.24)",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxSizing:"border-box"}}>
+                style={{width:"100%",background:loading?"rgba(79, 107, 255,.5)":"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 18px rgba(79, 107, 255,.24)",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxSizing:"border-box"}}>
                 {loading?(
                   <><div style={{width:16,height:16,borderRadius:"50%",border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",animation:"spin .7s linear infinite"}}/>{mode==="login"?"Signing in...":"Creating account..."}</>
                 ):(
@@ -5569,7 +5570,7 @@ function PublicLeadCapture({ agentEmail }){
       <div style={{width:"100%",maxWidth:440}}>
         <div style={{display:"flex",alignItems:"center",gap:9,justifyContent:"center",marginBottom:28}}>
           <div style={{width:30,height:30,borderRadius:8,
-            background:"linear-gradient(135deg,#6366f1,#8b5cf6)",
+            background:"linear-gradient(135deg,#4F6BFF,#4257DB)",
             display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>⚡</div>
           <span style={{fontFamily:C.F,fontWeight:800,fontSize:15,color:"#fff",letterSpacing:-0.3}}>SPARK</span>
         </div>
@@ -5611,9 +5612,9 @@ function PublicLeadCapture({ agentEmail }){
                 {[{v:"buying",l:"I'm buying"},{v:"selling",l:"I'm selling"}].map(o=>(
                   <button key={o.v} type="button" onClick={()=>setInterest(o.v)}
                     style={{flex:1,padding:"9px 0",borderRadius:9,
-                      border:`1px solid ${interest===o.v?"rgba(99,102,241,.5)":C.border}`,
-                      background:interest===o.v?"rgba(99,102,241,.12)":"transparent",
-                      color:interest===o.v?"#a5b4fc":"rgba(255,255,255,.5)",
+                      border:`1px solid ${interest===o.v?"rgba(79, 107, 255,.5)":C.border}`,
+                      background:interest===o.v?"rgba(79, 107, 255,.12)":"transparent",
+                      color:interest===o.v?"#B8C6FF":"rgba(255,255,255,.5)",
                       cursor:"pointer",fontFamily:C.F,fontSize:12,fontWeight:700}}>
                     {o.l}
                   </button>
@@ -5635,10 +5636,10 @@ function PublicLeadCapture({ agentEmail }){
               )}
 
               <button type="submit" disabled={submitting}
-                style={{width:"100%",background:submitting?"rgba(255,255,255,.06)":"linear-gradient(135deg,#6366f1,#8b5cf6)",
+                style={{width:"100%",background:submitting?"rgba(255,255,255,.06)":"linear-gradient(135deg,#4F6BFF,#4257DB)",
                   border:"none",color:"#fff",borderRadius:11,padding:"13px 0",
                   cursor:submitting?"default":"pointer",fontFamily:C.F,fontWeight:800,fontSize:14,
-                  boxShadow:submitting?"none":"0 4px 16px rgba(99,102,241,.3)",marginTop:4}}>
+                  boxShadow:submitting?"none":"0 4px 16px rgba(79, 107, 255,.3)",marginTop:4}}>
                 {submitting?"Sending...":"Send"}
               </button>
             </form>
