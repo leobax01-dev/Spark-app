@@ -9,10 +9,10 @@ import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 // DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#04040a", surface:"#08080f", surfaceUp:"#0d0d1a", surfaceHigh:"#111122",
-  border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.10)",
-  indigo:"#6366f1", indigoLt:"#818cf8", violet:"#8b5cf6",
-  cyan:"#22d3ee", emerald:"#10b981", amber:"#f59e0b", rose:"#f43f5e",
+  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
+  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
+  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
+  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -338,7 +338,7 @@ Return ONLY valid JSON:
               </div>
               <p style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,margin:"0 0 8px"}}>{aiData.next_action}</p>
               <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"0 0 12px",lineHeight:1.5}}>{aiData.why}</p>
-              <div style={{background:"rgba(139,92,246,.06)",border:"1px solid rgba(139,92,246,.18)",borderRadius:9,padding:"11px 13px"}}>
+              <div style={{background:"rgba(66, 87, 219,.06)",border:"1px solid rgba(66, 87, 219,.18)",borderRadius:9,padding:"11px 13px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
                   <span style={{fontSize:8,color:C.violet,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>MESSAGE TO SEND</span>
                   <CCopyBtn text={aiData.message_to_send}/>
@@ -501,7 +501,7 @@ Return ONLY valid JSON:
                 </div>
                 {aiData?.next_action&&(
                   <div style={{marginTop:8,padding:"7px 10px",
-                    background:"rgba(139,92,246,.06)",borderRadius:7,
+                    background:"rgba(66, 87, 219,.06)",borderRadius:7,
                     fontFamily:C.F,fontSize:11,color:C.violet,lineHeight:1.4}}>
                     ✦ {aiData.next_action}
                   </div>
@@ -1076,7 +1076,7 @@ function ClientActivitySection({ client, onAdd }){
             style={{flex:1,background:C.surfaceUp,border:`1px solid ${C.border}`,
               borderRadius:8,padding:"8px 11px",color:C.text,fontFamily:C.F,fontSize:11,outline:"none"}}/>
           <button type="submit"
-            style={{background:"rgba(139,92,246,.1)",border:`1px solid ${C.violet}30`,
+            style={{background:"rgba(66, 87, 219,.1)",border:`1px solid ${C.violet}30`,
               color:C.violet,borderRadius:8,padding:"8px 16px",cursor:"pointer",
               fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0}}>
             Log
