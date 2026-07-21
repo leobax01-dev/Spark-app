@@ -132,10 +132,19 @@ function aggregateBusinessData(voice){
   const usage    = apLsGet("sp_usage_stats",{});
   const now      = Date.now();
 
-  const clientsWithMetrics = clients.map(c=>({
-    ...c,
-    daysSince: c.lastContact ? Math.round((now-new Date(c.lastContact))/864e5) : null,
-  }));
+  const clientsWithMetrics = clients.map(c=>{
+    const activities = c.activities||[];
+    const latestActivity = activities[0]||null; // stored newest-first, see addActivity in ClientPanel
+    const openTasks = (c.tasks||[]).filter(t=>!t.completed);
+    return {
+      ...c,
+      daysSince: c.lastContact ? Math.round((now-new Date(c.lastContact))/864e5) : null,
+      latestActivity,
+      activityCount: activities.length,
+      openTaskCount: openTasks.length,
+      nextTaskDue: openTasks.filter(t=>t.dueDate).sort((a,b)=>a.dueDate.localeCompare(b.dueDate))[0]?.dueDate || null,
+    };
+  });
 
   const overdue = clientsWithMetrics.filter(c=>c.daysSince!==null&&c.daysSince>7)
     .sort((a,b)=>b.daysSince-a.daysSince);
@@ -540,9 +549,14 @@ async function syncAgentData(email){
 // AUTOPILOT ENGINE (2 calls)
 // ─────────────────────────────────────────────────────────────────────────────
 async function runAutopilotEngine(data){
-  const clientDetails = data.allClients.map(c=>
-    `${c.name} (${c.type},${c.stage},last:${c.daysSince!==null?c.daysSince+"d":"?"}${c.daysSince>7?" ⚠️":""}, prop:${c.property||"?"}, budget:${c.budget||"?"}, timeline:${c.timeline||"?"}, motivation:${c.motivation||"?"}, notes:${c.notes?.slice(0,50)||"none"})`
-  ).join("\n");
+  const clientDetails = data.allClients.map(c=>{
+    const tagStr = c.tags?.length ? `, tags:[${c.tags.join(",")}]` : "";
+    const activityStr = c.latestActivity
+      ? `, last activity (${c.latestActivity.type}): "${c.latestActivity.summary?.slice(0,80)}"`
+      : `, notes:${c.notes?.slice(0,50)||"none"}`; // fall back to notes if nothing logged yet
+    const taskStr = c.openTaskCount>0 ? `, ${c.openTaskCount} open task${c.openTaskCount!==1?"s":""}${c.nextTaskDue?` (next due ${c.nextTaskDue})`:""}` : "";
+    return `${c.name} (${c.type},${c.stage},last:${c.daysSince!==null?c.daysSince+"d":"?"}${c.daysSince>7?" ⚠️":""}, prop:${c.property||"?"}, budget:${c.budget||"?"}, timeline:${c.timeline||"?"}, motivation:${c.motivation||"?"}${activityStr}${tagStr}${taskStr})`;
+  }).join("\n");
 
   const dealDetails = [...data.urgentDeals,...data.atRiskDeals.filter(d=>!data.urgentDeals.find(u=>u.id===d.id))].map(d=>{
     const days=d.closeDate?Math.round((new Date(d.closeDate)-Date.now())/864e5):null;
@@ -568,7 +582,7 @@ ${marketCtx}`;
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
-        system:"You are SPARK Autopilot, an elite real estate business intelligence AI. Be specific, reference real names and numbers. Return ONLY valid compact JSON — no markdown, no code fences, no explanation before or after.",
+        system:"You are SPARK Autopilot, an elite real estate business intelligence AI. Be specific, reference real names and numbers. When a client has tags, a logged activity, or open tasks, weave that real context into your reasoning — a tagged 'VIP' client going quiet is a sharper signal than a generic overdue flag, and referencing what was actually said in their last logged call beats a generic notes summary. Return ONLY valid compact JSON — no markdown, no code fences, no explanation before or after.",
         messages:[{role:"user",content:userPrompt}],
         max_tokens:4000,
       })
@@ -594,7 +608,7 @@ Return ONLY this JSON (compact):
   const part2 = await callClaude(`${ctx}
 
 Return ONLY this JSON (compact):
-{"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact warm personal message to send","reason":"why reach out now"}],"market_intelligence":{"insight":"actionable market insight for their pipeline — if LIVE MARKET DATA is provided above, ground this in the real numbers given (e.g. reference actual median DOM or price trends); otherwise give an honest general insight without inventing statistics","opportunity":"market condition to capitalize on now","talking_point":"most powerful talking point this week"},"coaching_insight":{"observation":"honest pattern from their data","recommendation":"one concrete change","this_week":"single most impactful action"},"performance_forecast":{"gci_projection":"$X projected this month","deals_likely_to_close":"1-2","biggest_risk_to_target":"what could prevent hitting goal","momentum":"rising"}}`);
+{"relationship_alerts":[{"type":"overdue","client":"name","days":9,"message":"exact warm personal message to send — if they have a logged activity or tag, reference it specifically instead of writing a generic check-in","reason":"why reach out now — cite their tags or last logged activity if relevant"}],"market_intelligence":{"insight":"actionable market insight for their pipeline — if LIVE MARKET DATA is provided above, ground this in the real numbers given (e.g. reference actual median DOM or price trends); otherwise give an honest general insight without inventing statistics","opportunity":"market condition to capitalize on now","talking_point":"most powerful talking point this week"},"coaching_insight":{"observation":"honest pattern from their data — if you notice clients with open tasks going overdue, or tagged clients being neglected, call that out specifically","recommendation":"one concrete change","this_week":"single most impactful action"},"performance_forecast":{"gci_projection":"$X projected this month","deals_likely_to_close":"1-2","biggest_risk_to_target":"what could prevent hitting goal","momentum":"rising"}}`);
 
   return {...part1,...part2};
 }
@@ -1508,28 +1522,35 @@ function daysSinceDate(dateStr){
 // Runs client-side against whatever clients are currently loaded.
 function computeSphereCandidates(clients){
   const candidates = [];
+  const HIGH_VALUE_TAG = /vip|referral|repeat|top|priority/i;
+
   clients.forEach(c=>{
     const anchor = c.lastContact || c.createdAt;
     const days = daysSinceDate(anchor);
     if(days===null) return;
 
+    // Tagged relationships (VIP, referral source, etc) are worth surfacing
+    // sooner — a quiet VIP is a sharper signal than a generic overdue flag.
+    const tagBoost = (c.tags||[]).some(t=>HIGH_VALUE_TAG.test(t)) ? -1 : 0;
+    const clampPriority = p => Math.max(1, p+tagBoost);
+
     if(c.stage==="closed"){
       // Past clients — anniversary and check-in triggers
       if(days>=330 && days<=395){
-        candidates.push({ client:c, days, trigger:"1-Year Home Anniversary", priority:1 });
+        candidates.push({ client:c, days, trigger:"1-Year Home Anniversary", priority:clampPriority(1) });
       } else if(days>=700 && days<=760){
-        candidates.push({ client:c, days, trigger:"2-Year Check-In", priority:2 });
+        candidates.push({ client:c, days, trigger:"2-Year Check-In", priority:clampPriority(2) });
       } else if(days>=1060 && days<=1120){
-        candidates.push({ client:c, days, trigger:"3-Year Check-In", priority:2 });
+        candidates.push({ client:c, days, trigger:"3-Year Check-In", priority:clampPriority(2) });
       } else if(days>=150 && days<330){
-        candidates.push({ client:c, days, trigger:"Post-Close Market Update", priority:3 });
+        candidates.push({ client:c, days, trigger:"Post-Close Market Update", priority:clampPriority(3) });
       } else if(days>395 && days%365<30 === false && days>760){
         // Catch-all for long-dormant past clients not on a clean anniversary
-        if(days>1120) candidates.push({ client:c, days, trigger:"Long-Dormant Past Client", priority:4 });
+        if(days>1120) candidates.push({ client:c, days, trigger:"Long-Dormant Past Client", priority:clampPriority(4) });
       }
     } else if((c.stage==="prospect"||c.stage==="active") && days>=120){
       // Cold leads / stalled relationships — different kind of reactivation
-      candidates.push({ client:c, days, trigger:"Cold Lead Reactivation", priority: days>240?1:2 });
+      candidates.push({ client:c, days, trigger:"Cold Lead Reactivation", priority: clampPriority(days>240?1:2) });
     }
   });
 
@@ -1562,14 +1583,19 @@ async function generateSphereReactivation(clients, voice, email, apResult){
     const marketLine = stats
       ? ` | LIVE MARKET DATA for their area: median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median DOM ${stats.medianDaysOnMarket??"?"}d`
       : "";
-    return `${i+1}. ${cand.client.name} — ${cand.trigger}, ${cand.days} days since last contact, type: ${cand.client.type||"?"}, property: ${cand.client.property||"unknown"}, notes: ${cand.client.notes?.slice(0,120)||"none"}${marketLine}`;
+    const activities = cand.client.activities||[];
+    const historyLine = activities.length
+      ? `last logged activity (${activities[0].type}): "${activities[0].summary?.slice(0,100)}"`
+      : `notes: ${cand.client.notes?.slice(0,120)||"none"}`;
+    const tagLine = cand.client.tags?.length ? ` | tags: [${cand.client.tags.join(", ")}]` : "";
+    return `${i+1}. ${cand.client.name} — ${cand.trigger}, ${cand.days} days since last contact, type: ${cand.client.type||"?"}, property: ${cand.client.property||"unknown"}, ${historyLine}${tagLine}${marketLine}`;
   }).join("\n");
 
   const r = await fetch("/api/claude",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
-      system:"You are SPARK Autopilot's Sphere Reactivation Engine. Real estate's biggest missed opportunity is that most agents' past clients would use them again but never get re-contacted. Your job is to give the agent a specific, non-salesy, genuinely valuable reason to reach out to each dormant relationship, plus a ready-to-send message. When live market data is given for a client's area, use the real numbers as part of the 'why now' reason and the message itself (e.g. referencing actual median sale prices) — never invent statistics if none are given. Reference real names, timeframes, and property details. Return ONLY valid compact JSON.",
+      system:"You are SPARK Autopilot's Sphere Reactivation Engine. Real estate's biggest missed opportunity is that most agents' past clients would use them again but never get re-contacted. Your job is to give the agent a specific, non-salesy, genuinely valuable reason to reach out to each dormant relationship, plus a ready-to-send message. When a client has a logged activity history, reference what actually happened in your 'why now' reasoning instead of writing something generic. When a client has tags (e.g. VIP, referral source), let that shape the tone and priority of the message. When live market data is given for a client's area, use the real numbers as part of the 'why now' reason and the message itself — never invent statistics if none are given. Reference real names, timeframes, and property details. Return ONLY valid compact JSON.",
       messages:[{role:"user",content:`Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, market: ${voice?.market||""}
 
 Here are dormant relationships detected in the agent's book of business:
