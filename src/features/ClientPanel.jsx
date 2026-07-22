@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
+import Icon from "../components/Icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -108,12 +109,12 @@ const BLANK_CLIENT = {
 };
 
 const ACTIVITY_TYPES = [
-  { id:"call",     label:"Call",     icon:"📞" },
-  { id:"email",    label:"Email",    icon:"📧" },
-  { id:"text",     label:"Text",     icon:"💬" },
-  { id:"meeting",  label:"Meeting",  icon:"🤝" },
-  { id:"showing",  label:"Showing",  icon:"🏡" },
-  { id:"note",     label:"Note",     icon:"📝" },
+  { id:"call",     label:"Call",     icon:"Phone" },
+  { id:"email",    label:"Email",    icon:"Mail" },
+  { id:"text",     label:"Text",     icon:"Chat" },
+  { id:"meeting",  label:"Meeting",  icon:"Negotiate" },
+  { id:"showing",  label:"Showing",  icon:"Listings" },
+  { id:"note",     label:"Note",     icon:"Script" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1059,16 +1060,19 @@ function ClientActivitySection({ client, onAdd }){
       <CLabel color={C.violet}>ACTIVITY TIMELINE</CLabel>
       <form onSubmit={submit} style={{marginBottom:14}}>
         <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
-          {ACTIVITY_TYPES.map(t=>(
+          {ACTIVITY_TYPES.map(t=>{
+            const TIcon = Icon[t.icon];
+            return(
             <button key={t.id} type="button" onClick={()=>setType(t.id)}
-              style={{padding:"5px 10px",borderRadius:7,
+              style={{padding:"5px 10px",borderRadius:7,display:"flex",alignItems:"center",gap:5,
                 border:`1px solid ${type===t.id?C.violet+"50":C.border}`,
                 background:type===t.id?`${C.violet}12`:"transparent",
                 color:type===t.id?C.violet:C.textDim,cursor:"pointer",
                 fontSize:10,fontFamily:C.F,fontWeight:600}}>
-              {t.icon} {t.label}
+              {TIcon&&<TIcon size={12}/>} {t.label}
             </button>
-          ))}
+            );
+          })}
         </div>
         <div style={{display:"flex",gap:7}}>
           <input value={summary} onChange={e=>setSummary(e.target.value)}
@@ -1098,8 +1102,8 @@ function ClientActivitySection({ client, onAdd }){
                 borderBottom:i<activities.length-1?`1px solid ${C.border}`:"none"}}>
                 <div style={{width:26,height:26,borderRadius:"50%",flexShrink:0,
                   background:`${C.violet}12`,border:`1px solid ${C.violet}24`,
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:12}}>
-                  {meta.icon}
+                  display:"flex",alignItems:"center",justifyContent:"center",color:C.violet}}>
+                  {Icon[meta.icon] && (()=>{ const MI=Icon[meta.icon]; return <MI size={13}/>; })()}
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
@@ -1439,30 +1443,35 @@ export default function ClientPanel({ user, planKey }){
   const [tool, setTool] = useState("briefing");
 
   const TOOLS=[
-    {id:"briefing",  label:"Daily Briefing", icon:"☀️", color:C.indigo,  desc:"Your AI morning action plan"},
-    {id:"pipeline",  label:"Pipeline",       icon:"📊", color:C.violet,  desc:"Track & manage all clients"},
-    {id:"notes",     label:"Note Analyzer",  icon:"🧠", color:C.cyan,    desc:"Turn rough notes into intel"},
-    {id:"import",    label:"Import CRM",     icon:"📥", color:C.emerald, desc:"Bring in your existing clients"},
+    {id:"briefing",  label:"Daily Briefing", icon:"Sun",   color:C.indigo,  desc:"Your AI morning action plan"},
+    {id:"pipeline",  label:"Pipeline",       icon:"Funnel",color:C.violet,  desc:"Track & manage all clients"},
+    {id:"notes",     label:"Note Analyzer",  icon:"Brain", color:C.cyan,    desc:"Turn rough notes into intel"},
+    {id:"import",    label:"Import CRM",     icon:"Inbox", color:C.emerald, desc:"Bring in your existing clients"},
   ];
 
   return(
     <div style={{paddingBottom:40}}>
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
-        {TOOLS.map(t=>(
+        {TOOLS.map(t=>{
+          const TIcon = Icon[t.icon];
+          return(
           <div key={t.id} onClick={()=>setTool(t.id)}
             style={{padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
               border:`1px solid ${tool===t.id?t.color+"50":C.border}`,
               background:tool===t.id?`${t.color}0e`:"rgba(255,255,255,.015)",
               transition:"all .16s ease"}}>
-            <div style={{fontSize:20,marginBottom:6}}>{t.icon}</div>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:6,color:tool===t.id?t.color:C.textMd}}>
+              {TIcon&&<TIcon size={19}/>}
+            </div>
             <div style={{fontFamily:C.F,fontWeight:700,fontSize:11,
               color:tool===t.id?t.color:C.textMd,marginBottom:3}}>{t.label}</div>
             <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,lineHeight:1.3}}>
               {t.desc}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {tool==="briefing" && <DailyBriefing/>}
