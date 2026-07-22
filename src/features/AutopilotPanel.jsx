@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from "react";
 import { lsGet as apLsGet, lsSet as apLsSet, cloudSync as apCloudSync } from "../utils/storage";
 import { runComplianceCheck } from "../utils/compliance";
+import { Button } from "../components/UI";
 import Icon from "../components/Icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3500,10 +3501,12 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
               <div style={{width:4,height:4,borderRadius:"50%",background:C.emerald}}/>
               <span style={{fontSize:8,color:C.emerald,fontFamily:C.F,fontWeight:700}}>Google</span>
             </div>}
-            {isPremium&&<button onClick={runAutopilot} disabled={apRunning||!hasEnoughData}
-              style={{background:apRunning||!hasEnoughData?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.violet})`,border:"none",color:apRunning||!hasEnoughData?C.textDim:"#fff",borderRadius:9,padding:"7px 14px",cursor:apRunning||!hasEnoughData?"default":"pointer",fontFamily:C.F,fontWeight:700,fontSize:11,boxShadow:apRunning||!hasEnoughData?"none":`0 3px 12px ${C.indigo}30`,transition:"all .2s"}}>
-              {apRunning?"Analyzing...":"▶ Run"}
-            </button>}
+            {isPremium&&(
+              <Button variant="primary" C={C} onClick={runAutopilot} disabled={apRunning||!hasEnoughData}
+                style={{padding:"7px 14px",fontSize:11,borderRadius:9}}>
+                {apRunning?"Analyzing...":"▶ Run"}
+              </Button>
+            )}
           </div>
         </div>
 
