@@ -4,6 +4,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Icon from "../components/Icons";
+import { Card, Label } from "../components/UI";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMP FETCHER — shared by Presentation and CMA tools
@@ -56,31 +57,12 @@ const C = {
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED UI HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
-function TCard({children, accent=C.indigo, style={}}){
-  return(
-    <div style={{
-      background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
-      border:`1px solid ${C.border}`,borderRadius:14,
-      padding:"20px 18px",marginBottom:14,position:"relative",
-      overflow:"hidden",...style}}>
-      <div style={{position:"absolute",top:0,left:0,right:0,height:1,
-        background:`linear-gradient(90deg,transparent,${accent}40,transparent)`}}/>
-      {children}
-    </div>
-  );
+function TCard({children, accent, style={}}){
+  return <Card accent={accent} style={style} C={C}>{children}</Card>;
 }
 
-function TLabel({children, color=C.indigo}){
-  return(
-    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:14}}>
-      <div style={{width:3,height:13,borderRadius:2,
-        background:`linear-gradient(180deg,${color},${color}60)`,
-        boxShadow:`0 0 7px ${color}80`}}/>
-      <span style={{fontSize:9,color,fontFamily:C.F,fontWeight:700,letterSpacing:2.2}}>
-        {children}
-      </span>
-    </div>
-  );
+function TLabel({children, color}){
+  return <Label color={color} C={C}>{children}</Label>;
 }
 
 function TField({label, value, onChange, placeholder, area=false, rows=2}){
