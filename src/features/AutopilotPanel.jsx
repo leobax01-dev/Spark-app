@@ -939,7 +939,7 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
         </APCard>
       )}
 
-      {error&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",fontFamily:C.F,fontSize:12,color:C.rose}}>{error}</div>}
+      {error&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:10,padding:"12px 14px",fontFamily:C.F,fontSize:12,color:C.rose}}>{error}</div>}
 
       {brief&&!loading&&(
         <div>
@@ -1038,7 +1038,7 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
 
           {/* Winning move */}
           {brief.winning_move&&(
-            <APCard accent={C.emerald} style={{background:`linear-gradient(135deg,rgba(16,185,129,.07),rgba(99,102,241,.04))`}}>
+            <APCard accent={C.emerald} style={{background:`linear-gradient(135deg,rgba(34, 197, 94,.07),rgba(79, 107, 255,.04))`}}>
               <APLabel color={C.emerald}>THE WINNING MOVE</APLabel>
               <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,
                 margin:"0 0 14px",lineHeight:1.6}}>{brief.winning_move}</p>
@@ -1063,12 +1063,12 @@ function MissionSection({ mission, runTime, onDiscuss, user, voice }){
   const uc={critical:C.rose,high:C.amber,medium:C.indigo};
   return(
     <div>
-      <APCard accent={C.emerald} style={{background:`linear-gradient(135deg,rgba(16,185,129,.08),rgba(99,102,241,.04))`}}>
+      <APCard accent={C.emerald} style={{background:`linear-gradient(135deg,rgba(34, 197, 94,.08),rgba(79, 107, 255,.04))`}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
           <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
             background:`linear-gradient(135deg,${C.emerald},${C.indigo})`,
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:20,boxShadow:`0 4px 16px rgba(16,185,129,.3)`}}>🎯</div>
+            fontSize:20,boxShadow:`0 4px 16px rgba(34, 197, 94,.3)`}}>🎯</div>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:C.emerald,letterSpacing:2.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>TODAY'S MISSION</div>
             <p style={{fontFamily:C.F,fontWeight:800,fontSize:16,color:C.text,margin:"0 0 8px",lineHeight:1.3,letterSpacing:"-0.01em"}}>{mission.headline}</p>
@@ -1148,7 +1148,7 @@ function DealIntelligence({ di, onDiscuss, onSituationRoom }){
                 <div style={{display:"flex",gap:5,flexShrink:0}}>
                   {risk.severity==="high"&&(
                     <button onClick={()=>onSituationRoom(risk)}
-                      style={{background:`linear-gradient(135deg,${C.rose},rgba(244,63,94,.7))`,
+                      style={{background:`linear-gradient(135deg,${C.rose},rgba(239, 68, 68,.7))`,
                         border:"none",color:"#fff",borderRadius:6,padding:"3px 9px",
                         cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700}}>
                       Situation Room →
@@ -1159,7 +1159,7 @@ function DealIntelligence({ di, onDiscuss, onSituationRoom }){
                 </div>
               </div>
               {risk.message&&(
-                <div style={{background:"rgba(244,63,94,.04)",border:"1px solid rgba(244,63,94,.14)",borderRadius:8,padding:"9px 11px",marginLeft:14}}>
+                <div style={{background:"rgba(239, 68, 68,.04)",border:"1px solid rgba(239, 68, 68,.14)",borderRadius:8,padding:"9px 11px",marginLeft:14}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                     <span style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,letterSpacing:1.5}}>RECOVERY MESSAGE</span>
                     <APCopyBtn text={risk.message}/>
@@ -1292,7 +1292,7 @@ function MarketCoachingForecast({ market, coaching, forecast, onDiscuss }){
               </div>
             ))}
           </div>
-          {forecast.biggest_risk_to_target&&<div style={{background:"rgba(244,63,94,.05)",border:"1px solid rgba(244,63,94,.14)",borderRadius:8,padding:"9px 11px"}}>
+          {forecast.biggest_risk_to_target&&<div style={{background:"rgba(239, 68, 68,.05)",border:"1px solid rgba(239, 68, 68,.14)",borderRadius:8,padding:"9px 11px"}}>
             <span style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,letterSpacing:1.5}}>BIGGEST RISK: </span>
             <span style={{fontFamily:C.F,fontSize:11,color:C.textMd}}>{forecast.biggest_risk_to_target}</span>
           </div>}
@@ -1458,7 +1458,7 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
                 style={{background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,
                   color:C.textDim,borderRadius:8,padding:"3px 9px",cursor:"pointer",
                   fontSize:9,fontFamily:C.F,fontWeight:600,transition:"all .12s"}}
-                onMouseEnter={e=>{e.currentTarget.style.color=C.indigoLt;e.currentTarget.style.borderColor="rgba(99,102,241,.28)";}}
+                onMouseEnter={e=>{e.currentTarget.style.color=C.indigoLt;e.currentTarget.style.borderColor="rgba(79, 107, 255,.28)";}}
                 onMouseLeave={e=>{e.currentTarget.style.color=C.textDim;e.currentTarget.style.borderColor=C.border;}}>
                 {a.label}
               </button>
@@ -2116,7 +2116,7 @@ function WeeklyReport({ report, weekLabel, onDiscuss }){
             </div>
           )}
           {report.pipeline_snapshot.at_risk&&(
-            <div style={{background:"rgba(244,63,94,.05)",border:"1px solid rgba(244,63,94,.18)",
+            <div style={{background:"rgba(239, 68, 68,.05)",border:"1px solid rgba(239, 68, 68,.18)",
               borderRadius:8,padding:"9px 12px"}}>
               <div style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,
                 letterSpacing:1.5,marginBottom:3}}>AT RISK</div>
@@ -2285,15 +2285,15 @@ function SphereReactivation({ sphere, onDiscuss, onCopyToast, user, voice }){
   return(
     <div>
       {/* Summary */}
-      <APCard accent={C.violet} style={{background:`linear-gradient(135deg,${C.violet}08,${C.indigo}04)`}}>
+      <APCard accent={C.indigo} style={{background:`${C.indigo}06`}}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
           <div style={{width:40,height:40,borderRadius:11,flexShrink:0,
-            background:`linear-gradient(135deg,${C.violet},${C.indigo})`,
+            background:C.indigo,
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:18,boxShadow:`0 4px 14px ${C.violet}30`}}>🔄</div>
+            boxShadow:`0 4px 14px ${C.indigo}30`}}><Icon.Sphere size={19} color="#fff"/></div>
           <div>
-            <span style={{fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,
-              background:`${C.violet}14`,border:`1px solid ${C.violet}28`,
+            <span style={{fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:700,
+              background:`${C.indigo}14`,border:`1px solid ${C.indigo}28`,
               borderRadius:8,padding:"1px 8px",letterSpacing:1}}>
               SPHERE REACTIVATION
             </span>
@@ -2414,8 +2414,8 @@ function NegotiationCopilot({ voice, onDiscuss }){
   return(
     <div>
       {!strategy&&(
-        <APCard accent={C.violet}>
-          <APLabel color={C.violet}>WHAT'S THE SITUATION?</APLabel>
+        <APCard accent={C.indigo}>
+          <APLabel color={C.indigo}>WHAT'S THE SITUATION?</APLabel>
 
           {/* Situation type picker */}
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
@@ -2454,7 +2454,7 @@ function NegotiationCopilot({ voice, onDiscuss }){
               borderRadius:10,padding:"12px 14px",color:C.text,fontFamily:C.F,fontSize:12,
               resize:"vertical",lineHeight:1.6,outline:"none",boxSizing:"border-box",marginBottom:12}}/>
 
-          {error&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:9,padding:"10px 12px",marginBottom:12,fontFamily:C.F,fontSize:11,color:C.rose}}>{error}</div>}
+          {error&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:9,padding:"10px 12px",marginBottom:12,fontFamily:C.F,fontSize:11,color:C.rose}}>{error}</div>}
 
           <button onClick={handleGenerate} disabled={!situationText.trim()||loading}
             style={{width:"100%",background:situationText.trim()&&!loading?`linear-gradient(135deg,${C.violet},${C.indigo})`:"rgba(255,255,255,.05)",
@@ -3496,7 +3496,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
           {/* Controls */}
           <div style={{display:"flex",gap:6,alignItems:"center",position:"relative"}}>
             {syncing&&<span style={{fontSize:9,color:C.amber,fontFamily:C.F}}>syncing...</span>}
-            {isGoogle&&<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(16,185,129,.08)",border:"1px solid rgba(16,185,129,.2)",borderRadius:7,padding:"3px 8px",cursor:"pointer"}} onClick={fetchGoogleData}>
+            {isGoogle&&<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(34, 197, 94,.08)",border:"1px solid rgba(34, 197, 94,.2)",borderRadius:7,padding:"3px 8px",cursor:"pointer"}} onClick={fetchGoogleData}>
               <div style={{width:4,height:4,borderRadius:"50%",background:C.emerald}}/>
               <span style={{fontSize:8,color:C.emerald,fontFamily:C.F,fontWeight:700}}>Google</span>
             </div>}
@@ -3550,7 +3550,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         {/* ── INTELLIGENCE VIEW ── */}
         {view==="intelligence"&&(
           <div>
-            {apError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{apError}</div>}
+            {apError&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{apError}</div>}
 
             {/* Premium with no data */}
             {isPremium&&!hasEnoughData&&!apResult&&(
@@ -3561,7 +3561,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 {[{icon:"👥",label:"Add your clients",desc:"Clients tab → Pipeline Manager",tab:"clients"},{icon:"📋",label:"Add your deals",desc:"Market tab → My Business → Add Deal",tab:"market"},{icon:"🎯",label:"Set your GCI goal",desc:"Market tab → My Business → Goals",tab:"market"}].map((s,i)=>(
                   <div key={i} onClick={()=>onNavigate(s.tab)}
                     style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:11,padding:"12px 14px",cursor:"pointer",textAlign:"left",marginBottom:8,maxWidth:320,marginLeft:"auto",marginRight:"auto",transition:"all .16s"}}
-                    onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(99,102,241,.3)"}
+                    onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(79, 107, 255,.3)"}
                     onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
                     <span style={{fontSize:20}}>{s.icon}</span>
                     <div style={{flex:1}}>
@@ -3605,8 +3605,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
                 {/* Critical risk banner — appears when high severity risks exist */}
                 {!situationRoom&&apResult?.deal_intelligence?.risks?.filter(r=>r.severity==="high")?.length>0&&(
-                  <div style={{background:"rgba(244,63,94,.07)",
-                    border:"1px solid rgba(244,63,94,.25)",
+                  <div style={{background:"rgba(239, 68, 68,.07)",
+                    border:"1px solid rgba(239, 68, 68,.25)",
                     borderRadius:12,padding:"12px 16px",marginBottom:14,
                     display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -3623,7 +3623,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                       </div>
                     </div>
                     <button onClick={()=>setSituationRoom(apResult.deal_intelligence.risks[0])}
-                      style={{background:`linear-gradient(135deg,${C.rose},rgba(244,63,94,.7))`,
+                      style={{background:`linear-gradient(135deg,${C.rose},rgba(239, 68, 68,.7))`,
                         border:"none",color:"#fff",borderRadius:8,padding:"7px 14px",
                         cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:11,
                         flexShrink:0,boxShadow:`0 3px 12px ${C.rose}28`}}>
@@ -3679,7 +3679,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                       </button>
                     </div>
 
-                    {listingPerfError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{listingPerfError}</div>}
+                    {listingPerfError&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{listingPerfError}</div>}
 
                     {listingPerfLoading&&(
                       <APCard accent={C.indigo}>
@@ -3735,7 +3735,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                       </button>
                     </div>
 
-                    {sphereError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{sphereError}</div>}
+                    {sphereError&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{sphereError}</div>}
 
                     {sphereLoading&&(
                       <APCard accent={C.violet}>
@@ -3795,7 +3795,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                       </button>
                     </div>
 
-                    {weeklyError&&<div style={{background:"rgba(244,63,94,.07)",border:"1px solid rgba(244,63,94,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{weeklyError}</div>}
+                    {weeklyError&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{weeklyError}</div>}
 
                     {weeklyLoading&&(
                       <APCard accent={C.indigo}>
@@ -3860,9 +3860,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             {!hasMessages&&briefObj&&(
               <div style={{
                 background: briefObj.urgency==="critical"
-                  ? `linear-gradient(135deg,rgba(244,63,94,.08),rgba(99,102,241,.04))`
+                  ? `linear-gradient(135deg,rgba(239, 68, 68,.08),rgba(79, 107, 255,.04))`
                   : briefObj.urgency==="high"
-                  ? `linear-gradient(135deg,rgba(245,158,11,.07),rgba(99,102,241,.04))`
+                  ? `linear-gradient(135deg,rgba(245, 166, 35,.07),rgba(79, 107, 255,.04))`
                   : `linear-gradient(135deg,${C.indigo}10,${C.emerald}06)`,
                 border: `1px solid ${briefObj.urgency==="critical"?C.rose+"30":briefObj.urgency==="high"?C.amber+"30":C.indigo+"20"}`,
                 borderRadius:13,padding:"16px 16px",marginBottom:16,
@@ -3953,7 +3953,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
               {["Make it shorter","Different version","More professional","More casual","Give me a script","What should I say next?","Add urgency","Write the email version"].map((s,i)=>(
                 <button key={i} onClick={()=>sendMessage(s)}
                   style={{background:"rgba(255,255,255,.025)",border:`1px solid ${C.border}`,borderRadius:14,padding:"4px 10px",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,fontSize:9,color:C.textDim,fontFamily:C.F,fontWeight:600,transition:"all .12s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.color=C.indigoLt;e.currentTarget.style.borderColor="rgba(99,102,241,.28)";}}
+                  onMouseEnter={e=>{e.currentTarget.style.color=C.indigoLt;e.currentTarget.style.borderColor="rgba(79, 107, 255,.28)";}}
                   onMouseLeave={e=>{e.currentTarget.style.color=C.textDim;e.currentTarget.style.borderColor=C.border;}}>
                   {s}
                 </button>
@@ -3987,7 +3987,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 title={voiceActive?"Stop listening":"Start voice input"}
                 style={{width:44,height:44,borderRadius:11,flexShrink:0,
                   background:voiceActive
-                    ?`linear-gradient(135deg,${C.rose},rgba(244,63,94,.7))`
+                    ?`linear-gradient(135deg,${C.rose},rgba(239, 68, 68,.7))`
                     :"rgba(255,255,255,.05)",
                   border:`1px solid ${voiceActive?C.rose+"50":C.border}`,
                   cursor:"pointer",display:"flex",alignItems:"center",
@@ -4116,8 +4116,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
           Autopilot failed to load: {err?.message||"Unknown error"}
         </p>
         <button onClick={()=>window.location.reload()}
-          style={{background:"rgba(99,102,241,.15)",border:"1px solid rgba(99,102,241,.3)",
-            color:"#818cf8",borderRadius:8,padding:"8px 20px",cursor:"pointer",
+          style={{background:"rgba(79, 107, 255,.15)",border:"1px solid rgba(79, 107, 255,.3)",
+            color:"#8CA0FF",borderRadius:8,padding:"8px 20px",cursor:"pointer",
             fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:600}}>
           Reload
         </button>
