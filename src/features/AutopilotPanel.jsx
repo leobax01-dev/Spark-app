@@ -6,7 +6,7 @@
 import { useState, useEffect, useRef } from "react";
 import { lsGet as apLsGet, lsSet as apLsSet, cloudSync as apCloudSync } from "../utils/storage";
 import { runComplianceCheck } from "../utils/compliance";
-import { Button, Card, Label } from "../components/UI";
+import { Button, Card, Label, CopyButton } from "../components/UI";
 import Icon from "../components/Icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -653,17 +653,7 @@ function APLabel({ children, color }){
 }
 
 function APCopyBtn({ text }){
-  const [ok,setOk]=useState(false);
-  return(
-    <button onClick={e=>{ e.stopPropagation();
-      navigator.clipboard.writeText(text||"").then(()=>{ setOk(true); setTimeout(()=>setOk(false),2000); }); }}
-      style={{background:"transparent",border:`1px solid ${C.border}`,
-        color:ok?C.emerald:C.textDim,borderRadius:6,padding:"3px 9px",
-        cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700,
-        letterSpacing:1,transition:"all .14s",flexShrink:0}}>
-      {ok?"✓":"COPY"}
-    </button>
-  );
+  return <CopyButton text={text} C={C} stopPropagation shortLabel/>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
