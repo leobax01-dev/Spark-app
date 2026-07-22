@@ -1,9 +1,13 @@
 // src/components/UI.jsx
 // Shared design primitives — the single source of truth for cards and
-// buttons across SPARK. Every panel currently defines its own near-
-// identical Card component (APCard, MCard, CCard, TCard) with small
-// drifts in spacing/border/radius between them; this file is the
-// standardized replacement going forward.
+// buttons across SPARK. Every panel used to define its own near-identical
+// card component (APCard, MCard, CCard, TCard); this file is the one real
+// implementation they now delegate to, so there's a single place to change
+// the look instead of four. The visual design below is deliberately taken
+// from AutopilotPanel's original APCard/APLabel — a top-edge accent glow
+// and a left-tick label mark — since that pattern was already distinctive
+// and working well; standardizing means everyone gets it, not that it
+// gets replaced with something new and unverified.
 //
 // TYPOGRAPHY SCALE (reference — use these sizes, don't invent new ones):
 //   Page title:      28-30px / weight 800 / letterSpacing -0.02em
@@ -24,29 +28,39 @@
 //   <Button variant="primary" C={C} onClick={...}>Save</Button>
 
 export function Card({ children, accent, style={}, C }){
+  const a = accent || C.indigo;
   return (
     <div style={{
-      background: C.surface,
-      border: `1px solid ${accent ? accent+"22" : C.border}`,
-      borderLeft: accent ? `2px solid ${accent}` : `1px solid ${C.border}`,
+      background: `linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+      border: `1px solid ${C.border}`,
       borderRadius: 14,
-      padding: "16px 18px",
+      padding: "18px 16px",
       marginBottom: 12,
+      position: "relative",
+      overflow: "hidden",
       ...style,
     }}>
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 1,
+        background: `linear-gradient(90deg,transparent,${a}50,transparent)`,
+      }}/>
       {children}
     </div>
   );
 }
 
 export function Label({ children, color, C }){
+  const c = color || C.indigo;
   return (
-    <div style={{
-      fontFamily: C.F, fontSize: 9, fontWeight: 700,
-      letterSpacing: 1.2, color: color||C.textDim,
-      marginBottom: 8, textTransform: "uppercase",
-    }}>
-      {children}
+    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
+      <div style={{
+        width: 3, height: 13, borderRadius: 2,
+        background: `linear-gradient(180deg,${c},${c}60)`,
+        boxShadow: `0 0 7px ${c}80`,
+      }}/>
+      <span style={{ fontSize: 9, color: c, fontFamily: C.F, fontWeight: 700, letterSpacing: 2.2 }}>
+        {children}
+      </span>
     </div>
   );
 }
