@@ -1,13 +1,16 @@
 // src/components/UI.jsx
 // Shared design primitives — the single source of truth for cards and
 // buttons across SPARK. Every panel used to define its own near-identical
-// card component (APCard, MCard, CCard, TCard); this file is the one real
-// implementation they now delegate to, so there's a single place to change
-// the look instead of four. The visual design below is deliberately taken
-// from AutopilotPanel's original APCard/APLabel — a top-edge accent glow
-// and a left-tick label mark — since that pattern was already distinctive
-// and working well; standardizing means everyone gets it, not that it
-// gets replaced with something new and unverified.
+// card/button components (APCard/MCard/CCard/TCard, CBtn/MBtn/TBtn, and
+// five near-identical copy buttons); this file is the one real
+// implementation they now delegate to, so there's a single place to
+// change the look instead of several. The card/label design below is
+// deliberately taken from AutopilotPanel's original APCard/APLabel — a
+// top-edge accent glow and a left-tick label mark — since that pattern
+// was already distinctive and working well; standardizing means
+// everyone gets it, not that it gets replaced with something new and
+// unverified. Same logic for the primary button's gradient+loading
+// pattern, taken from ClientPanel's original CBtn.
 //
 // TYPOGRAPHY SCALE (reference — use these sizes, don't invent new ones):
 //   Page title:      28-30px / weight 800 / letterSpacing -0.02em
@@ -18,14 +21,17 @@
 //   Micro / eyebrow:  8-9px  / weight 700 / letterSpacing 1-1.5px, uppercase
 //
 // BUTTON SYSTEM (strict two tiers — don't add a third):
-//   Primary:   solid brand fill, for the one primary action per screen
+//   Primary:   solid brand gradient fill, for the one primary action
 //   Secondary: outlined/ghost, for every other action
 //
 // USAGE:
-//   import { Card, Label, Button } from "../components/UI";
+//   import { Card, Label, Button, CopyButton } from "../components/UI";
 //   <Card accent={C.indigo} C={C}>...</Card>
 //   <Label color={C.indigo} C={C}>SECTION TITLE</Label>
 //   <Button variant="primary" C={C} onClick={...}>Save</Button>
+//   <CopyButton text={someText} C={C}/>
+
+import { useState } from "react";
 
 export function Card({ children, accent, style={}, C }){
   const a = accent || C.indigo;
@@ -65,24 +71,53 @@ export function Label({ children, color, C }){
   );
 }
 
-export function Button({ children, variant="secondary", onClick, disabled, C, style={}, type="button" }){
+export function Button({ children, variant="secondary", onClick, disabled, loading, color, full=true, small=false, C, style={}, type="button" }){
   const isPrimary = variant==="primary";
+  const isOff = disabled || loading;
+  const primaryColor = color || C.indigo;
   return (
-    <button type={type} onClick={onClick} disabled={disabled}
+    <button type={type} onClick={onClick} disabled={isOff}
       style={{
-        fontFamily: C.F, fontWeight: 700, fontSize: 13,
-        padding: "10px 20px", borderRadius: 10,
-        cursor: disabled ? "default" : "pointer",
-        transition: "all .15s ease",
+        fontFamily: C.F, fontWeight: isPrimary?800:700, fontSize: small?11:13,
+        letterSpacing: isPrimary?.3:0,
+        width: isPrimary ? (small?"auto":(full?"100%":"auto")) : "auto",
+        padding: small ? "7px 14px" : "13px 0",
+        borderRadius: 10,
+        cursor: isOff ? "default" : "pointer",
+        transition: "all .2s ease",
         border: isPrimary ? "none" : `1px solid ${C.borderMd}`,
-        background: disabled
-          ? "rgba(255,255,255,.05)"
-          : isPrimary ? C.indigo : "transparent",
-        color: disabled ? C.textDim : isPrimary ? "#fff" : C.text,
-        boxShadow: isPrimary && !disabled ? `0 4px 14px ${C.indigo}30` : "none",
+        background: isOff
+          ? "rgba(255,255,255,.06)"
+          : isPrimary ? `linear-gradient(135deg,${primaryColor},${primaryColor}cc)` : "transparent",
+        color: isOff ? C.textDim : isPrimary ? "#fff" : C.text,
+        boxShadow: isPrimary && !isOff ? `0 4px 16px ${primaryColor}28` : "none",
+        opacity: loading ? .6 : 1,
         ...style,
       }}>
-      {children}
+      {loading ? "Generating..." : children}
+    </button>
+  );
+}
+
+export function CopyButton({ text, C, stopPropagation=false, shortLabel=false }){
+  const [ok, setOk] = useState(false);
+  function handleClick(e){
+    if(stopPropagation) e.stopPropagation();
+    navigator.clipboard.writeText(text||"").then(()=>{
+      setOk(true);
+      setTimeout(()=>setOk(false), 2000);
+    });
+  }
+  return (
+    <button onClick={handleClick}
+      style={{
+        background: "transparent", border: `1px solid ${C.border}`,
+        color: ok ? C.emerald : C.textDim,
+        borderRadius: 6, padding: "3px 9px", cursor: "pointer",
+        fontSize: 9, fontFamily: C.F, fontWeight: 700,
+        letterSpacing: 1, transition: "all .14s ease", flexShrink: 0,
+      }}>
+      {ok ? (shortLabel ? "✓" : "✓ COPIED") : "COPY"}
     </button>
   );
 }
