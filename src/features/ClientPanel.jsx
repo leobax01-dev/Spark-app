@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 import Icon from "../components/Icons";
-import { Card, Label } from "../components/UI";
+import { Card, Label, Button, CopyButton } from "../components/UI";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -51,29 +51,12 @@ function CField({label, value, onChange, placeholder, area=false, rows=2}){
   );
 }
 
-function CBtn({onClick, loading, children, color=C.indigo, small=false}){
-  return(
-    <button onClick={onClick} disabled={loading}
-      style={{width:small?"auto":"100%",background:loading?"rgba(255,255,255,.06)":`linear-gradient(135deg,${color},${color}cc)`,
-        border:"none",color:loading?C.textDim:"#fff",
-        padding:small?"7px 14px":"12px 0",borderRadius:9,cursor:loading?"default":"pointer",
-        fontFamily:C.F,fontWeight:700,fontSize:small?11:13,letterSpacing:.2,
-        boxShadow:loading?"none":`0 4px 14px ${color}28`,
-        transition:"all .18s",opacity:loading?.6:1}}>
-      {loading?"Generating...":children}
-    </button>
-  );
+function CBtn({onClick, loading, children, color, small=false}){
+  return <Button variant="primary" onClick={onClick} loading={loading} color={color} small={small} C={C}>{children}</Button>;
 }
 
 function CCopyBtn({text}){
-  const [ok,setOk]=useState(false);
-  return(
-    <button onClick={()=>{ navigator.clipboard.writeText(text||"").then(()=>{ setOk(true); setTimeout(()=>setOk(false),2000); }); }}
-      style={{background:"transparent",border:`1px solid ${C.border}`,color:ok?C.emerald:C.textDim,
-        borderRadius:6,padding:"3px 8px",cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>
-      {ok?"✓ COPIED":"COPY"}
-    </button>
-  );
+  return <CopyButton text={text} C={C}/>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
