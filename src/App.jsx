@@ -6,6 +6,7 @@ import MarketPanel from "./features/MarketPanel";
 import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHistory";
 import AutopilotPanel from "./features/AutopilotPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
+import Icon from "./components/Icons";
 import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,15 +188,15 @@ function goStripe(link, email){
 }
 
 const CONTENT_TYPES = {
-  listing:     {label:"Listing Video",         icon:"🏠",color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"starter"},
-  mls_desc:    {label:"MLS Description",       icon:"📝",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"starter"},
-  open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"starter"},
-  objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"starter"},
-  scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"starter"},
-  comms:       {label:"Client Communication",  icon:"💬",color:"#EF4444", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
-  education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"starter"},
-  market:      {label:"Market Update",         icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
-  lifestyle:   {label:"Neighborhood Story",    icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
+  listing:     {label:"Listing Video",         icon:"Video", color:C.indigo, cost:2,desc:"Cinematic walkthrough + auto video",      minPlan:"starter"},
+  mls_desc:    {label:"MLS Description",       icon:"Script",color:C.amber,  cost:1,desc:"AI-written MLS listing description",      minPlan:"starter"},
+  open_house:  {label:"Open House Package",    icon:"Door",  color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"starter"},
+  objection:   {label:"Objection Handler",     icon:"Mission",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"starter"},
+  scripts:     {label:"Scripts & Dialogues",   icon:"Script",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"starter"},
+  comms:       {label:"Client Communication",  icon:"Chat",  color:"#EF4444", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
+  education:   {label:"Agent Tip",             icon:"Bulb",  color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"starter"},
+  market:      {label:"Market Update",         icon:"Market",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
+  lifestyle:   {label:"Neighborhood Story",    icon:"City",  color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
 };
 
 const PLATFORMS = {
@@ -1982,8 +1983,8 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 background:active?`${ct.color}18`:"rgba(255,255,255,.04)",
                 border:`1px solid ${active?ct.color+"30":"rgba(255,255,255,.06)"}`,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:16,marginBottom:10,transition:"all .18s"}}>
-                {ct.icon}
+                marginBottom:10,transition:"all .18s"}}>
+                {Icon[ct.icon] && (()=>{ const CT=Icon[ct.icon]; return <CT size={17} color={active?ct.color:C.textDim}/>; })()}
               </div>
               <div style={{fontSize:11,fontWeight:700,
                 color:active?ct.color:locked?C.textDim:C.text,
@@ -3186,7 +3187,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
             {topTool?(
               <>
                 <div style={{fontSize:13,fontFamily:C.F,fontWeight:700,color:C.text}}>
-                  {CONTENT_TYPES[topTool[0]]?.icon} {CONTENT_TYPES[topTool[0]]?.label||topTool[0]}
+                  {(()=>{ const CT=Icon[CONTENT_TYPES[topTool[0]]?.icon]; return CT ? <CT size={13} color={C.text} style={{display:"inline",verticalAlign:"-2px",marginRight:4}}/> : null; })()}{CONTENT_TYPES[topTool[0]]?.label||topTool[0]}
                 </div>
                 <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:2}}>
                   {topTool[1]} generation{topTool[1]!==1?"s":""}
