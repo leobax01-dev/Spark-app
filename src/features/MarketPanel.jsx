@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
+import Icon from "../components/Icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
@@ -362,10 +363,10 @@ Return ONLY valid JSON:
   }
 
   const SEQ_TABS=[
-    {id:"immediate",label:"Immediate",icon:"⚡",color:C.emerald},
-    {id:"day3",     label:"Day 3",    icon:"📅",color:C.indigo},
-    {id:"day7",     label:"Day 7",    icon:"🔄",color:C.amber},
-    {id:"tools",    label:"Tools",    icon:"🛠",color:C.violet},
+    {id:"immediate",label:"Immediate",icon:"Zap",   color:C.emerald},
+    {id:"day3",     label:"Day 3",    icon:"Weekly",color:C.indigo},
+    {id:"day7",     label:"Day 7",    icon:"Sphere",color:C.amber},
+    {id:"tools",    label:"Tools",    icon:"Wrench",color:C.violet},
   ];
 
   return(
@@ -420,16 +421,19 @@ Return ONLY valid JSON:
           {/* Sequence tabs */}
           <div style={{display:"flex",gap:6,marginBottom:14,
             background:"rgba(255,255,255,.025)",borderRadius:10,padding:3}}>
-            {SEQ_TABS.map(t=>(
+            {SEQ_TABS.map(t=>{
+              const TIcon = Icon[t.icon];
+              return(
               <button key={t.id} onClick={()=>setActiveSeq(t.id)}
-                style={{flex:1,padding:"8px 4px",borderRadius:7,
+                style={{flex:1,padding:"8px 4px",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",gap:4,
                   border:`1px solid ${activeSeq===t.id?t.color+"28":"transparent"}`,
                   background:activeSeq===t.id?`linear-gradient(135deg,${t.color}14,${t.color}08)`:"transparent",
                   color:activeSeq===t.id?t.color:C.textDim,cursor:"pointer",
                   fontSize:9,fontWeight:700,fontFamily:C.F,letterSpacing:.8}}>
-                {t.icon} {t.label.toUpperCase()}
+                {TIcon&&<TIcon size={11}/>} {t.label.toUpperCase()}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* Immediate */}
@@ -866,28 +870,33 @@ export default function MarketPanel({ user, planKey }){
   const [tool, setTool] = useState("leads");
 
   const TOOLS=[
-    {id:"leads",     label:"Lead Response",  icon:"⚡", color:C.emerald, desc:"Full response sequence for any lead"},
-    {id:"report",    label:"Market Report",  icon:"📊", color:C.cyan,    desc:"Brandable neighborhood intel report"},
-    {id:"dashboard", label:"My Business",    icon:"📈", color:C.indigo,  desc:"GCI tracker, pipeline & AI coaching"},
+    {id:"leads",     label:"Lead Response",  icon:"Zap",   color:C.emerald, desc:"Full response sequence for any lead"},
+    {id:"report",    label:"Market Report",  icon:"Market",color:C.cyan,    desc:"Brandable neighborhood intel report"},
+    {id:"dashboard", label:"My Business",    icon:"Coaching",color:C.indigo,  desc:"GCI tracker, pipeline & AI coaching"},
   ];
 
   return(
     <div style={{paddingBottom:40}}>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
-        {TOOLS.map(t=>(
+        {TOOLS.map(t=>{
+          const TIcon = Icon[t.icon];
+          return(
           <div key={t.id} onClick={()=>setTool(t.id)}
             style={{padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
               border:`1px solid ${tool===t.id?t.color+"50":C.border}`,
               background:tool===t.id?`${t.color}0e`:"rgba(255,255,255,.015)",
               transition:"all .16s ease"}}>
-            <div style={{fontSize:20,marginBottom:6}}>{t.icon}</div>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:6,color:tool===t.id?t.color:C.textMd}}>
+              {TIcon&&<TIcon size={19}/>}
+            </div>
             <div style={{fontFamily:C.F,fontWeight:700,fontSize:11,
               color:tool===t.id?t.color:C.textMd,marginBottom:3}}>{t.label}</div>
             <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,lineHeight:1.3}}>
               {t.desc}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {tool==="leads"     && <LeadResponse/>}
