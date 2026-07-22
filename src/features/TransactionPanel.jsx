@@ -4,7 +4,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Icon from "../components/Icons";
-import { Card, Label } from "../components/UI";
+import { Card, Label, Button, CopyButton } from "../components/UI";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMP FETCHER — shared by Presentation and CMA tools
@@ -86,33 +86,12 @@ function TField({label, value, onChange, placeholder, area=false, rows=2}){
   );
 }
 
-function TBtn({onClick, loading, children, color=C.indigo, full=true}){
-  return(
-    <button onClick={onClick} disabled={loading}
-      style={{
-        width:full?"100%":"auto",
-        background:loading?"rgba(255,255,255,.06)":`linear-gradient(135deg,${color},${color}cc)`,
-        border:"none",color:loading?C.textDim:"#fff",
-        padding:"13px 0",borderRadius:10,cursor:loading?"default":"pointer",
-        fontFamily:C.F,fontWeight:800,fontSize:13,letterSpacing:.3,
-        boxShadow:loading?"none":`0 4px 16px ${color}30`,
-        transition:"all .2s ease",opacity:loading?.6:1}}>
-      {loading?"Generating...":children}
-    </button>
-  );
+function TBtn({onClick, loading, children, color, full=true}){
+  return <Button variant="primary" onClick={onClick} loading={loading} color={color} full={full} C={C}>{children}</Button>;
 }
 
 function TCopyBtn({text}){
-  const [ok,setOk]=useState(false);
-  return(
-    <button onClick={()=>{ navigator.clipboard.writeText(text).then(()=>{ setOk(true); setTimeout(()=>setOk(false),2000); }); }}
-      style={{background:"transparent",border:`1px solid ${C.border}`,
-        color:ok?C.emerald:C.textDim,borderRadius:6,padding:"3px 9px",
-        cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700,
-        letterSpacing:1,transition:"all .16s"}}>
-      {ok?"✓ COPIED":"COPY"}
-    </button>
-  );
+  return <CopyButton text={text} C={C}/>;
 }
 
 function ResultBlock({label, value, color=C.indigo, area=false}){
