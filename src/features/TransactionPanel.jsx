@@ -3,6 +3,7 @@
 // Standalone feature file — imported into App.jsx, zero changes to existing code
 
 import { useState, useRef, useCallback } from "react";
+import Icon from "../components/Icons";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMP FETCHER — shared by Presentation and CMA tools
@@ -332,25 +333,25 @@ function TransactionTimeline(){
     const totalDays = Math.round((close-offer)/(1000*60*60*24));
 
     return [
-      { date:fmt(offer),          label:"Accepted Offer",         icon:"✅", color:C.emerald,
+      { date:fmt(offer),          label:"Accepted Offer",         icon:"Check", color:C.emerald,
         action:"Send introduction email to all parties. Confirm earnest money deposit timeline.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, congratulations! Your offer on ${inputs.address||"the property"} has been accepted. Here's what happens next...`},
-      { date:fmt(inspectionDeadline), label:`Inspection Deadline`,icon:"🔍", color:C.indigo,
+      { date:fmt(inspectionDeadline), label:`Inspection Deadline`,icon:"Search", color:C.indigo,
         action:"Schedule home inspection immediately. Confirm inspector, share access instructions with listing agent.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, just a reminder that your inspection deadline is ${fmt(inspectionDeadline)}. Please confirm your inspector is scheduled.`},
-      { date:fmt(titleSearch),    label:"Title Search Due",        icon:"📋", color:C.cyan,
+      { date:fmt(titleSearch),    label:"Title Search Due",        icon:"Script", color:C.cyan,
         action:"Follow up with title company on search progress. Flag any liens or easements.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, title search is underway for ${inputs.address||"your property"}. I'll update you as soon as we have results.`},
-      { date:fmt(appraisalDeadline), label:"Appraisal Deadline",  icon:"🏠", color:C.violet,
+      { date:fmt(appraisalDeadline), label:"Appraisal Deadline",  icon:"Listings", color:C.violet,
         action:"Confirm appraisal is scheduled and appraiser has access. Provide comp data to support value.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, your appraisal is due by ${fmt(appraisalDeadline)}. Let me know if you need any updates on this.`},
-      { date:fmt(financingDeadline), label:"Financing Deadline",  icon:"💰", color:C.amber,
+      { date:fmt(financingDeadline), label:"Financing Deadline",  icon:"Dollar", color:C.amber,
         action:"Follow up with lender on loan commitment letter. Alert all parties of status.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, your financing deadline is ${fmt(financingDeadline)}. Please confirm your lender has everything they need for final approval.`},
-      { date:fmt(finalWalkthrough),  label:"Final Walkthrough",   icon:"👀", color:C.cyan,
+      { date:fmt(finalWalkthrough),  label:"Final Walkthrough",   icon:"Eye", color:C.cyan,
         action:"Schedule final walkthrough with buyer. Confirm all repairs completed and agreed items are in place.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, we're almost there! Your final walkthrough is scheduled for ${fmt(finalWalkthrough)}. I'll confirm the time with you shortly.`},
-      { date:fmt(closingDay),     label:"CLOSING DAY 🎉",          icon:"🏆", color:C.emerald,
+      { date:fmt(closingDay),     label:"Closing Day",          icon:"Trophy", color:C.emerald,
         action:"Confirm closing time and location with title company. Remind buyer to bring ID and certified funds.",
         email:`Hi ${inputs.buyerName||"[Buyer]"}, today is the day! Closing is confirmed for ${fmt(closingDay)}. Please bring your photo ID and certified funds. Congratulations on your new home!`},
     ];
@@ -414,7 +415,9 @@ function TransactionTimeline(){
             <div style={{position:"absolute",left:19,top:8,bottom:8,width:1,
               background:`linear-gradient(180deg,${C.indigo},${C.emerald})`,opacity:.2}}/>
 
-            {result.milestones.map((m,i)=>(
+            {result.milestones.map((m,i)=>{
+              const MIcon = Icon[m.icon];
+              return(
               <div key={i} style={{display:"flex",gap:13,marginBottom:12,
                 animation:`slideR .28s ease ${i*.07}s both`}}>
                 {/* Circle */}
@@ -422,8 +425,8 @@ function TransactionTimeline(){
                   background:`linear-gradient(135deg,${m.color}22,${m.color}0a)`,
                   border:`1px solid ${m.color}40`,
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:16,zIndex:1,boxShadow:`0 0 8px ${m.color}20`}}>
-                  {m.icon}
+                  color:m.color,zIndex:1,boxShadow:`0 0 8px ${m.color}20`}}>
+                  {MIcon&&<MIcon size={17}/>}
                 </div>
                 {/* Content */}
                 <div style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,
@@ -433,8 +436,8 @@ function TransactionTimeline(){
                     <div>
                       <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,
                         color:m.color}}>{m.label}</div>
-                      <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:1}}>
-                        📅 {m.date}
+                      <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:1,display:"flex",alignItems:"center",gap:4}}>
+                        <Icon.Weekly size={10}/> {m.date}
                       </div>
                     </div>
                     <TCopyBtn text={m.email}/>
@@ -451,7 +454,8 @@ function TransactionTimeline(){
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -773,30 +777,35 @@ export default function TransactionPanel({ user, planKey }){
   const [tool,setTool]=useState("timeline");
 
   const TOOLS=[
-    {id:"timeline",    label:"Timeline",     icon:"📋", color:C.indigo,  desc:"Deal milestones + client emails"},
-    {id:"presentation",label:"Presentation", icon:"🏆", color:C.violet,  desc:"Full listing appointment deck"},
-    {id:"cma",         label:"Pricing CMA",  icon:"📊", color:C.cyan,    desc:"Comp analysis + price strategy"},
+    {id:"timeline",    label:"Timeline",     icon:"Script", color:C.indigo,  desc:"Deal milestones + client emails"},
+    {id:"presentation",label:"Presentation", icon:"Trophy", color:C.violet,  desc:"Full listing appointment deck"},
+    {id:"cma",         label:"Pricing CMA",  icon:"Market", color:C.cyan,    desc:"Comp analysis + price strategy"},
   ];
 
   return(
     <div style={{paddingBottom:40}}>
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
-        {TOOLS.map(t=>(
+        {TOOLS.map(t=>{
+          const TIcon = Icon[t.icon];
+          return(
           <div key={t.id} onClick={()=>setTool(t.id)}
             style={{
               padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
               border:`1px solid ${tool===t.id?t.color+"50":C.border}`,
               background:tool===t.id?`${t.color}0e`:"rgba(255,255,255,.015)",
               transition:"all .16s ease"}}>
-            <div style={{fontSize:20,marginBottom:6}}>{t.icon}</div>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:6,color:tool===t.id?t.color:C.textMd}}>
+              {TIcon&&<TIcon size={19}/>}
+            </div>
             <div style={{fontFamily:C.F,fontWeight:700,fontSize:11,
               color:tool===t.id?t.color:C.textMd,marginBottom:3}}>{t.label}</div>
             <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,lineHeight:1.3}}>
               {t.desc}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Active tool */}
