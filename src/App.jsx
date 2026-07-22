@@ -8,6 +8,7 @@ import AutopilotPanel from "./features/AutopilotPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Icon from "./components/Icons";
 import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
+import { Button } from "./components/UI";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANALYTICS — PostHog
@@ -2577,9 +2578,10 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
           </div>
         ))}
       </div>
-      <button className="btn-g" onClick={save} style={{marginTop:22,width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:14,boxShadow:"0 4px 18px rgba(79, 107, 255,.24)"}}>
-        Save Agent Voice ⚡
-      </button>
+      <Button variant="primary" C={C} onClick={save}
+        style={{marginTop:22,width:"100%",padding:"13px 0",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+        Save Agent Voice <Icon.Zap size={14} color="#fff"/>
+      </Button>
 
       {voice.saved&&leadLink&&(
         <div style={{marginTop:20,background:"rgba(79, 107, 255,.06)",border:"1px solid rgba(79, 107, 255,.18)",
@@ -4429,7 +4431,7 @@ function MainApp({user,onLogout}){
       position:"relative",zIndex:1}}>
       <div style={{maxWidth:isMobile?"100%":840,margin:"0 auto"}}>
         <div style={{marginBottom:isMobile?16:26}}>
-          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?22:26,margin:"0 0 4px",lineHeight:1.2}}>{TITLES[tab]}</h1>
+          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?24:30,letterSpacing:"-0.02em",margin:"0 0 4px",lineHeight:1.15}}>{TITLES[tab]}</h1>
           <p style={{fontSize:isMobile?11:10,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F,fontWeight:500}}>{SUBTITLES[tab]}</p>
         </div>
 
@@ -4634,7 +4636,7 @@ function MainApp({user,onLogout}){
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                     <div>
                       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
-                        <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:0,lineHeight:1.2}}>{TITLES[tab]}</h1>
+                        <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:30,letterSpacing:"-0.02em",margin:0,lineHeight:1.15}}>{TITLES[tab]}</h1>
                         {planKey==="premium"&&(
                           <span style={{fontSize:9,color:"#4257DB",fontFamily:C.F,fontWeight:700,
                             background:"rgba(66, 87, 219,.1)",border:"1px solid rgba(66, 87, 219,.25)",
@@ -4657,7 +4659,7 @@ function MainApp({user,onLogout}){
                   </div>
                 ):(
                   <>
-                    <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,margin:"0 0 5px",lineHeight:1.2}}>{TITLES[tab]}</h1>
+                    <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:30,letterSpacing:"-0.02em",margin:"0 0 5px",lineHeight:1.15}}>{TITLES[tab]}</h1>
                     <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
                   </>
                 )}
