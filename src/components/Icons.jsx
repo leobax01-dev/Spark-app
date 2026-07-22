@@ -16,9 +16,9 @@ const base = (strokeWidth=1.75) => ({
   strokeLinejoin: "round",
 });
 
-function Svg({ size=18, color, children }){
+function Svg({ size=18, color, style, children }){
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" style={{ color, flexShrink:0 }} {...base()}>
+    <svg width={size} height={size} viewBox="0 0 24 24" style={{ color, flexShrink:0, ...style }} {...base()}>
       {children}
     </svg>
   );
@@ -44,6 +44,24 @@ export const Icon = {
   Copy: (p)=>(<Svg {...p}><rect x="8.5" y="8.5" width="11" height="11" rx="1.5"/><path d="M5.5 15.5h-1a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></Svg>),
   ChevronRight: (p)=>(<Svg {...p}><path d="M9 5l7 7-7 7"/></Svg>),
   Close: (p)=>(<Svg {...p}><path d="M6 6l12 12M18 6 6 18"/></Svg>),
+  Video: (p)=>(<Svg {...p}><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5 21 7v10l-5.5-3.5"/></Svg>),
+  Door: (p)=>(<Svg {...p}><rect x="5" y="3" width="13" height="18" rx="1"/><path d="M14.5 12v.01"/><path d="M2 21h20"/></Svg>),
+  Script: (p)=>(<Svg {...p}><path d="M7 3h9a1 1 0 0 1 1 1v15a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 8h6M9 12h6M9 16h3"/></Svg>),
+  Chat: (p)=>(<Svg {...p}><path d="M4 5h16v11H8l-4 4V5z"/><path d="M8 9h8M8 12h5"/></Svg>),
+  Bulb: (p)=>(<Svg {...p}><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.4 1 1.1 1 1.9v.2h5v-.2c0-.8.4-1.5 1-1.9A6 6 0 0 0 12 3z"/></Svg>),
+  City: (p)=>(<Svg {...p}><path d="M3 21V9l6-4v16"/><path d="M15 21V5l6 4v12"/><path d="M9 21V13h6v8"/><path d="M6 12v.01M6 15v.01M18 10v.01M18 13v.01M18 16v.01"/></Svg>),
+  Sun: (p)=>(<Svg {...p}><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.5 4.5l1.8 1.8M17.7 17.7l1.8 1.8M2.5 12h2.5M19 12h2.5M4.5 19.5l1.8-1.8M17.7 6.3l1.8-1.8"/></Svg>),
+  Brain: (p)=>(<Svg {...p}><path d="M9 4a2.5 2.5 0 0 0-2.5 2.5v.6A2.5 2.5 0 0 0 5 9.5v1A2.5 2.5 0 0 0 4 12.5a2.5 2.5 0 0 0 1.5 2.3v.7A2.5 2.5 0 0 0 8 18a2.5 2.5 0 0 0 1-4.8"/><path d="M15 4a2.5 2.5 0 0 1 2.5 2.5v.6A2.5 2.5 0 0 1 19 9.5v1a2.5 2.5 0 0 1 1 2 2.5 2.5 0 0 1-1.5 2.3v.7A2.5 2.5 0 0 1 16 18a2.5 2.5 0 0 1-1-4.8"/><path d="M9 4v14M15 4v14"/></Svg>),
+  Inbox: (p)=>(<Svg {...p}><path d="M4 12h4l1.5 3h5L16 12h4"/><path d="M4 12 5.5 4.5A1 1 0 0 1 6.5 4h11a1 1 0 0 1 1 .8L20 12v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6z"/></Svg>),
+  Funnel: (p)=>(<Svg {...p}><path d="M4 4h16l-6 8v6l-4 2v-8L4 4z"/></Svg>),
+  Phone: (p)=>(<Svg {...p}><path d="M6.5 3h3l1.5 4.5-2 1.5a12 12 0 0 0 5.5 5.5l1.5-2 4.5 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4.5 5.2 2 2 0 0 1 6.5 3z"/></Svg>),
+  Mail: (p)=>(<Svg {...p}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6 8.5 7 8.5-7"/></Svg>),
+  Zap: (p)=>(<Svg {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></Svg>),
+  Wrench: (p)=>(<Svg {...p}><path d="M14.5 6.5a4 4 0 0 1-5.4 5.4L4 17l3 3 5.1-5.1a4 4 0 0 1 5.4-5.4l-3-3-2.6 2.6z"/></Svg>),
+  Search: (p)=>(<Svg {...p}><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></Svg>),
+  Dollar: (p)=>(<Svg {...p}><path d="M12 2v20"/><path d="M17 6.5c0-2-2.2-3.5-5-3.5s-5 1.3-5 3.5S9.2 10 12 10s5 1.5 5 3.5-2.2 3.5-5 3.5-5-1.3-5-3.5"/></Svg>),
+  Eye: (p)=>(<Svg {...p}><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></Svg>),
+  Trophy: (p)=>(<Svg {...p}><path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 5H5.5a2.5 2.5 0 0 0 2.5 3.3"/><path d="M16 5h2.5A2.5 2.5 0 0 1 16 8.3"/><path d="M12 13v3"/><path d="M9 20h6"/><path d="M10 16h4l1 4H9l1-4z"/></Svg>),
 };
 
 export default Icon;
