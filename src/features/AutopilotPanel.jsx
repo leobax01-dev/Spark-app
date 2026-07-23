@@ -3142,6 +3142,109 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TEAM ROSTER — replaces the tab-pill row with actual people. Each card is
+// a specialist with a real, computed one-line status, not a destination
+// label — the difference between "click here for Sphere" and "here's what
+// your Relationship Manager is telling you right now."
+// ─────────────────────────────────────────────────────────────────────────────
+function computeRosterStatus(id, { apResult, sphere, listingPerf, weeklyReport, runHistory }){
+  const di = apResult?.deal_intelligence;
+  switch(id){
+    case "deals": {
+      const n = di?.risks?.length||0;
+      return n>0 ? { text:`${n} deal${n!==1?"s":""} need${n===1?"s":""} attention`, tone:"warn" }
+                  : { text:"All deals on track", tone:"calm" };
+    }
+    case "coordinator":
+      return { text:"Ready to track any deal under contract", tone:"calm" };
+    case "negotiate":
+      return { text:"Ready when you need a strategy", tone:"calm" };
+    case "listings": {
+      if(!listingPerf) return { text:"Not yet analyzed", tone:"idle" };
+      const n = listingPerf.listings?.filter(l=>l.status!=="on_track")?.length||0;
+      return n>0 ? { text:`${n} listing${n!==1?"s":""} need${n===1?"s":""} a look`, tone:"warn" }
+                  : { text:"All listings performing well", tone:"calm" };
+    }
+    case "clients": {
+      const n = apResult?.client_scores?.length||0;
+      return n>0 ? { text:`Scoring ${n} client${n!==1?"s":""}`, tone:"calm" } : { text:"Waiting on client data", tone:"idle" };
+    }
+    case "sphere": {
+      if(!sphere) return { text:"Not yet scanned", tone:"idle" };
+      const n = sphere.opportunities?.length||0;
+      return n>0 ? { text:`${n} relationship${n!==1?"s":""} worth reconnecting`, tone:"warn" }
+                  : { text:"Sphere is well-tended", tone:"calm" };
+    }
+    case "alerts": {
+      const n = apResult?.relationship_alerts?.length||0;
+      return n>0 ? { text:`${n} relationship${n!==1?"s":""} going quiet`, tone:"warn" } : { text:"Nothing going cold", tone:"calm" };
+    }
+    case "market":
+      return { text:"Watching your markets", tone:"calm" };
+    case "coaching":
+      return apResult?.coaching_insight?.observation ? { text:"Has a pattern to share", tone:"info" } : { text:"Watching your patterns", tone:"calm" };
+    default:
+      return { text:"", tone:"calm" };
+  }
+}
+
+const ROSTER_TONE_COLOR = { warn:C.rose, calm:C.emerald, idle:C.textDim, info:C.indigoLt };
+
+function TeamRoster({ tabs, activeTab, onSelect, apResult, sphere, listingPerf, weeklyReport, runHistory }){
+  const specialists = tabs.filter(t=>!["mission","weekly","history"].includes(t.id));
+  const reports = tabs.filter(t=>["weekly","history"].includes(t.id));
+
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,fontWeight:700,
+        letterSpacing:1,marginBottom:9,paddingLeft:2}}>
+        YOUR TEAM
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,marginBottom:10}}>
+        {specialists.map(t=>{
+          const TabIcon = Icon[t.icon];
+          const status = computeRosterStatus(t.id, { apResult, sphere, listingPerf, weeklyReport, runHistory });
+          const toneColor = ROSTER_TONE_COLOR[status.tone];
+          const active = activeTab===t.id;
+          return(
+            <button key={t.id} onClick={()=>onSelect(t.id)}
+              style={{textAlign:"left",padding:"11px 12px",borderRadius:12,cursor:"pointer",
+                border:`1px solid ${active?C.indigo+"44":C.border}`,
+                background:active?`${C.indigo}0c`:"rgba(255,255,255,.015)",
+                transition:"all .15s ease",display:"flex",flexDirection:"column",gap:7}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                <div style={{width:24,height:24,borderRadius:7,flexShrink:0,
+                  background:active?C.indigo:"rgba(255,255,255,.05)",
+                  display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  {TabIcon&&<TabIcon size={12} color={active?"#fff":C.textMd}/>}
+                </div>
+                <span style={{fontFamily:C.F,fontWeight:700,fontSize:11,
+                  color:active?C.indigoLt:C.text}}>{t.label}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:5,height:5,borderRadius:"50%",background:toneColor,flexShrink:0}}/>
+                <span style={{fontFamily:C.F,fontSize:9.5,color:C.textDim,lineHeight:1.3}}>{status.text}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",gap:12,paddingLeft:2}}>
+        {reports.map(t=>(
+          <button key={t.id} onClick={()=>onSelect(t.id)}
+            style={{background:"transparent",border:"none",color:C.textDim,cursor:"pointer",
+              fontFamily:C.F,fontSize:10,fontWeight:600,padding:0,display:"flex",alignItems:"center",gap:4}}>
+            {t.label} reports
+            {t.id==="weekly"&&weeklyReport&&<span style={{color:C.emerald}}>✓</span>}
+            {t.id==="history"&&runHistory?.length>0&&<span style={{color:C.textDim}}>({runHistory.length})</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab }){
   const [dismissed, setDismissed] = useState(()=>apLsGet("sp_onboarding_dismissed", false));
 
@@ -3898,29 +4001,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   </div>
                 )}
 
-                {/* Tab nav — secondary navigation to jump straight to a specialist */}
-                <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,fontWeight:700,
-                  letterSpacing:1,marginBottom:8,paddingLeft:2}}>
-                  YOUR TEAM
-                </div>
-                <div style={{display:"flex",gap:4,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
-                  {AP_TABS.map(t=>{
-                    const TabIcon = Icon[t.icon];
-                    return(
-                    <button key={t.id} onClick={()=>{ setApTab(t.id); setSituationRoom(null); }}
-                      style={{padding:"6px 10px",borderRadius:9,flexShrink:0,
-                        border:`1px solid ${apTab===t.id?C.indigo+"44":"transparent"}`,
-                        background:apTab===t.id?`${C.indigo}10`:"rgba(255,255,255,.02)",
-                        color:apTab===t.id?C.indigoLt:C.textDim,cursor:"pointer",
-                        fontSize:9,fontFamily:C.F,fontWeight:600,whiteSpace:"nowrap",
-                        transition:"all .14s",display:"flex",alignItems:"center",gap:5,opacity:apTab===t.id?1:.75}}>
-                      {TabIcon&&<TabIcon size={11} color="currentColor"/>} {t.label}
-                      {t.count>0&&<span style={{fontSize:7,background:C.indigo,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.count}</span>}
-                      {t.badge&&<span style={{fontSize:7,background:C.emerald,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.badge}</span>}
-                    </button>
-                    );
-                  })}
-                </div>
+                <TeamRoster tabs={AP_TABS} activeTab={apTab}
+                  onSelect={id=>{ setApTab(id); setSituationRoom(null); }}
+                  apResult={apResult} sphere={sphere} listingPerf={listingPerf}
+                  weeklyReport={weeklyReport} runHistory={runHistory}/>
+
 
 
                 {apTab==="mission"  &&<TeamBriefing apResult={apResult} sphere={sphere} listingPerf={listingPerf} ledger={valueLedgerTotal} voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onJumpTab={setApTab}/>}
