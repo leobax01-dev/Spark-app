@@ -1034,6 +1034,141 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TEAM BRIEFING — replaces the tab-grid front door with SPARK speaking
+// directly to the agent, one continuous column, exactly three things:
+// what's happening, what I need from you, what I'm handling for you.
+// This is the "business partner, not a menu of features" view.
+// ─────────────────────────────────────────────────────────────────────────────
+function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss, onJumpTab }){
+  const mission = apResult?.mission||{};
+  const di = apResult?.deal_intelligence||{};
+  const risks = di.risks||[];
+  const opportunities = di.opportunities||[];
+  const top3 = mission.top3||[];
+
+  const needsYou = [
+    ...top3.filter(t=>t.urgency==="critical"||t.urgency==="high").map(t=>({...t,kind:"action"})),
+    ...risks.filter(r=>r.severity==="high").map(r=>({...r,kind:"risk"})),
+  ];
+  const handlingForYou = [
+    ...top3.filter(t=>t.urgency==="medium").map(t=>({...t,kind:"action"})),
+    ...risks.filter(r=>r.severity!=="high").map(r=>({...r,kind:"risk"})),
+    ...opportunities.map(o=>({...o,kind:"opportunity"})),
+    ...(sphere?.opportunities||[]).slice(0,2).map(s=>({...s,kind:"sphere"})),
+  ];
+  const listingFlags = (listingPerf?.listings||[]).filter(l=>l.status!=="on_track");
+
+  const firstName = voice?.name?.split(" ")[0] || "there";
+  const hour = new Date().getHours();
+  const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+
+  return(
+    <div style={{maxWidth:640,margin:"0 auto"}}>
+
+      {/* WHAT'S HAPPENING — opening narrative, first person */}
+      <div style={{marginBottom:24}}>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,marginBottom:8,letterSpacing:"-0.01em"}}>
+          {greeting}, {firstName}.
+        </div>
+        <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,lineHeight:1.7,margin:0}}>
+          {mission.headline || "I've been watching your business — here's where things stand."}
+          {mission.why && <span style={{color:C.textDim}}> {mission.why}</span>}
+        </p>
+      </div>
+
+      {/* WHAT I NEED FROM YOU */}
+      {needsYou.length>0 && (
+        <div style={{marginBottom:28}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:C.rose}}/>
+            <span style={{fontFamily:C.F,fontWeight:700,fontSize:11,color:C.text,letterSpacing:.5}}>
+              WHAT I NEED FROM YOU
+            </span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {needsYou.map((item,i)=>(
+              <div key={i} style={{background:`${C.rose}06`,border:`1px solid ${C.rose}1c`,
+                borderRadius:12,padding:"14px 16px"}}>
+                <p style={{fontFamily:C.F,fontSize:12,color:C.text,fontWeight:600,margin:"0 0 4px",lineHeight:1.5}}>
+                  {item.kind==="risk" ? `${item.deal} — ${item.risk}` : `${item.action}${item.client?` — ${item.client}`:""}`}
+                </p>
+                {item.message && (
+                  <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+                    borderRadius:8,padding:"9px 11px",marginTop:8}}>
+                    <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
+                      {item.message}
+                    </p>
+                  </div>
+                )}
+                <button onClick={()=>onDiscuss(`Help me with this: ${item.kind==="risk"?item.risk:item.action}${item.client?` for ${item.client}`:""}`)}
+                  style={{marginTop:9,background:"transparent",border:`1px solid ${C.rose}30`,
+                    color:C.rose,borderRadius:7,padding:"4px 11px",cursor:"pointer",
+                    fontSize:10,fontFamily:C.F,fontWeight:600}}>
+                  Talk this through with me →
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* WHAT I'M HANDLING FOR YOU */}
+      {handlingForYou.length>0 && (
+        <div style={{marginBottom:28}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+            <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald}}/>
+            <span style={{fontFamily:C.F,fontWeight:700,fontSize:11,color:C.text,letterSpacing:.5}}>
+              WHAT I'M HANDLING FOR YOU
+            </span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {handlingForYou.map((item,i)=>{
+              const label = item.kind==="risk" ? `Monitoring ${item.deal} — ${item.risk}`
+                : item.kind==="opportunity" ? item.description
+                : item.kind==="sphere" ? `Drafted outreach for ${item.name} — ${item.trigger}`
+                : `${item.action}${item.client?` for ${item.client}`:""}`;
+              return(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:9,
+                  background:"rgba(255,255,255,.015)",border:`1px solid ${C.border}`,
+                  borderRadius:10,padding:"10px 13px"}}>
+                  <Icon.Check size={13} color={C.emerald} style={{marginTop:2,flexShrink:0}}/>
+                  <span style={{fontFamily:C.F,fontSize:12,color:C.textMd,lineHeight:1.55}}>{label}</span>
+                </div>
+              );
+            })}
+            {listingFlags.length>0 && (
+              <div style={{display:"flex",alignItems:"flex-start",gap:9,
+                background:"rgba(255,255,255,.015)",border:`1px solid ${C.border}`,
+                borderRadius:10,padding:"10px 13px"}}>
+                <Icon.Check size={13} color={C.emerald} style={{marginTop:2,flexShrink:0}}/>
+                <span style={{fontFamily:C.F,fontSize:12,color:C.textMd,lineHeight:1.55}}>
+                  Tracking {listingFlags.length} listing{listingFlags.length!==1?"s":""} against real market data
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {needsYou.length===0 && handlingForYou.length===0 && (
+        <div style={{textAlign:"center",padding:"20px 0 28px",fontFamily:C.F,fontSize:12,color:C.textDim}}>
+          Nothing urgent right now — I'm still watching everything in the background.
+        </div>
+      )}
+
+      {/* Continue the conversation */}
+      <button onClick={()=>onDiscuss("What should I be thinking about today?")}
+        style={{width:"100%",background:"transparent",border:`1px solid ${C.borderMd}`,
+          color:C.indigoLt,borderRadius:11,padding:"12px 0",cursor:"pointer",
+          fontFamily:C.F,fontWeight:700,fontSize:12,display:"flex",alignItems:"center",
+          justifyContent:"center",gap:7}}>
+        <Icon.Chat size={13}/> Talk to me about anything
+      </button>
+    </div>
+  );
+}
+
 function MissionSection({ mission, runTime, onDiscuss, user, voice }){
   if(!mission) return null;
   const uc={critical:C.rose,high:C.amber,medium:C.indigo};
@@ -2932,6 +3067,8 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
   const oppValue = opportunities.reduce((sum,o)=>sum+(Number(o.value)||0),0);
   const totalValue = riskValue + oppValue;
   const sphereCount = sphere?.opportunities?.length||0;
+  const hasFlags = risks.length>0 || opportunities.length>0 || sphereCount>0;
+  const hasDollarFigure = totalValue>0;
 
   const fmt = n => n>=1000 ? `$${Math.round(n/1000)}K` : `$${n}`;
 
@@ -2943,7 +3080,7 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
     </div>
   ) : null;
 
-  if(totalValue===0 && risks.length===0 && sphereCount===0){
+  if(!hasFlags){
     return(
       <div style={{background:`linear-gradient(135deg,${C.emerald}10,${C.emerald}04)`,
         border:`1px solid ${C.emerald}22`,borderRadius:16,padding:"18px 20px",
@@ -2966,22 +3103,32 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
         letterSpacing:1.5,marginBottom:6}}>
         WHAT YOUR TEAM CAUGHT TODAY
       </div>
-      <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,color:C.text,
-        letterSpacing:"-0.02em",lineHeight:1,marginBottom:8}}>
-        {fmt(totalValue||riskValue||oppValue)}
-        <span style={{fontSize:14,fontWeight:600,color:C.textMd,marginLeft:8}}>
-          {totalValue>0?"in commission being actively protected":"in commission opportunity found"}
-        </span>
-      </div>
+      {hasDollarFigure ? (
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,color:C.text,
+          letterSpacing:"-0.02em",lineHeight:1,marginBottom:8}}>
+          {fmt(totalValue)}
+          <span style={{fontSize:14,fontWeight:600,color:C.textMd,marginLeft:8}}>
+            {riskValue>0?"in commission being actively protected":"in commission opportunity found"}
+          </span>
+        </div>
+      ) : (
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:C.text,
+          letterSpacing:"-0.02em",lineHeight:1.3,marginBottom:8}}>
+          {risks.length+opportunities.length+sphereCount} thing{(risks.length+opportunities.length+sphereCount)!==1?"s":""} need your attention
+          <div style={{fontSize:11,fontWeight:500,color:C.textDim,marginTop:5}}>
+            Add deal values in Deals to see the dollar impact your team is protecting
+          </div>
+        </div>
+      )}
       <div style={{display:"flex",flexWrap:"wrap",gap:14,fontFamily:C.F,fontSize:11,color:C.textMd}}>
         {risks.length>0&&(
           <span style={{display:"flex",alignItems:"center",gap:5}}>
-            <Icon.Alerts size={12} color={C.rose}/> {fmt(riskValue)} across {risks.length} deal{risks.length!==1?"s":""} at risk
+            <Icon.Alerts size={12} color={C.rose}/> {riskValue>0?`${fmt(riskValue)} across `:""}{risks.length} deal{risks.length!==1?"s":""} at risk
           </span>
         )}
         {opportunities.length>0&&(
           <span style={{display:"flex",alignItems:"center",gap:5}}>
-            <Icon.Market size={12} color={C.emerald}/> {fmt(oppValue)} in market opportunity
+            <Icon.Market size={12} color={C.emerald}/> {oppValue>0?fmt(oppValue):`${opportunities.length}`} in market opportunity
           </span>
         )}
         {sphereCount>0&&(
@@ -3751,27 +3898,32 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   </div>
                 )}
 
-                {/* Tab nav */}
-                <div style={{display:"flex",gap:5,marginBottom:14,overflowX:"auto",paddingBottom:4}}>
+                {/* Tab nav — secondary navigation to jump straight to a specialist */}
+                <div style={{fontFamily:C.F,fontSize:9,color:C.textDim,fontWeight:700,
+                  letterSpacing:1,marginBottom:8,paddingLeft:2}}>
+                  YOUR TEAM
+                </div>
+                <div style={{display:"flex",gap:4,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
                   {AP_TABS.map(t=>{
                     const TabIcon = Icon[t.icon];
                     return(
                     <button key={t.id} onClick={()=>{ setApTab(t.id); setSituationRoom(null); }}
-                      style={{padding:"7px 12px",borderRadius:10,flexShrink:0,
-                        border:`1px solid ${apTab===t.id?C.indigo+"44":C.border}`,
-                        background:apTab===t.id?`${C.indigo}10`:"transparent",
+                      style={{padding:"6px 10px",borderRadius:9,flexShrink:0,
+                        border:`1px solid ${apTab===t.id?C.indigo+"44":"transparent"}`,
+                        background:apTab===t.id?`${C.indigo}10`:"rgba(255,255,255,.02)",
                         color:apTab===t.id?C.indigoLt:C.textDim,cursor:"pointer",
-                        fontSize:10,fontFamily:C.F,fontWeight:700,whiteSpace:"nowrap",
-                        transition:"all .14s",display:"flex",alignItems:"center",gap:6}}>
-                      {TabIcon&&<TabIcon size={13} color="currentColor"/>} {t.label}
-                      {t.count>0&&<span style={{fontSize:8,background:C.indigo,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.count}</span>}
-                      {t.badge&&<span style={{fontSize:8,background:C.emerald,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.badge}</span>}
+                        fontSize:9,fontFamily:C.F,fontWeight:600,whiteSpace:"nowrap",
+                        transition:"all .14s",display:"flex",alignItems:"center",gap:5,opacity:apTab===t.id?1:.75}}>
+                      {TabIcon&&<TabIcon size={11} color="currentColor"/>} {t.label}
+                      {t.count>0&&<span style={{fontSize:7,background:C.indigo,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.count}</span>}
+                      {t.badge&&<span style={{fontSize:7,background:C.emerald,color:"#fff",borderRadius:8,padding:"1px 5px",fontWeight:800}}>{t.badge}</span>}
                     </button>
                     );
                   })}
                 </div>
 
-                {apTab==="mission"  &&<MissionSection   mission={apResult.mission}             runTime={lastRun} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} user={user} voice={voice}/>}
+
+                {apTab==="mission"  &&<TeamBriefing apResult={apResult} sphere={sphere} listingPerf={listingPerf} ledger={valueLedgerTotal} voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onJumpTab={setApTab}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="coordinator"&&<TransactionCoordinator voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="negotiate"&&<NegotiationCopilot voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
