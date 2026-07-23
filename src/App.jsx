@@ -4305,7 +4305,7 @@ function MainApp({user,onLogout}){
     settings:     <Shimmer>Settings</Shimmer>,
   };
   const SUBTITLES={
-    autopilot:    "AI business intelligence + conversational assistant · always on",
+    autopilot:    "Your team, running your business while you sell — always on",
     generate:     voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
     transactions: "Timeline generator · Listing presentation · CMA analyzer",
     clients:      "Daily briefing · Pipeline manager · Note analyzer",
@@ -4736,21 +4736,21 @@ function LandingPage({onStart}){
   ];
 
   const REPLACING=[
-    {tool:"CRM Software",      price:"$69–150/mo",       icon:"📊"},
-    {tool:"Video Production",  price:"$300–500/listing",  icon:"🎬"},
-    {tool:"Market Reports",    price:"$50–200/mo",        icon:"📈"},
-    {tool:"Listing Copywriter",price:"$100–300/listing",  icon:"✍️"},
-    {tool:"Business Coach",    price:"$200–500/mo",       icon:"🎯"},
-    {tool:"Deal Tracker",      price:"$50–150/mo",        icon:"📋"},
+    {tool:"CRM Software",      price:"$69–150/mo",       icon:"Funnel"},
+    {tool:"Video Production",  price:"$300–500/listing",  icon:"Video"},
+    {tool:"Market Reports",    price:"$50–200/mo",        icon:"Market"},
+    {tool:"Listing Copywriter",price:"$100–300/listing",  icon:"Script"},
+    {tool:"Business Coach",    price:"$200–500/mo",       icon:"Coaching"},
+    {tool:"Deal Tracker",      price:"$50–150/mo",        icon:"Deals"},
   ];
 
   const PLATFORM_SECTIONS=[
     {
-      icon:"🤖",color:C.violet,
+      icon:"Sparkle",color:C.violet,
       badge:"SPARK AUTOPILOT · PREMIUM",
-      title:"The AI that runs your business while you sell.",
+      title:"The team you can't afford to hire — running your business while you sell.",
       subtitle:"Always on. Always watching.",
-      body:"SPARK Autopilot monitors your entire pipeline 24/7 — scoring clients by probability, detecting deal risks before they become problems, and generating a daily mission with your top 3 priorities and ready-to-send messages. Every morning it tells you exactly what to do and what to say. No other real estate platform does this.",
+      body:"SPARK Autopilot is your transaction coordinator, your negotiator, your marketing person, and your assistant — all in one, monitoring your entire pipeline 24/7. It scores clients by probability, catches deal risks before they become problems, and hands you a daily mission with your top priorities and ready-to-send messages. Every morning it tells you exactly what to do and what to say. No other real estate platform does this.",
       features:[
         "Daily mission with priority action queue",
         "Deal risk detection + Situation Rooms",
@@ -4764,7 +4764,7 @@ function LandingPage({onStart}){
       premium:true,
     },
     {
-      icon:"💬",color:C.indigo,
+      icon:"Chat",color:C.indigo,
       badge:"AI OPERATING SYSTEM",
       title:"Ask SPARK anything.",
       subtitle:"Your AI business partner.",
@@ -4772,7 +4772,7 @@ function LandingPage({onStart}){
       features:["Full client & pipeline context","Google calendar + Gmail integration","4 conversation modes — Write, Strategy, Coach, Practice","Voice input + audio responses","Conversation memory — SPARK remembers previous sessions"],
     },
     {
-      icon:"📋",color:C.cyan,
+      icon:"Script",color:C.cyan,
       badge:"TRANSACTION INTELLIGENCE",
       title:"Never miss a milestone.",
       subtitle:"Offer to closing.",
@@ -4780,7 +4780,7 @@ function LandingPage({onStart}){
       features:["7-milestone transaction timeline","Pre-written client email per milestone","Full listing presentation in 3 minutes","CMA with auto-fetched comparable sales","3-scenario pricing strategy"],
     },
     {
-      icon:"👥",color:C.cyan,
+      icon:"Clients",color:C.cyan,
       badge:"CLIENT INTELLIGENCE",
       title:"Know every client.",
       subtitle:"Pipeline to closed.",
@@ -4788,7 +4788,7 @@ function LandingPage({onStart}){
       features:["Visual client pipeline manager","AI next-action per client","Deal notes analyzer","Overdue follow-up alerts","AI daily briefing every morning"],
     },
     {
-      icon:"📈",color:C.emerald,
+      icon:"Market",color:C.emerald,
       badge:"MARKET & BUSINESS INTELLIGENCE",
       title:"Respond to leads in 30 seconds.",
       subtitle:"Lead to conversion.",
@@ -4867,7 +4867,7 @@ function LandingPage({onStart}){
                 <div key={i} style={{display:"flex",alignItems:"center",gap:7,
                   background:C.surface,border:`1px solid ${C.border}`,
                   borderRadius:10,padding:"8px 14px",animation:`fadeUp .4s ease ${i*.07}s both`}}>
-                  <span style={{fontSize:14}}>{r.icon}</span>
+                  <span style={{color:C.textDim,display:"flex"}}>{Icon[r.icon] && (()=>{ const RI=Icon[r.icon]; return <RI size={14}/>; })()}</span>
                   <div>
                     <div style={{fontFamily:C.F,fontSize:11,fontWeight:700,
                       color:C.text,textDecoration:"line-through",opacity:.45}}>{r.tool}</div>
@@ -4913,7 +4913,7 @@ function LandingPage({onStart}){
                   background:`${section.color}10`,border:`1px solid ${section.color}28`,
                   borderRadius:16,padding:"4px 12px",
                   fontSize:8,color:section.color,letterSpacing:2,fontWeight:700,marginBottom:14}}>
-                  {section.icon} {section.badge}
+                  {section.badge}
                 </div>
                 <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(20px,3vw,28px)",
                   color:C.text,margin:"0 0 6px",lineHeight:1.2,letterSpacing:"-0.02em"}}>
@@ -4941,7 +4941,7 @@ function LandingPage({onStart}){
                       border:"none",color:"#fff",padding:"12px 28px",borderRadius:10,
                       cursor:"pointer",fontWeight:800,fontSize:13,fontFamily:C.F,
                       boxShadow:`0 0 0 1px ${C.violet}40,0 6px 22px ${C.violet}28`}}>
-                    Try Autopilot free ⚡
+                    Try Autopilot free
                   </button>
                 )}
               </div>
@@ -4953,8 +4953,8 @@ function LandingPage({onStart}){
                     <div style={{width:36,height:36,borderRadius:10,flexShrink:0,
                       background:`linear-gradient(135deg,${section.color},${section.color}88)`,
                       display:"flex",alignItems:"center",justifyContent:"center",
-                      fontSize:18,boxShadow:`0 4px 12px ${section.color}30`}}>
-                      {section.icon}
+                      boxShadow:`0 4px 12px ${section.color}30`}}>
+                      {Icon[section.icon] && (()=>{ const SI=Icon[section.icon]; return <SI size={17} color="#fff"/>; })()}
                     </div>
                     <div>
                       <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>
