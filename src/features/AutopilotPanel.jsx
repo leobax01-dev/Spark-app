@@ -605,7 +605,9 @@ ${marketCtx}`;
   const part1 = await callClaude(`${ctx}
 
 Return ONLY this JSON (compact):
-{"mission":{"headline":"today's #1 priority in 1 sentence referencing real names","why":"why — specific data","top3":[{"rank":1,"action":"specific action","client":"name","urgency":"critical","message":"exact word-for-word message ready to send"},{"rank":2,"action":"action","client":"name","urgency":"high","message":"message"},{"rank":3,"action":"action","client":"name","urgency":"medium","message":"message"}]},"deal_intelligence":{"overall_health":"stable","health_summary":"2 sentence honest assessment","risks":[{"deal":"name","risk":"specific risk","severity":"high","action":"what to do","message":"exact recovery message to send"}],"opportunities":[{"description":"opportunity","action":"how to capitalize"}]},"client_scores":[{"name":"name","score":75,"trend":"rising","reason":"why","next_action":"what to do","probability":"65%"}]}`);
+{"mission":{"headline":"today's #1 priority in 1 sentence referencing real names","why":"why — specific data","top3":[{"rank":1,"action":"specific action","client":"name","urgency":"critical","message":"exact word-for-word message ready to send"},{"rank":2,"action":"action","client":"name","urgency":"high","message":"message"},{"rank":3,"action":"action","client":"name","urgency":"medium","message":"message"}]},"deal_intelligence":{"overall_health":"stable","health_summary":"2 sentence honest assessment","risks":[{"deal":"name","risk":"specific risk","severity":"high","action":"what to do","message":"exact recovery message to send","value":0}],"opportunities":[{"description":"opportunity","action":"how to capitalize","value":0}]},"client_scores":[{"name":"name","score":75,"trend":"rising","reason":"why","next_action":"what to do","probability":"65%"}]}
+
+For every risk and opportunity, include "value": the real dollar amount of that specific deal (from the deal data given above — its full value, not a guess or a fraction). Use 0 only if you genuinely cannot match it to a known deal value.`);
 
   const part2 = await callClaude(`${ctx}
 
@@ -2870,6 +2872,75 @@ function TransactionCoordinator({ voice, onDiscuss }){
 // (checked against real state, not guessed) and links straight into each
 // feature so nothing built gets left undiscovered.
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// BUSINESS HEALTH HERO — the single number that proves "runs your business
+// while you sell" is real, not a slogan. Replaces "12 tabs to choose from"
+// with one figure an agent feels before reading a word. Framed as
+// protection/catches, not anxiety — this is what your team caught for you,
+// not a list of things going wrong.
+// ─────────────────────────────────────────────────────────────────────────────
+function BusinessHealthHero({ apResult, sphere }){
+  if(!apResult?.deal_intelligence) return null;
+
+  const risks = apResult.deal_intelligence.risks||[];
+  const opportunities = apResult.deal_intelligence.opportunities||[];
+  const riskValue = risks.reduce((sum,r)=>sum+(Number(r.value)||0),0);
+  const oppValue = opportunities.reduce((sum,o)=>sum+(Number(o.value)||0),0);
+  const totalValue = riskValue + oppValue;
+  const sphereCount = sphere?.opportunities?.length||0;
+
+  const fmt = n => n>=1000 ? `$${Math.round(n/1000)}K` : `$${n}`;
+
+  if(totalValue===0 && risks.length===0 && sphereCount===0){
+    return(
+      <div style={{background:`linear-gradient(135deg,${C.emerald}10,${C.emerald}04)`,
+        border:`1px solid ${C.emerald}22`,borderRadius:16,padding:"18px 20px",
+        marginBottom:14,textAlign:"center"}}>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:15,color:C.text,marginBottom:3}}>
+          Your pipeline is clear
+        </div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>
+          Your team is watching — nothing needs your attention right now
+        </div>
+      </div>
+    );
+  }
+
+  return(
+    <div style={{background:`linear-gradient(135deg,${C.indigo}0e,${C.violet}06)`,
+      border:`1px solid ${C.indigo}24`,borderRadius:16,padding:"20px 22px",marginBottom:14}}>
+      <div style={{fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:700,
+        letterSpacing:1.5,marginBottom:6}}>
+        WHAT YOUR TEAM CAUGHT
+      </div>
+      <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,color:C.text,
+        letterSpacing:"-0.02em",lineHeight:1,marginBottom:8}}>
+        {fmt(totalValue||riskValue||oppValue)}
+        <span style={{fontSize:14,fontWeight:600,color:C.textMd,marginLeft:8}}>
+          {totalValue>0?"in commission being actively protected":"in commission opportunity found"}
+        </span>
+      </div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:14,fontFamily:C.F,fontSize:11,color:C.textMd}}>
+        {risks.length>0&&(
+          <span style={{display:"flex",alignItems:"center",gap:5}}>
+            <Icon.Alerts size={12} color={C.rose}/> {fmt(riskValue)} across {risks.length} deal{risks.length!==1?"s":""} at risk
+          </span>
+        )}
+        {opportunities.length>0&&(
+          <span style={{display:"flex",alignItems:"center",gap:5}}>
+            <Icon.Market size={12} color={C.emerald}/> {fmt(oppValue)} in market opportunity
+          </span>
+        )}
+        {sphereCount>0&&(
+          <span style={{display:"flex",alignItems:"center",gap:5}}>
+            <Icon.Sphere size={12} color={C.indigoLt}/> {sphereCount} relationship{sphereCount!==1?"s":""} worth reactivating
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab }){
   const [dismissed, setDismissed] = useState(()=>apLsGet("sp_onboarding_dismissed", false));
 
@@ -3419,13 +3490,13 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
     {id:"mission",  label:"Mission",  icon:"Mission"},
     {id:"deals",    label:"Deals",    icon:"Deals"},
     {id:"coordinator",label:"Coordinator",icon:"Coordinator"},
-    {id:"negotiate",label:"Negotiate",icon:"Negotiate"},
+    {id:"negotiate",label:"Negotiator",icon:"Negotiate"},
     {id:"listings", label:"Listings", icon:"Listings", badge:listingPerf?.listings?.filter(l=>l.status!=="on_track")?.length||null},
     {id:"clients",  label:"Client Scores", icon:"Clients"},
     {id:"sphere",   label:"Sphere",   icon:"Sphere", badge:sphere?.opportunities?.length||null},
     {id:"alerts",   label:"Alerts",   icon:"Alerts"},
     {id:"market",   label:"Market Pulse", icon:"Market"},
-    {id:"coaching", label:"Coaching", icon:"Coaching"},
+    {id:"coaching", label:"Coach",    icon:"Coaching"},
     {id:"weekly",   label:"Weekly",   icon:"Weekly", badge:weeklyReport?"✓":null},
     {id:"history",  label:"History",  icon:"History", count:runHistory.length},
   ];
@@ -3435,6 +3506,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
       <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
         onNavigate={onNavigate} onOpenTab={setApTab}/>
+
+      <BusinessHealthHero apResult={apResult} sphere={sphere}/>
 
       {/* ── TOP HEADER ── */}
       <div style={{flexShrink:0,marginBottom:12}}>
