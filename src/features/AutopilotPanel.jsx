@@ -1486,6 +1486,50 @@ function TypingIndicator(){
 const SPHERE_KEY = "spark_sphere_reactivation_v1"; // cached sphere reactivation result
 
 // ─────────────────────────────────────────────────────────────────────────────
+// VALUE LEDGER — the running "since you started" total. BusinessHealthHero's
+// today-snapshot resets every run; this doesn't. Every distinct risk or
+// opportunity Autopilot has ever caught gets logged once (deduped by a
+// signature so an ongoing risk flagged 5 days running doesn't get counted
+// 5 times), and the sum only grows. This is the concrete proof behind
+// "gets smarter and more valuable the longer you use it."
+// ─────────────────────────────────────────────────────────────────────────────
+const VALUE_LEDGER_KEY = "spark_value_ledger_v1";
+
+function signatureFor(item, type){
+  const text = type==="risk" ? `${item.deal}::${item.risk}` : `${item.description}::${item.action}`;
+  return `${type}:${text}`.slice(0,220);
+}
+
+function updateValueLedger(risks=[], opportunities=[]){
+  const ledger = apLsGet(VALUE_LEDGER_KEY, { entries:[], startedAt:new Date().toISOString() });
+  const existingSigs = new Set(ledger.entries.map(e=>e.sig));
+  const now = new Date().toISOString();
+  let added = 0;
+
+  [...risks.map(r=>({item:r,type:"risk"})), ...opportunities.map(o=>({item:o,type:"opportunity"}))].forEach(({item,type})=>{
+    const value = Number(item.value)||0;
+    if(value<=0) return; // only count entries with a real dollar figure attached
+    const sig = signatureFor(item, type);
+    if(existingSigs.has(sig)) return;
+    ledger.entries.push({ sig, value, type, date:now });
+    existingSigs.add(sig);
+    added++;
+  });
+
+  if(added>0) apLsSet(VALUE_LEDGER_KEY, ledger);
+  return ledger;
+}
+
+function getValueLedgerTotal(){
+  const ledger = apLsGet(VALUE_LEDGER_KEY, { entries:[] });
+  return {
+    total: ledger.entries.reduce((sum,e)=>sum+e.value,0),
+    count: ledger.entries.length,
+    startedAt: ledger.startedAt,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SPHERE REACTIVATION ENGINE — surfaces dormant relationships worth reviving
 // ─────────────────────────────────────────────────────────────────────────────
 function daysSinceDate(dateStr){
@@ -2879,7 +2923,7 @@ function TransactionCoordinator({ voice, onDiscuss }){
 // protection/catches, not anxiety — this is what your team caught for you,
 // not a list of things going wrong.
 // ─────────────────────────────────────────────────────────────────────────────
-function BusinessHealthHero({ apResult, sphere }){
+function BusinessHealthHero({ apResult, sphere, ledger }){
   if(!apResult?.deal_intelligence) return null;
 
   const risks = apResult.deal_intelligence.risks||[];
@@ -2890,6 +2934,14 @@ function BusinessHealthHero({ apResult, sphere }){
   const sphereCount = sphere?.opportunities?.length||0;
 
   const fmt = n => n>=1000 ? `$${Math.round(n/1000)}K` : `$${n}`;
+
+  const LifetimeStrip = ()=> ledger?.total>0 ? (
+    <div style={{display:"flex",alignItems:"center",gap:6,marginTop:12,paddingTop:12,
+      borderTop:`1px solid rgba(255,255,255,.06)`,fontFamily:C.F,fontSize:10,color:C.textDim}}>
+      <Icon.Sparkle size={11} color={C.indigoLt}/>
+      Since you started with SPARK: <strong style={{color:C.text,fontWeight:700}}>{fmt(ledger.total)}</strong> in commission caught across <strong style={{color:C.text,fontWeight:700}}>{ledger.count}</strong> distinct catches
+    </div>
+  ) : null;
 
   if(totalValue===0 && risks.length===0 && sphereCount===0){
     return(
@@ -2902,6 +2954,7 @@ function BusinessHealthHero({ apResult, sphere }){
         <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>
           Your team is watching — nothing needs your attention right now
         </div>
+        <LifetimeStrip/>
       </div>
     );
   }
@@ -2911,7 +2964,7 @@ function BusinessHealthHero({ apResult, sphere }){
       border:`1px solid ${C.indigo}24`,borderRadius:16,padding:"20px 22px",marginBottom:14}}>
       <div style={{fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:700,
         letterSpacing:1.5,marginBottom:6}}>
-        WHAT YOUR TEAM CAUGHT
+        WHAT YOUR TEAM CAUGHT TODAY
       </div>
       <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,color:C.text,
         letterSpacing:"-0.02em",lineHeight:1,marginBottom:8}}>
@@ -2937,6 +2990,7 @@ function BusinessHealthHero({ apResult, sphere }){
           </span>
         )}
       </div>
+      <LifetimeStrip/>
     </div>
   );
 }
@@ -3025,6 +3079,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   const [weeklyLoading,setWeeklyLoading]= useState(false);
   const [weeklyError,  setWeeklyError]  = useState(null); // active risk for situation room
   const [sphere,        setSphere]        = useState(()=>apLsGet(SPHERE_KEY,null));
+  const [valueLedgerTotal, setValueLedgerTotal] = useState(()=>getValueLedgerTotal());
   const [sphereLoading, setSphereLoading] = useState(false);
   const [sphereError,   setSphereError]   = useState(null);
   const [listingPerf,        setListingPerf]        = useState(()=>apLsGet(LISTING_KEY,null));
@@ -3271,6 +3326,17 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         setListingPerf(d.latestRun.result.listing_performance);
         apLsSet(LISTING_KEY, d.latestRun.result.listing_performance);
       }
+      // Value ledger — merge cloud + local by signature so entries logged on
+      // either device are preserved, never silently dropped.
+      if(d.latestRun.result?.value_ledger){
+        const cloudLedger = d.latestRun.result.value_ledger;
+        const localLedger = apLsGet(VALUE_LEDGER_KEY, { entries:[], startedAt:cloudLedger.startedAt });
+        const bySig = new Map();
+        [...cloudLedger.entries, ...localLedger.entries].forEach(e=>bySig.set(e.sig, e));
+        const merged = { entries:Array.from(bySig.values()), startedAt: cloudLedger.startedAt||localLedger.startedAt };
+        apLsSet(VALUE_LEDGER_KEY, merged);
+        setValueLedgerTotal(getValueLedgerTotal());
+      }
     }
     if(d?.memory){
       setDbMemory(d.memory);
@@ -3364,6 +3430,10 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       setApResult(analysis);
       setLastRun(now);
       setApTab("mission");
+      // Update the running "since you started" value ledger — deduped so an
+      // ongoing risk flagged multiple days running only counts once.
+      const updatedLedger = updateValueLedger(analysis.deal_intelligence?.risks, analysis.deal_intelligence?.opportunities);
+      setValueLedgerTotal(getValueLedgerTotal());
       // Regenerate daily brief with new Autopilot context
       apLsSet(DAILY_BRIEF_KEY,null);
       triggerDailyBrief(apLsGet(CONV_KEY,[]),googleData);
@@ -3375,7 +3445,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       if(shouldNotify) apLsSet("spark_last_alerted_risk", riskSignature);
 
       if(user?.email){
-        apSync(user.email,"save_run",{result:analysis,clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory,notifyEmail:shouldNotify,agentName:voice?.name})
+        apSync(user.email,"save_run",{result:{...analysis,value_ledger:updatedLedger},clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory,notifyEmail:shouldNotify,agentName:voice?.name})
           .then(()=>{
             apSync(user.email,"load_history").then(h=>{ if(h?.runs) setRunHistory(h.runs); });
             syncAgentData(user.email);
@@ -3507,7 +3577,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
         onNavigate={onNavigate} onOpenTab={setApTab}/>
 
-      <BusinessHealthHero apResult={apResult} sphere={sphere}/>
+      <BusinessHealthHero apResult={apResult} sphere={sphere} ledger={valueLedgerTotal}/>
 
       {/* ── TOP HEADER ── */}
       <div style={{flexShrink:0,marginBottom:12}}>
