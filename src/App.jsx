@@ -3218,7 +3218,7 @@ function InstallSparkCard(){
   );
 }
 
-function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
+function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}){
   const toast = useToast();
   const plan  = PLANS[planKey];
   const [showVidKey, setShowVidKey] = useState(false);
@@ -3389,6 +3389,21 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys}){
             fontFamily:C.F,fontWeight:600,fontSize:13}}>
           Sign Out
         </button>
+      </div>
+
+      {/* Agent Voice & Notifications — was previously an orphaned separate
+          tab with no nav entry anywhere, meaning phone/timezone/SMS/push
+          settings were completely unreachable. Now lives where the
+          Activation Checklist (and every agent's own intuition) already
+          expects it: directly in Settings. */}
+      <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:20,marginBottom:16}}>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:15,color:C.text,marginBottom:2}}>
+          Agent Voice & Notifications
+        </div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:16}}>
+          Your name, brokerage, and how your team reaches you
+        </div>
+        <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>toast("Saved ✓")} onGoUpgrade={()=>{}} user={user}/>
       </div>
 
       {/* Install SPARK as an app */}
@@ -4637,7 +4652,7 @@ function MainApp({user,onLogout}){
 
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-        {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
+        {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
               {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
       </div>
     </div>
@@ -4805,7 +4820,7 @@ function MainApp({user,onLogout}){
               )}
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
+              {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
               {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
             </div>
           </div>
@@ -4866,7 +4881,7 @@ function MainApp({user,onLogout}){
               )}
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys}/></div></>}
+              {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
               {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
             </div>
           </div>
