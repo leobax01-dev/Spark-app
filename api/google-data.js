@@ -109,6 +109,42 @@ async function sendNewLeadEmail(toEmail, lead){
   }
 }
 
+// ─── SMS (Twilio REST API — no SDK needed) ────────────────────────────────
+// Agents live in text messages far more than email or an app they have to
+// remember to open — this is the trigger channel that closes the loop on
+// "runs your business while you sell." Requires a real Twilio account:
+// TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER env vars.
+// Silently no-ops if unconfigured or the agent hasn't opted in — never
+// blocks or breaks whatever called it, same pattern as the email helpers.
+async function sendSMS(toPhone, message){
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+  if(!sid || !token || !fromNumber || !toPhone) return false;
+
+  try{
+    const auth = Buffer.from(`${sid}:${token}`).toString("base64");
+    const body = new URLSearchParams({ To: toPhone, From: fromNumber, Body: message.slice(0,1500) });
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,{
+      method:"POST",
+      headers:{
+        "Authorization": `Basic ${auth}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+    });
+    if(!r.ok){
+      const errText = await r.text().catch(()=>"");
+      console.error("SMS send failed:", r.status, errText.slice(0,200));
+      return false;
+    }
+    return true;
+  }catch(e){
+    console.error("SMS send error:", e.message);
+    return false;
+  }
+}
+
 // ─── GOOGLE HELPERS ───────────────────────────────────────────────────────────
 async function refreshAccessToken(refreshToken, clientId, clientSecret){
   const res = await fetch("https://oauth2.googleapis.com/token",{
@@ -204,7 +240,7 @@ async function handleAutopilot(action, email, body, res){
   const sb = getSupabase();
 
   if(action==="save_run"){
-    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName } = body;
+    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName, phone, smsEnabled } = body;
     if(!result) return res.status(400).json({ error:"Result required" });
 
     const { error: runError } = await sb.from("autopilot_runs").insert({
@@ -219,7 +255,12 @@ async function handleAutopilot(action, email, body, res){
     // Fire critical-risk email if the client flagged this as a new alert-worthy risk
     if(notifyEmail){
       const topRisk = result?.deal_intelligence?.risks?.find(r=>r.severity==="high");
-      if(topRisk) await sendCriticalRiskEmail(email, topRisk, agentName);
+      if(topRisk){
+        await sendCriticalRiskEmail(email, topRisk, agentName);
+        if(smsEnabled && phone){
+          await sendSMS(phone, `SPARK: ${topRisk.deal} needs you — ${(topRisk.risk||"").slice(0,100)} Open: usesparkai.app`);
+        }
+      }
     }
 
     if(memory){
@@ -325,7 +366,7 @@ async function handleAutopilot(action, email, body, res){
 
     const { data: existing } = await sb
       .from("agent_data_sync")
-      .select("clients")
+      .select("clients,profile")
       .eq("user_email", email)
       .single();
 
@@ -358,8 +399,23 @@ async function handleAutopilot(action, email, body, res){
 
     // Notify the agent immediately — reuses the existing Resend integration
     sendNewLeadEmail(email, newClient).catch(()=>{});
+    if(existing?.profile?.smsEnabled && existing?.profile?.phone){
+      sendSMS(existing.profile.phone, `SPARK: New lead — ${newClient.name}${newClient.phone?` (${newClient.phone})`:""}. They're already in your pipeline. usesparkai.app`).catch(()=>{});
+    }
 
     return res.status(200).json({ captured:true });
+  }
+
+  // Fired by the nightly cron job right after a successful morning run —
+  // a short "your brief is ready" text, not the whole brief. Agents live
+  // in texts far more than email or an app they have to remember to open;
+  // this is the trigger that actually gets them to look.
+  if(action==="send_brief_sms"){
+    const { phone, headline } = body;
+    if(!phone) return res.status(400).json({ error:"phone required" });
+    const message = `Good morning! Your SPARK brief is ready.${headline?` Today: ${String(headline).slice(0,100)}`:""} Open it: usesparkai.app`;
+    const sent = await sendSMS(phone, message);
+    return res.status(200).json({ sent });
   }
 
   // ─── SEND IT FOR ME — agent-initiated email to their own client, sent via
@@ -472,7 +528,7 @@ export default async function handler(req, res){
     "save_run","load_latest","load_history","sync_data","load_data",
     "save_weekly_report","load_weekly_reports",
     "save_conversation","load_conversations",
-    "get_public_profile","capture_lead","send_message",
+    "get_public_profile","capture_lead","send_message","send_brief_sms",
   ];
   if(autopilotActions.includes(action)){
     try{ return await handleAutopilot(action, userEmail, req.body, res); }
