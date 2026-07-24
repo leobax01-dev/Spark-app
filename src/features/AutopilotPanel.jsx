@@ -118,10 +118,10 @@ function buildConversationMemoryContext(conversations){
 // CONVERSATION MODES
 // ─────────────────────────────────────────────────────────────────────────────
 const MODES = {
-  write:     { label:"Write",    icon:"✍️", color:C.indigo,  description:"Scripts, emails & copy",    instruction:"You are in WRITE mode. Produce polished, ready-to-use written content. Write in natural prose. NEVER use JSON or code blocks. Output should read like something a human wrote." },
-  strategize:{ label:"Strategy", icon:"🧠", color:C.violet,  description:"Think through problems",    instruction:"You are in STRATEGIZE mode. Think through the agent's situation deeply and respond in conversational prose. Give structured analysis with clear recommendations. NEVER use JSON or code blocks." },
-  coach:     { label:"Coach",    icon:"🎯", color:C.amber,   description:"Direct business advice",    instruction:"You are in COACH mode. Be direct, honest, and specific. Don't soften feedback. Give the exact action to take. NEVER use JSON or code blocks. Write like a coach speaking plainly." },
-  practice:  { label:"Practice", icon:"🎭", color:C.cyan,    description:"Role-play client scenarios", instruction:"You are in PRACTICE mode. Role-play as a real estate client so the agent can practice. Stay in character. NEVER use JSON or code blocks. After each exchange, give one line of coaching feedback." },
+  write:     { label:"Write",    icon:"Script",   color:C.indigo,  description:"Scripts, emails & copy",    instruction:"You are in WRITE mode. Produce polished, ready-to-use written content. Write in natural prose. NEVER use JSON or code blocks. Output should read like something a human wrote." },
+  strategize:{ label:"Strategy", icon:"Brain",    color:C.violet,  description:"Think through problems",    instruction:"You are in STRATEGIZE mode. Think through the agent's situation deeply and respond in conversational prose. Give structured analysis with clear recommendations. NEVER use JSON or code blocks." },
+  coach:     { label:"Coach",    icon:"Coaching", color:C.amber,   description:"Direct business advice",    instruction:"You are in COACH mode. Be direct, honest, and specific. Don't soften feedback. Give the exact action to take. NEVER use JSON or code blocks. Write like a coach speaking plainly." },
+  practice:  { label:"Practice", icon:"Chat",     color:C.cyan,    description:"Role-play client scenarios", instruction:"You are in PRACTICE mode. Role-play as a real estate client so the agent can practice. Stay in character. NEVER use JSON or code blocks. After each exchange, give one line of coaching feedback." },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1040,7 +1040,7 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
 // what's happening, what I need from you, what I'm handling for you.
 // This is the "business partner, not a menu of features" view.
 // ─────────────────────────────────────────────────────────────────────────────
-function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss, onJumpTab }){
+function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss, onJumpTab, onOpenSituationRoom }){
   const mission = apResult?.mission||{};
   const di = apResult?.deal_intelligence||{};
   const risks = di.risks||[];
@@ -1125,6 +1125,8 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
   return(
     <div style={{maxWidth:640,margin:"0 auto"}}>
 
+      <BusinessHealthHero apResult={apResult} sphere={sphere} ledger={ledger}/>
+
       {/* WHAT'S HAPPENING — opening narrative, first person */}
       <div style={{marginBottom:24}}>
         <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:8}}>
@@ -1168,7 +1170,7 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
               <div key={i} style={{background:`${C.rose}06`,border:`1px solid ${C.rose}1c`,
                 borderRadius:12,padding:"14px 16px"}}>
                 <p style={{fontFamily:C.F,fontSize:12,color:C.text,fontWeight:600,margin:"0 0 4px",lineHeight:1.5}}>
-                  {item.kind==="risk" ? `${item.deal} — ${item.risk}` : `${item.action}${item.client?` — ${item.client}`:""}`}
+                  {item.kind==="risk" ? `${item.deal} — ${item.risk}` : item.action}
                 </p>
                 {item.message && (
                   <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
@@ -1178,12 +1180,22 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
                     </p>
                   </div>
                 )}
-                <button onClick={()=>onDiscuss(`Help me with this: ${item.kind==="risk"?item.risk:item.action}${item.client?` for ${item.client}`:""}`)}
-                  style={{marginTop:9,background:"transparent",border:`1px solid ${C.rose}30`,
-                    color:C.rose,borderRadius:7,padding:"4px 11px",cursor:"pointer",
-                    fontSize:10,fontFamily:C.F,fontWeight:600}}>
-                  Talk this through with me →
-                </button>
+                <div style={{display:"flex",gap:8,marginTop:9}}>
+                  <button onClick={()=>onDiscuss(`Help me with this: ${item.kind==="risk"?item.risk:item.action}${item.client?` for ${item.client}`:""}`)}
+                    style={{background:"transparent",border:`1px solid ${C.rose}30`,
+                      color:C.rose,borderRadius:7,padding:"4px 11px",cursor:"pointer",
+                      fontSize:10,fontFamily:C.F,fontWeight:600}}>
+                    Talk this through with me →
+                  </button>
+                  {item.kind==="risk"&&onOpenSituationRoom&&(
+                    <button onClick={()=>onOpenSituationRoom(item)}
+                      style={{background:"transparent",border:`1px solid ${C.border}`,
+                        color:C.textDim,borderRadius:7,padding:"4px 11px",cursor:"pointer",
+                        fontSize:10,fontFamily:C.F,fontWeight:600}}>
+                      View full details →
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -3922,8 +3934,6 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
         onNavigate={onNavigate} onOpenTab={setApTab}/>
 
-      <BusinessHealthHero apResult={apResult} sphere={sphere} ledger={valueLedgerTotal}/>
-
       {/* ── TOP HEADER ── */}
       <div style={{flexShrink:0,marginBottom:12}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -3949,7 +3959,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 <div style={{width:4,height:4,borderRadius:"50%",background:apRunning?C.amber:apResult?C.emerald:C.textDim,animation:apRunning?"pulse 1s ease infinite":"none"}}/>
                 {apRunning?"Analyzing your business...":apResult?"Monitoring your business · Always on":"Ready to analyze"}
                 {isPremium&&apResult&&!apRunning&&(
-                  <span style={{color:C.textDim,marginLeft:2}}>· 📧 Email alerts on</span>
+                  <span style={{color:C.textDim,marginLeft:2,display:"inline-flex",alignItems:"center",gap:3}}><Icon.Mail size={9}/> Email alerts on</span>
                 )}
               </div>
             </div>
@@ -3971,15 +3981,15 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
           </div>
         </div>
 
-        {/* Stats bar — Premium only */}
+        {/* Quiet context line — was 4 large unexplained numbers competing for
+            attention with everything else on the page; the same context now
+            lives more usefully inside the roster cards below, so this is
+            just a small reference line, not a dashboard. */}
         {isPremium&&totalRuns>0&&(
-          <div style={{display:"flex",gap:14,marginTop:8,paddingTop:8,borderBottom:`1px solid ${C.border}`,paddingBottom:8,flexWrap:"wrap",alignItems:"center"}}>
-            {[{label:"RUNS",value:totalRuns},{label:"CLIENTS",value:data.totalClients},{label:"DEALS",value:data.totalDeals},{label:"PIPELINE",value:`$${Math.round(data.totalPipeline/1000)}k`}].map((s,i)=>(
-              <div key={i}>
-                <div style={{fontFamily:C.F,fontWeight:800,fontSize:13,color:C.text}}>{s.value}</div>
-                <div style={{fontSize:7,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1.5}}>{s.label}</div>
-              </div>
-            ))}
+          <div style={{display:"flex",gap:10,marginTop:8,paddingTop:8,borderBottom:`1px solid ${C.border}`,paddingBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+            <span style={{fontFamily:C.F,fontSize:10,color:C.textDim}}>
+              {data.totalClients} client{data.totalClients!==1?"s":""} · {data.totalDeals} deal{data.totalDeals!==1?"s":""} · {totalRuns} run{totalRuns!==1?"s":""}{data.totalPipeline>0?` · $${Math.round(data.totalPipeline/1000)}k pipeline`:""}
+            </span>
             <div style={{marginLeft:"auto",display:"flex",gap:8}}>
               {[{id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},{id:"chat",label:"Chat"}].map(v=>(
                 <button key={v.id} onClick={()=>!v.disabled&&setView(v.id)}
@@ -3994,16 +4004,20 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         {/* Mode selector for non-premium (chat only) or in chat view */}
         {(!isPremium||view==="chat")&&(
           <div style={{display:"flex",gap:5,background:"rgba(255,255,255,.02)",borderRadius:10,padding:3,marginTop:8}}>
-            {Object.entries(MODES).map(([key,m])=>(
+            {Object.entries(MODES).map(([key,m])=>{
+              const ModeIcon = Icon[m.icon];
+              return(
               <button key={key} onClick={()=>setMode(key)}
                 style={{flex:1,padding:"6px 4px",borderRadius:7,
                   border:`1px solid ${mode===key?m.color+"30":"transparent"}`,
                   background:mode===key?`linear-gradient(135deg,${m.color}14,${m.color}06)`:"transparent",
                   color:mode===key?m.color:C.textDim,cursor:"pointer",
-                  fontSize:9,fontWeight:700,fontFamily:C.F,letterSpacing:.4,transition:"all .14s"}}>
-                {m.icon} {m.label.toUpperCase()}
+                  fontSize:9,fontWeight:700,fontFamily:C.F,letterSpacing:.4,transition:"all .14s",
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+                {ModeIcon&&<ModeIcon size={11}/>} {m.label.toUpperCase()}
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -4022,19 +4036,24 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                 <div style={{width:64,height:64,borderRadius:18,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${C.indigo}40`}}><Icon.Bot size={30} color="#fff"/></div>
                 <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,margin:"0 0 10px"}}>Autopilot is ready.</h3>
                 <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:"0 0 20px",lineHeight:1.7,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>Add your clients and deals so Autopilot has real data to analyze. The more context you provide, the more powerful it becomes.</p>
-                {[{icon:"👥",label:"Add your clients",desc:"Clients tab → Pipeline Manager",tab:"clients"},{icon:"📋",label:"Add your deals",desc:"Market tab → My Business → Add Deal",tab:"market"},{icon:"🎯",label:"Set your GCI goal",desc:"Market tab → My Business → Goals",tab:"market"}].map((s,i)=>(
+                {[{icon:"Clients",label:"Add your clients",desc:"Clients tab → Pipeline Manager",tab:"clients"},{icon:"Script",label:"Add your deals",desc:"Market tab → My Business → Add Deal",tab:"market"},{icon:"Mission",label:"Set your GCI goal",desc:"Market tab → My Business → Goals",tab:"market"}].map((s,i)=>{
+                  const StepIcon = Icon[s.icon];
+                  return(
                   <div key={i} onClick={()=>onNavigate(s.tab)}
                     style={{display:"flex",alignItems:"center",gap:12,background:C.surface,border:`1px solid ${C.border}`,borderRadius:11,padding:"12px 14px",cursor:"pointer",textAlign:"left",marginBottom:8,maxWidth:320,marginLeft:"auto",marginRight:"auto",transition:"all .16s"}}
                     onMouseEnter={e=>e.currentTarget.style.borderColor="rgba(79, 107, 255,.3)"}
                     onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
-                    <span style={{fontSize:20}}>{s.icon}</span>
+                    <div style={{width:34,height:34,borderRadius:9,flexShrink:0,background:"rgba(255,255,255,.04)",display:"flex",alignItems:"center",justifyContent:"center",color:C.indigoLt}}>
+                      {StepIcon&&<StepIcon size={16}/>}
+                    </div>
                     <div style={{flex:1}}>
                       <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>{s.label}</div>
                       <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:1}}>{s.desc}</div>
                     </div>
                     <span style={{color:C.indigo,fontSize:14}}>→</span>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -4067,8 +4086,12 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   </div>
                 )}
 
-                {/* Critical risk banner — appears when high severity risks exist */}
-                {!situationRoom&&apResult?.deal_intelligence?.risks?.filter(r=>r.severity==="high")?.length>0&&(
+                {/* Critical risk banner — appears on every tab except Mission,
+                    where TeamBriefing already covers this same risk in more
+                    detail (with a drafted message) as part of the briefing
+                    itself. Showing both was the exact redundancy this pass
+                    was meant to fix. */}
+                {apTab!=="mission"&&!situationRoom&&apResult?.deal_intelligence?.risks?.filter(r=>r.severity==="high")?.length>0&&(
                   <div style={{background:"rgba(239, 68, 68,.07)",
                     border:"1px solid rgba(239, 68, 68,.25)",
                     borderRadius:12,padding:"12px 16px",marginBottom:14,
@@ -4096,14 +4119,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   </div>
                 )}
 
-                <TeamRoster tabs={AP_TABS} activeTab={apTab}
-                  onSelect={id=>{ setApTab(id); setSituationRoom(null); }}
-                  apResult={apResult} sphere={sphere} listingPerf={listingPerf}
-                  weeklyReport={weeklyReport} runHistory={runHistory}/>
-
-
-
-                {apTab==="mission"  &&<TeamBriefing apResult={apResult} sphere={sphere} listingPerf={listingPerf} ledger={valueLedgerTotal} voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onJumpTab={setApTab}/>}
+                {apTab==="mission"  &&<TeamBriefing apResult={apResult} sphere={sphere} listingPerf={listingPerf} ledger={valueLedgerTotal} voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onJumpTab={setApTab} onOpenSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="deals"    &&<DealIntelligence di={apResult.deal_intelligence}         onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}} onSituationRoom={r=>{setSituationRoom(r);setApTab("deals");}}/>}
                 {apTab==="coordinator"&&<TransactionCoordinator voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
                 {apTab==="negotiate"&&<NegotiationCopilot voice={voice} onDiscuss={p=>{setView("chat");setTimeout(()=>sendMessage(p),100);}}/>}
@@ -4280,6 +4296,18 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   </div>
                 )}
                 {apTab==="history"  &&<RunHistory runs={runHistory} memory={dbMemory} conversations={conversations}/>}
+
+                {/* Team roster — moved here from above the content switch.
+                    It's reference navigation ("want to go deeper with a
+                    specific specialist"), not the main event; it shouldn't
+                    compete with the briefing for the first thing an agent
+                    reads. */}
+                <div style={{marginTop:24,paddingTop:20,borderTop:`1px solid ${C.border}`}}>
+                  <TeamRoster tabs={AP_TABS} activeTab={apTab}
+                    onSelect={id=>{ setApTab(id); setSituationRoom(null); }}
+                    apResult={apResult} sphere={sphere} listingPerf={listingPerf}
+                    weeklyReport={weeklyReport} runHistory={runHistory}/>
+                </div>
               </div>
             )}
 
@@ -4544,14 +4572,17 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         </div>
       )}
 
-      {/* Persistent chat button (intelligence view) */}
-      {view==="intelligence"&&isPremium&&(
+      {/* Persistent chat button — hidden on Mission, where TeamBriefing
+          already ends with its own "Talk to me about anything" CTA. Every
+          other tab (Deals, Coordinator, etc.) doesn't have one built in,
+          so it stays there as the only entry point into chat. */}
+      {view==="intelligence"&&isPremium&&apTab!=="mission"&&(
         <div style={{flexShrink:0,paddingTop:10,borderTop:`1px solid ${C.border}`,marginTop:8}}>
           <button onClick={()=>setView("chat")}
             style={{width:"100%",background:`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`,border:`1px solid ${C.indigo}28`,color:C.indigoLt,borderRadius:11,padding:"11px 0",cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:13,transition:"all .16s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
             onMouseEnter={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}22,${C.violet}14)`}
             onMouseLeave={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`}>
-            <span style={{fontSize:16}}>💬</span>
+            <Icon.Chat size={15}/>
             {isPremium&&apResult?"Discuss anything with SPARK Autopilot →":"Chat with SPARK →"}
           </button>
         </div>
