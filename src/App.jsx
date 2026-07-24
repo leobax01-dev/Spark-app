@@ -2565,6 +2565,7 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
   ];
   function save(){
     if(!voice.name||!voice.market){toast("Add your name and market first","error");return;}
+    if(voice.smsEnabled && !voice.phone?.trim()){toast("Add a phone number to enable texts","error");return;}
     const saved={...voice,saved:true}; setVoice(saved); LS.set("sp_voice",saved);
     toast("Agent voice saved — all scripts will now sound like you ✓"); onSave();
 
@@ -2577,7 +2578,7 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           email:user.email, action:"sync_data",
-          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta, timezone:saved.timezone||detectedTz },
+          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta, timezone:saved.timezone||detectedTz, phone:saved.phone||"", smsEnabled:!!saved.smsEnabled },
         }),
       }).catch(()=>{});
     }
@@ -2606,6 +2607,32 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
         <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"6px 0 0",lineHeight:1.5}}>
           This is how your team knows when it's actually morning for you — your daily briefing lands at your real morning, not a fixed time for everyone.
         </p>
+      </div>
+
+      <div style={{marginTop:16,background:C.surfaceUp,border:`1px solid ${C.borderMd}`,borderRadius:12,padding:"14px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:voice.smsEnabled?12:0}}>
+          <div>
+            <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>Text me when it matters</div>
+            <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>Your morning brief and critical deal alerts, by text</div>
+          </div>
+          <button onClick={()=>setVoice(v=>({...v,smsEnabled:!v.smsEnabled}))}
+            style={{width:38,height:22,borderRadius:11,border:"none",cursor:"pointer",flexShrink:0,
+              background:voice.smsEnabled?C.indigo:"rgba(255,255,255,.12)",position:"relative",transition:"background .15s"}}>
+            <div style={{width:16,height:16,borderRadius:"50%",background:"#fff",position:"absolute",top:3,
+              left:voice.smsEnabled?19:3,transition:"left .15s"}}/>
+          </button>
+        </div>
+        {voice.smsEnabled&&(
+          <div>
+            <input type="tel" value={voice.phone||""} onChange={e=>setVoice(v=>({...v,phone:e.target.value}))}
+              placeholder="+1 (555) 123-4567"
+              style={{width:"100%",background:C.surface,border:`1px solid ${C.borderMd}`,
+                borderRadius:8,padding:"9px 12px",color:C.text,fontFamily:C.F,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+            <p style={{fontFamily:C.F,fontSize:9,color:C.textDim,margin:"6px 0 0",lineHeight:1.5}}>
+              Standard message rates may apply. You can turn this off anytime.
+            </p>
+          </div>
+        )}
       </div>
 
       <Button variant="primary" C={C} onClick={save}
