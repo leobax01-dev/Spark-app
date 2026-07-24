@@ -1,12 +1,14 @@
 // api/cron-autopilot.js
-// The scheduled background Autopilot run — the piece everything else this
-// month has been building toward. Vercel Cron hits this on a schedule with
-// no browser involved, so the client-side engine (aggregateBusinessData +
-// runAutopilotEngine + getMarketContext, all living in AutopilotPanel.jsx)
-// is ported here as plain server-side JS. Kept as close to byte-identical
-// to the client version as possible so the JSON schema matches exactly —
-// if you change the prompts/schema in AutopilotPanel.jsx, mirror the
-// change here too, they're not shared code, just kept in sync by hand.
+// The scheduled background Autopilot run — refreshes Mission/Deal
+// Intelligence, Sphere Reactivation, and Listing Performance for every
+// Premium agent on a schedule, no browser involved. The client-side
+// engines (aggregateBusinessData/runAutopilotEngine/getMarketContext,
+// computeSphereCandidates/generateSphereReactivation,
+// generateListingPerformance — all living in AutopilotPanel.jsx) are
+// ported here as plain server-side JS. Kept as close to byte-identical
+// to the client versions as possible so the JSON schema matches exactly —
+// if you change a prompt/schema in AutopilotPanel.jsx, mirror the change
+// here too, they're not shared code, just kept in sync by hand.
 //
 // Reuses the existing /api/claude, /api/comps, and /api/google-data
 // endpoints via internal HTTP calls rather than duplicating their logic
@@ -177,6 +179,138 @@ Return ONLY this JSON (compact):
   return {...part1, ...part2};
 }
 
+// ─── Ported from AutopilotPanel.jsx — Sphere Reactivation ─────────────────
+function daysSinceDate(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr);
+  if(isNaN(d.getTime())) return null;
+  return Math.round((Date.now()-d.getTime())/864e5);
+}
+
+function computeSphereCandidates(clients){
+  const candidates = [];
+  const HIGH_VALUE_TAG = /vip|referral|repeat|top|priority/i;
+
+  clients.forEach(c=>{
+    const anchor = c.lastContact || c.createdAt;
+    const days = daysSinceDate(anchor);
+    if(days===null) return;
+
+    const tagBoost = (c.tags||[]).some(t=>HIGH_VALUE_TAG.test(t)) ? -1 : 0;
+    const clampPriority = p => Math.max(1, p+tagBoost);
+
+    if(c.stage==="closed"){
+      if(days>=330 && days<=395){
+        candidates.push({ client:c, days, trigger:"1-Year Home Anniversary", priority:clampPriority(1) });
+      } else if(days>=700 && days<=760){
+        candidates.push({ client:c, days, trigger:"2-Year Check-In", priority:clampPriority(2) });
+      } else if(days>=1060 && days<=1120){
+        candidates.push({ client:c, days, trigger:"3-Year Check-In", priority:clampPriority(2) });
+      } else if(days>=150 && days<330){
+        candidates.push({ client:c, days, trigger:"Post-Close Market Update", priority:clampPriority(3) });
+      } else if(days>1120){
+        candidates.push({ client:c, days, trigger:"Long-Dormant Past Client", priority:clampPriority(4) });
+      }
+    } else if((c.stage==="prospect"||c.stage==="active") && days>=120){
+      candidates.push({ client:c, days, trigger:"Cold Lead Reactivation", priority: clampPriority(days>240?1:2) });
+    }
+  });
+
+  candidates.sort((a,b)=> a.priority-b.priority || b.days-a.days);
+  return candidates;
+}
+
+async function generateSphereReactivation(clients, voice){
+  const candidates = computeSphereCandidates(clients);
+  if(candidates.length===0){
+    return { opportunities:[], sphere_summary:"No dormant relationships detected right now — the sphere is well-tended.", total_dormant:0, generated:new Date().toISOString() };
+  }
+
+  const top = candidates.slice(0,12);
+  const zipMap = {};
+  for(const cand of top){
+    const zip = extractZip(cand.client.property);
+    if(zip && !(zip in zipMap)) zipMap[zip] = await fetchMarketStats(zip);
+  }
+
+  const ctx = top.map((cand,i)=>{
+    const zip = extractZip(cand.client.property);
+    const stats = zip ? zipMap[zip] : null;
+    const marketLine = stats
+      ? ` | LIVE MARKET DATA for their area: median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median DOM ${stats.medianDaysOnMarket??"?"}d`
+      : "";
+    const activities = cand.client.activities||[];
+    const historyLine = activities.length
+      ? `last logged activity (${activities[0].type}): "${activities[0].summary?.slice(0,100)}"`
+      : `notes: ${cand.client.notes?.slice(0,120)||"none"}`;
+    const tagLine = cand.client.tags?.length ? ` | tags: [${cand.client.tags.join(", ")}]` : "";
+    return `${i+1}. ${cand.client.name} — ${cand.trigger}, ${cand.days} days since last contact, type: ${cand.client.type||"?"}, property: ${cand.client.property||"unknown"}, ${historyLine}${tagLine}${marketLine}`;
+  }).join("\n");
+
+  const raw = await callClaude(`Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}, market: ${voice?.market||""}
+
+Here are dormant relationships detected in the agent's book of business:
+${ctx}
+
+For each, generate a specific reactivation opportunity. Return ONLY this JSON:
+{"sphere_summary":"1-2 sentence honest read on the state of the agent's sphere right now","opportunities":[{"name":"client name exactly as given","trigger":"the trigger type as given","why_now":"specific, genuine reason this is a good moment to reach out — reference their actual situation, not generic","message":"a warm, non-salesy, ready-to-send text or email — short, personal, easy to say yes to, NOT pushy or sales-y","ask":"the soft ask embedded in the message, e.g. 'offering a free market update' or 'checking in, no agenda'"}],"top_pick":"name of the single most valuable person to reach out to today, and one sentence on why"}`,
+    "You are SPARK Autopilot's Sphere Reactivation Engine. Real estate's biggest missed opportunity is that most agents' past clients would use them again but never get re-contacted. Your job is to give the agent a specific, non-salesy, genuinely valuable reason to reach out to each dormant relationship, plus a ready-to-send message. When a client has a logged activity history, reference what actually happened in your 'why now' reasoning instead of writing something generic. When a client has tags (e.g. VIP, referral source), let that shape the tone and priority of the message. When live market data is given for a client's area, use the real numbers as part of the 'why now' reason and the message itself — never invent statistics if none are given. Reference real names, timeframes, and property details. Return ONLY valid compact JSON.");
+
+  raw.opportunities = (raw.opportunities||[]).map(op=>{
+    const match = top.find(t=>t.client.name===op.name);
+    return { ...op, days: match?.days, clientId: match?.client.id };
+  });
+  raw.total_dormant = candidates.length;
+  raw.generated = new Date().toISOString();
+  return raw;
+}
+
+// ─── Ported from AutopilotPanel.jsx — Listing Performance ──────────────────
+async function generateListingPerformance(clients, voice){
+  const listings = clients.filter(c=>c.type==="seller" && c.stage==="active");
+  if(listings.length===0){
+    return { listings:[], market_snapshot:null, summary:"No active listings to track right now.", generated:new Date().toISOString() };
+  }
+
+  const zipCache = {};
+  for(const listing of listings){
+    const zip = extractZip(listing.property);
+    if(zip && !(zip in zipCache)) zipCache[zip] = await fetchMarketStats(zip);
+  }
+
+  const ctx = listings.map((l,i)=>{
+    const zip = extractZip(l.property);
+    const stats = zip ? zipCache[zip] : null;
+    const trackedDays = daysSinceDate(l.createdAt);
+    return [
+      `${i+1}. ${l.name} — ${l.property||"address unknown"}`,
+      `   Tracked in SPARK for ${trackedDays ?? "unknown"} days (proxy for time on market — check notes for a more precise listed date if agent mentioned one)`,
+      `   Budget/list price: ${l.budget||"not entered"}`,
+      `   Notes: ${l.notes?.slice(0,150)||"none"}`,
+      stats ? `   REAL MARKET DATA for zip ${zip}: median days on market ${stats.medianDaysOnMarket??"?"}, median sale price $${stats.medianSalePrice?.toLocaleString()||"?"}, median list price $${stats.medianListPrice?.toLocaleString()||"?"}, active listings in area: ${stats.activeListings??"?"}`
+        : `   No market data available for this address (zip not detected or lookup failed) — assess from notes only`,
+    ].join("\n");
+  }).join("\n\n");
+
+  const raw = await callClaude(`Agent: ${voice?.name||"Agent"}, ${voice?.brokerage||""}
+
+Assess these active listings:
+
+${ctx}
+
+Return ONLY this JSON:
+{"summary":"1-2 sentence honest overall read on how these listings are performing","listings":[{"name":"client name exactly as given","status":"on_track | needs_attention | price_risk","assessment":"specific 2-3 sentence read grounded in the real market data given — reference actual numbers when available","recommended_action":"specific action — a price adjustment with a real number, a marketing pivot, or 'hold steady' with reasoning","seller_update_script":"a warm, honest, ready-to-send update for the seller referencing real market context — not generic reassurance"}]}`,
+    "You are SPARK's Listing Performance Autopilot. You assess active listings against REAL local market data (provided below) to catch pricing and marketing problems before the seller gets frustrated. Ground every recommendation in the actual market numbers given — never invent statistics. If no market data is available for a listing, say so honestly rather than guessing. Return ONLY valid compact JSON.");
+
+  raw.listings = (raw.listings||[]).map(item=>{
+    const match = listings.find(l=>l.name===item.name);
+    const zip = match ? extractZip(match.property) : null;
+    return { ...item, trackedDays: match?daysSinceDate(match.createdAt):null, zip, marketStats: zip?zipCache[zip]:null, property: match?.property };
+  });
+  raw.generated = new Date().toISOString();
+  return raw;
+}
+
 // ─── Handler ────────────────────────────────────────────────────────────
 export default async function handler(req, res){
   // Vercel automatically sends this header on cron-triggered requests when
@@ -187,7 +321,7 @@ export default async function handler(req, res){
   }
 
   const sb = getSupabase();
-  const summary = { processed:0, skipped:0, errors:[] };
+  const summary = { processed:0, skipped:0, sphereRefreshed:0, listingsRefreshed:0, errors:[] };
 
   const { data: users, error: usersError } = await sb
     .from("users")
@@ -215,6 +349,21 @@ export default async function handler(req, res){
       });
       const analysis = await runAutopilotEngine(businessData);
 
+      // Refresh Sphere Reactivation and Listing Performance too — each is
+      // independent of the core engine, so a failure in either shouldn't
+      // block the main Mission run from saving.
+      let sphereResult = null, listingResult = null;
+      try{ sphereResult = await generateSphereReactivation(clients, sync?.profile); summary.sphereRefreshed++; }
+      catch(e){ console.warn(`Cron: sphere refresh failed for ${u.email}:`, e.message); }
+      try{ listingResult = await generateListingPerformance(clients, sync?.profile); summary.listingsRefreshed++; }
+      catch(e){ console.warn(`Cron: listing refresh failed for ${u.email}:`, e.message); }
+
+      const mergedResult = {
+        ...analysis,
+        ...(sphereResult ? { sphere_reactivation: sphereResult } : {}),
+        ...(listingResult ? { listing_performance: listingResult } : {}),
+      };
+
       // Only email if the top critical risk is genuinely new since the last run
       const { data: prevRun } = await sb
         .from("autopilot_runs")
@@ -231,7 +380,7 @@ export default async function handler(req, res){
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           email: u.email, action:"save_run",
-          result: analysis,
+          result: mergedResult,
           clientCount: businessData.totalClients,
           dealCount: businessData.totalDeals,
           overallHealth: analysis.deal_intelligence?.overall_health||"stable",
