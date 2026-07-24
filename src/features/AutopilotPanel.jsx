@@ -1063,13 +1063,90 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
   const hour = new Date().getHours();
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
 
+  // ─── Read the briefing aloud — hands-free for driving between showings ───
+  const [speakState, setSpeakState] = useState("idle"); // idle | speaking | paused
+  useEffect(()=>{
+    return ()=>{ try{ window.speechSynthesis?.cancel(); }catch{} }; // stop if the agent navigates away mid-brief
+  },[]);
+
+  function composeBriefingScript(){
+    const parts = [`${greeting}, ${firstName}.`];
+    parts.push(mission.headline || "I've been watching your business — here's where things stand.");
+    if(mission.why) parts.push(mission.why);
+
+    if(needsYou.length>0){
+      parts.push(`Here's what I need from you. ${needsYou.length} thing${needsYou.length!==1?"s":""} ${needsYou.length!==1?"require":"requires"} your judgment.`);
+      needsYou.forEach((item,i)=>{
+        const line = item.kind==="risk"
+          ? `Number ${i+1}: ${item.deal}. ${item.risk}.`
+          : `Number ${i+1}: ${item.action}${item.client?`, for ${item.client}`:""}.`;
+        parts.push(line);
+      });
+    } else {
+      parts.push("Nothing urgently needs your judgment call right now.");
+    }
+
+    if(handlingForYou.length>0 || listingFlags.length>0){
+      const total = handlingForYou.length + (listingFlags.length>0?1:0);
+      parts.push(`And here's what I'm already handling for you — ${total} thing${total!==1?"s":""} being tracked in the background, no action needed from you yet.`);
+    }
+
+    parts.push("That's your briefing. Talk to me anytime if you want to go deeper on any of it.");
+    return parts.join(" ");
+  }
+
+  function pickNaturalVoice(){
+    const voices = window.speechSynthesis?.getVoices()||[];
+    return voices.find(v=>
+      v.name.includes("Samantha")||v.name.includes("Google US English")||
+      v.name.includes("Microsoft Aria")||v.name.includes("Alex")
+    );
+  }
+
+  function toggleSpeakBriefing(){
+    const synth = window.speechSynthesis;
+    if(!synth) return;
+
+    if(speakState==="speaking"){ synth.pause(); setSpeakState("paused"); return; }
+    if(speakState==="paused"){ synth.resume(); setSpeakState("speaking"); return; }
+
+    synth.cancel(); // clear anything else queued
+    const utterance = new SpeechSynthesisUtterance(composeBriefingScript());
+    utterance.rate = 0.95;
+    utterance.pitch = 1.0;
+    const preferred = pickNaturalVoice();
+    if(preferred) utterance.voice = preferred;
+    utterance.onend = ()=>setSpeakState("idle");
+    utterance.onerror = ()=>setSpeakState("idle");
+    synth.speak(utterance);
+    setSpeakState("speaking");
+  }
+
   return(
     <div style={{maxWidth:640,margin:"0 auto"}}>
 
       {/* WHAT'S HAPPENING — opening narrative, first person */}
       <div style={{marginBottom:24}}>
-        <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,marginBottom:8,letterSpacing:"-0.01em"}}>
-          {greeting}, {firstName}.
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:12,marginBottom:8}}>
+          <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,letterSpacing:"-0.01em"}}>
+            {greeting}, {firstName}.
+          </div>
+          <button onClick={toggleSpeakBriefing}
+            title={speakState==="speaking"?"Pause":speakState==="paused"?"Resume":"Listen to your briefing"}
+            style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,
+              background:speakState!=="idle"?`${C.indigo}12`:"rgba(255,255,255,.03)",
+              border:`1px solid ${speakState!=="idle"?C.indigo+"35":C.border}`,
+              borderRadius:20,padding:"6px 12px",cursor:"pointer",
+              color:speakState!=="idle"?C.indigoLt:C.textDim,transition:"all .15s"}}>
+            {speakState==="speaking" ? (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            )}
+            <span style={{fontFamily:C.F,fontSize:10,fontWeight:700}}>
+              {speakState==="speaking"?"Pause":speakState==="paused"?"Resume":"Listen"}
+            </span>
+          </button>
         </div>
         <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,lineHeight:1.7,margin:0}}>
           {mission.headline || "I've been watching your business — here's where things stand."}
@@ -1515,11 +1592,29 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
   const [showActions,setShowActions]=useState(false);
   const [complianceResult, setComplianceResult] = useState(null);
   const [complianceChecking, setComplianceChecking] = useState(false);
+  const [listening, setListening] = useState(false);
   const isUser=msg.role==="user";
   const formattedContent = msg.content.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>");
 
   function copyText(){
     navigator.clipboard.writeText(msg.content).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
+  }
+
+  function toggleListen(){
+    const synth = window.speechSynthesis;
+    if(!synth) return;
+    if(listening){ synth.cancel(); setListening(false); return; }
+    synth.cancel(); // stop anything else playing first — only one voice at a time
+    const clean = msg.content.replace(/\*\*(.*?)\*\*/g,"$1").replace(/\*(.*?)\*/g,"$1").replace(/#{1,6}\s/g,"").replace(/\n/g," ").slice(0,800);
+    const utterance = new SpeechSynthesisUtterance(clean);
+    utterance.rate = 0.95;
+    const voices = synth.getVoices()||[];
+    const preferred = voices.find(v=>v.name.includes("Samantha")||v.name.includes("Google US English")||v.name.includes("Microsoft Aria")||v.name.includes("Alex"));
+    if(preferred) utterance.voice = preferred;
+    utterance.onend = ()=>setListening(false);
+    utterance.onerror = ()=>setListening(false);
+    synth.speak(utterance);
+    setListening(true);
   }
 
   async function checkCompliance(){
@@ -1564,7 +1659,7 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
         </div>
         {!isUser&&!msg.streaming&&showActions&&(
           <div style={{display:"flex",gap:5,marginTop:6,flexWrap:"wrap"}}>
-            {[{label:copied?"✓ Copied":"Copy",fn:copyText},{label:"Save note",fn:()=>onSaveNote(msg.content)},{label:"Regenerate",fn:onRegenerate},{label:complianceChecking?"Checking...":"Check compliance",fn:checkCompliance}].map((a,i)=>(
+            {[{label:copied?"✓ Copied":"Copy",fn:copyText},{label:listening?"Stop":"Listen",fn:toggleListen},{label:"Save note",fn:()=>onSaveNote(msg.content)},{label:"Regenerate",fn:onRegenerate},{label:complianceChecking?"Checking...":"Check compliance",fn:checkCompliance}].map((a,i)=>(
               <button key={i} onClick={a.fn} disabled={a.label==="Checking..."}
                 style={{background:"rgba(255,255,255,.04)",border:`1px solid ${C.border}`,
                   color:C.textDim,borderRadius:8,padding:"3px 9px",cursor:"pointer",
