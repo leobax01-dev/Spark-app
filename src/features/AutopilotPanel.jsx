@@ -458,14 +458,14 @@ function getSmartPrompts(voice,mode,autopilotResult,googleData){
   // Autopilot-driven prompts (Premium)
   if(autopilotResult?.mission?.top3?.length){
     const top = autopilotResult.mission.top3[0];
-    prompts.push({ icon:"🎯", label:`Priority: ${top.client||top.action}`, color:C.rose, urgent:true,
+    prompts.push({ icon:"Mission", label:`Priority: ${top.client||top.action}`, color:C.rose, urgent:true,
       prompt:`Autopilot flagged this as my #1 priority today: "${top.action}" for ${top.client||"my pipeline"}. ${top.message?"Here's the draft message: "+top.message+"\n\n":""} Help me execute this right now.` });
   }
 
   // Deal risks from Autopilot
   if(autopilotResult?.deal_intelligence?.risks?.length){
     const risk = autopilotResult.deal_intelligence.risks[0];
-    prompts.push({ icon:"⚠️", label:`Deal risk: ${risk.deal}`, color:C.amber, urgent:true,
+    prompts.push({ icon:"Alerts", label:`Deal risk: ${risk.deal}`, color:C.amber, urgent:true,
       prompt:`Autopilot detected a risk with ${risk.deal}: "${risk.risk}". Help me address this immediately.` });
   }
 
@@ -473,7 +473,7 @@ function getSmartPrompts(voice,mode,autopilotResult,googleData){
   if(googleData?.events?.length){
     const urgent = googleData.events.filter(e=>e.isToday||e.isTomorrow||e.daysUntil<=3);
     urgent.slice(0,1).forEach(e=>{
-      prompts.push({ icon:"📅", label:`Prep: ${e.title}`, color:e.isToday?C.rose:C.amber, urgent:e.isToday,
+      prompts.push({ icon:"Weekly", label:`Prep: ${e.title}`, color:e.isToday?C.rose:C.amber, urgent:e.isToday,
         prompt:`I have "${e.title}" ${e.isToday?"today":e.isTomorrow?"tomorrow":`in ${e.daysUntil} days`} at ${e.start}${e.location?` at ${e.location}`:""}. Give me a complete prep package — talking points, likely objections, how to open, and what outcome I'm driving toward.` });
     });
   }
@@ -483,7 +483,7 @@ function getSmartPrompts(voice,mode,autopilotResult,googleData){
   if(overdue.length){
     const c = overdue[0];
     const days = Math.round((now-new Date(c.lastContact))/864e5);
-    prompts.push({ icon:"💬", label:`Follow up: ${c.name}`, color:C.indigo,
+    prompts.push({ icon:"Chat", label:`Follow up: ${c.name}`, color:C.indigo,
       prompt:`I haven't contacted ${c.name} in ${days} days. They're a ${c.type} looking at ${c.property||"real estate"}, budget ${c.budget||"?"}, timeline ${c.timeline||"?"}. Write me a warm, natural follow-up ${c.type==="buyer"?"text message":"email"} that re-engages without feeling pushy.` });
   }
 
@@ -496,27 +496,27 @@ function getSmartPrompts(voice,mode,autopilotResult,googleData){
   if(closingSoon.length){
     const d=closingSoon[0];
     const days=Math.round((new Date(d.closeDate)-now)/864e5);
-    prompts.push({ icon:"🔥", label:`${d.name} closes in ${days}d`, color:C.amber,
+    prompts.push({ icon:"Zap", label:`${d.name} closes in ${days}d`, color:C.amber,
       prompt:`My deal "${d.name}" closes in ${days} days at $${(parseFloat(d.value)||0).toLocaleString()}. What do I need to make sure is done, and what should I communicate to my client right now?` });
   }
 
   // Mode-specific fallbacks
   const fallbacks = {
     write:     [
-      { icon:"📝", label:"Write a listing description", color:C.indigo, prompt:"Write me a compelling MLS listing description for a property. Ask me for the details." },
-      { icon:"📧", label:"Draft a client email",        color:C.violet, prompt:"Help me draft a professional client email. What situation should I address?" },
+      { icon:"Script", label:"Write a listing description", color:C.indigo, prompt:"Write me a compelling MLS listing description for a property. Ask me for the details." },
+      { icon:"Mail",   label:"Draft a client email",        color:C.violet, prompt:"Help me draft a professional client email. What situation should I address?" },
     ],
     strategize:[
-      { icon:"🏠", label:"Pricing strategy",     color:C.violet, prompt:"Help me think through a pricing strategy for an upcoming listing. I'll give you the details." },
-      { icon:"🎯", label:"Lead conversion plan", color:C.cyan,   prompt:"I have a lead I want to convert. Help me build a strategy to win their business." },
+      { icon:"Dollar",  label:"Pricing strategy",     color:C.violet, prompt:"Help me think through a pricing strategy for an upcoming listing. I'll give you the details." },
+      { icon:"Mission", label:"Lead conversion plan", color:C.cyan,   prompt:"I have a lead I want to convert. Help me build a strategy to win their business." },
     ],
     coach:     [
-      { icon:"💪", label:"Business review",       color:C.amber, prompt:`Give me an honest assessment of my business right now based on what you know about my pipeline, clients, and goals. Don't hold back.` },
-      { icon:"📈", label:"Hit my GCI target",     color:C.emerald, prompt:`My monthly GCI target is ${goals.monthlyGciTarget||"set in My Business"}. Current: ${goals.currentMonth||"0"}. What do I need to do right now to hit it?` },
+      { icon:"Coaching", label:"Business review",       color:C.amber, prompt:`Give me an honest assessment of my business right now based on what you know about my pipeline, clients, and goals. Don't hold back.` },
+      { icon:"Market",   label:"Hit my GCI target",     color:C.emerald, prompt:`My monthly GCI target is ${goals.monthlyGciTarget||"set in My Business"}. Current: ${goals.currentMonth||"0"}. What do I need to do right now to hit it?` },
     ],
     practice:  [
-      { icon:"🗣️", label:"Practice a listing pitch",    color:C.cyan,   prompt:"Role-play as a seller who's interviewing agents. I want to practice my listing pitch. Start as the seller." },
-      { icon:"💬", label:"Handle the 'I need to think'", color:C.violet, prompt:"Role-play as a buyer who just said 'I need to think about it.' Let me practice handling this objection." },
+      { icon:"Listings", label:"Practice a listing pitch",    color:C.cyan,   prompt:"Role-play as a seller who's interviewing agents. I want to practice my listing pitch. Start as the seller." },
+      { icon:"Chat",     label:"Handle the 'I need to think'", color:C.violet, prompt:"Role-play as a buyer who just said 'I need to think about it.' Let me practice handling this objection." },
     ],
   };
 
@@ -1420,7 +1420,7 @@ function ClientScores({ scores, onDiscuss }){
 
 function RelationshipAlerts({ alerts, onDiscuss, user, voice }){
   if(!alerts?.length) return null;
-  const tm={overdue:{icon:"⚠️",color:C.rose,label:"OVERDUE"},referral_window:{icon:"🤝",color:C.amber,label:"REFERRAL WINDOW"},anniversary:{icon:"🎉",color:C.emerald,label:"ANNIVERSARY"},re_engage:{icon:"💬",color:C.indigo,label:"RE-ENGAGE"}};
+  const tm={overdue:{icon:"Alerts",color:C.rose,label:"OVERDUE"},referral_window:{icon:"Sphere",color:C.amber,label:"REFERRAL WINDOW"},anniversary:{icon:"Sparkle",color:C.emerald,label:"ANNIVERSARY"},re_engage:{icon:"Chat",color:C.indigo,label:"RE-ENGAGE"}};
   return(
     <APCard accent={C.amber}>
       <APLabel color={C.amber}>RELATIONSHIP ALERTS</APLabel>
@@ -1430,7 +1430,7 @@ function RelationshipAlerts({ alerts, onDiscuss, user, voice }){
           return(
             <div key={i} style={{background:`${t.color}06`,border:`1px solid ${t.color}20`,borderRadius:10,padding:"12px 13px",animation:`fadeUp .25s ease ${i*.06}s both`}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                <span style={{fontSize:14}}>{t.icon}</span>
+                {Icon[t.icon] && (()=>{ const TI=Icon[t.icon]; return <TI size={13} color={t.color}/>; })()}
                 <span style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>{alert.client}</span>
                 <span style={{fontSize:9,color:t.color,fontWeight:700,letterSpacing:1,background:`${t.color}14`,border:`1px solid ${t.color}24`,borderRadius:6,padding:"1px 6px"}}>{t.label}</span>
                 <button onClick={()=>onDiscuss(`I need to reach out to ${alert.client}. ${alert.reason}. Draft: ${alert.message||"?"}`)}
@@ -1689,7 +1689,7 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
             <div style={{marginTop:8,background:`${riskColor}08`,border:`1px solid ${riskColor}24`,
               borderRadius:9,padding:"9px 12px",maxWidth:"100%"}}>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:complianceResult.flags?.length?6:0}}>
-                <span style={{fontSize:12}}>{complianceResult.overall_risk==="clear"?"✅":complianceResult.overall_risk==="high_risk"?"🚫":"⚠️"}</span>
+                {complianceResult.overall_risk==="clear" ? <Icon.Check size={12} color={riskColor}/> : complianceResult.overall_risk==="high_risk" ? <Icon.Close size={12} color={riskColor}/> : <Icon.Alerts size={12} color={riskColor}/>}
                 <span style={{fontSize:10,color:riskColor,fontFamily:C.F,fontWeight:700}}>
                   Fair Housing: {complianceResult.overall_risk==="clear"?"Looks Clear":complianceResult.overall_risk==="high_risk"?"High Risk":"Review Suggested"}
                 </span>
@@ -2151,12 +2151,12 @@ const NEGOTIATION_KEY = "spark_negotiation_history_v1"; // last few negotiation 
 // NEGOTIATION COPILOT — live, on-demand coaching for offer/counter situations
 // ─────────────────────────────────────────────────────────────────────────────
 const NEGOTIATION_SITUATIONS = [
-  { id:"counter",     label:"Buyer/Seller Counter",     icon:"↔️" },
-  { id:"lowball",     label:"Low Offer Response",       icon:"📉" },
-  { id:"inspection",  label:"Inspection Repair Request", icon:"🔧" },
-  { id:"appraisal",   label:"Appraisal Gap",            icon:"📊" },
-  { id:"multiple",    label:"Multiple Offers",          icon:"🏆" },
-  { id:"other",       label:"Other Situation",          icon:"💬" },
+  { id:"counter",     label:"Buyer/Seller Counter",     icon:"Negotiate" },
+  { id:"lowball",     label:"Low Offer Response",       icon:"Market" },
+  { id:"inspection",  label:"Inspection Repair Request", icon:"Wrench" },
+  { id:"appraisal",   label:"Appraisal Gap",            icon:"Market" },
+  { id:"multiple",    label:"Multiple Offers",          icon:"Trophy" },
+  { id:"other",       label:"Other Situation",          icon:"Chat" },
 ];
 
 async function generateNegotiationStrategy(situation, situationType, dealContext, voice){
@@ -2681,16 +2681,19 @@ function NegotiationCopilot({ voice, onDiscuss }){
 
           {/* Situation type picker */}
           <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
-            {NEGOTIATION_SITUATIONS.map(s=>(
+            {NEGOTIATION_SITUATIONS.map(s=>{
+              const SitIcon = Icon[s.icon];
+              return(
               <button key={s.id} onClick={()=>setSituationType(s.id)}
                 style={{padding:"6px 12px",borderRadius:9,
                   border:`1px solid ${situationType===s.id?C.violet+"55":C.border}`,
                   background:situationType===s.id?`${C.violet}12`:"transparent",
                   color:situationType===s.id?C.violet:C.textDim,cursor:"pointer",
                   fontSize:11,fontFamily:C.F,fontWeight:600,display:"flex",alignItems:"center",gap:5}}>
-                <span>{s.icon}</span>{s.label}
+                {SitIcon&&<SitIcon size={12}/>}{s.label}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* Optional deal link */}
@@ -2874,9 +2877,9 @@ function NegotiationCopilot({ voice, onDiscuss }){
 // LISTING PERFORMANCE — UI component
 // ─────────────────────────────────────────────────────────────────────────────
 const LISTING_STATUS_STYLE = {
-  on_track:       { icon:"✅", color:C.emerald, label:"On Track" },
-  needs_attention:{ icon:"⚠️", color:C.amber,   label:"Needs Attention" },
-  price_risk:     { icon:"🔻", color:C.rose,    label:"Price Risk" },
+  on_track:       { icon:"Check",  color:C.emerald, label:"On Track" },
+  needs_attention:{ icon:"Alerts", color:C.amber,   label:"Needs Attention" },
+  price_risk:     { icon:"Market", color:C.rose,    label:"Price Risk" },
 };
 
 function ListingPerformance({ data, onDiscuss }){
@@ -2920,7 +2923,7 @@ function ListingPerformance({ data, onDiscuss }){
               <span style={{fontSize:9,color:style.color,fontFamily:C.F,fontWeight:700,
                 background:`${style.color}14`,border:`1px solid ${style.color}28`,
                 borderRadius:8,padding:"3px 10px",letterSpacing:.5,display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-                {style.icon} {style.label}
+                {Icon[style.icon] && (()=>{ const LI=Icon[style.icon]; return <LI size={10}/>; })()} {style.label}
               </span>
             </div>
 
@@ -4394,18 +4397,21 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             {!hasMessages&&(
               <div style={{marginBottom:12}}>
                 <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,fontWeight:700,marginBottom:10,textAlign:"center"}}>
-                  {smartPrompts.some(p=>p.urgent)?"⚠️ NEEDS ATTENTION · QUICK STARTS":"QUICK STARTS"}
+                  {smartPrompts.some(p=>p.urgent)?"NEEDS ATTENTION · QUICK STARTS":"QUICK STARTS"}
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                  {smartPrompts.map((p,i)=>(
+                  {smartPrompts.map((p,i)=>{
+                    const PromptIcon = Icon[p.icon];
+                    return(
                     <button key={i} onClick={()=>sendMessage(p.prompt)}
                       style={{background:p.urgent?`${C.rose}06`:C.surface,border:`1px solid ${p.urgent?C.rose+"28":C.border}`,borderRadius:10,padding:"11px 12px",cursor:"pointer",textAlign:"left",transition:"all .15s",animation:`fadeUp .28s ease ${i*.04}s both`}}
                       onMouseEnter={e=>{ e.currentTarget.style.borderColor=p.urgent?C.rose+"55":`${p.color||C.indigo}44`; e.currentTarget.style.transform="translateY(-1px)"; }}
                       onMouseLeave={e=>{ e.currentTarget.style.borderColor=p.urgent?C.rose+"28":C.border; e.currentTarget.style.transform="translateY(0)"; }}>
-                      <div style={{fontSize:15,marginBottom:4}}>{p.icon}</div>
+                      <div style={{marginBottom:4,color:p.urgent?C.rose:p.color||C.indigoLt}}>{PromptIcon&&<PromptIcon size={15}/>}</div>
                       <div style={{fontFamily:C.F,fontWeight:700,fontSize:11,color:p.urgent?C.rose:C.text,lineHeight:1.3}}>{p.label}</div>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
