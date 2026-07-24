@@ -2550,6 +2550,19 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
     {k:"targetClient",l:"TARGET CLIENT",p:"Families relocating from NYC, $600K–$1.2M"},
     {k:"cta",l:"PREFERRED CTA",p:"DM me HOME for a free market analysis"},
   ];
+  // Auto-detected once, used as the default until the agent picks their own —
+  // this is what lets Autopilot's nightly run land at THEIR morning, not a
+  // single fixed time for every agent regardless of coast.
+  const detectedTz = (()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone; }catch{ return "America/New_York"; } })();
+  const TIMEZONES = [
+    { v:"America/New_York",    l:"Eastern (New York)" },
+    { v:"America/Chicago",     l:"Central (Chicago)" },
+    { v:"America/Denver",      l:"Mountain (Denver)" },
+    { v:"America/Phoenix",     l:"Arizona (no DST)" },
+    { v:"America/Los_Angeles", l:"Pacific (Los Angeles)" },
+    { v:"America/Anchorage",   l:"Alaska" },
+    { v:"Pacific/Honolulu",    l:"Hawaii" },
+  ];
   function save(){
     if(!voice.name||!voice.market){toast("Add your name and market first","error");return;}
     const saved={...voice,saved:true}; setVoice(saved); LS.set("sp_voice",saved);
@@ -2557,12 +2570,14 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
 
     // Sync the public-safe subset to Supabase so the lead capture page
     // can show your name/brokerage without needing your login session.
+    // Timezone rides along here too — it's what the nightly Autopilot
+    // run uses to know when "morning" actually is for this agent.
     if(user?.email){
       fetch("/api/google-data",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           email:user.email, action:"sync_data",
-          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta },
+          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta, timezone:saved.timezone||detectedTz },
         }),
       }).catch(()=>{});
     }
@@ -2578,6 +2593,21 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
           </div>
         ))}
       </div>
+
+      <div style={{marginTop:16}}>
+        <div style={{fontFamily:C.F,fontSize:10,fontWeight:700,color:C.textDim,letterSpacing:1,marginBottom:6}}>
+          YOUR TIME ZONE
+        </div>
+        <select value={voice.timezone||detectedTz} onChange={e=>setVoice(v=>({...v,timezone:e.target.value}))}
+          style={{width:"100%",background:C.surfaceUp,border:`1px solid ${C.borderMd}`,
+            borderRadius:9,padding:"10px 12px",color:C.text,fontFamily:C.F,fontSize:13,outline:"none"}}>
+          {TIMEZONES.map(tz=><option key={tz.v} value={tz.v}>{tz.l}</option>)}
+        </select>
+        <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"6px 0 0",lineHeight:1.5}}>
+          This is how your team knows when it's actually morning for you — your daily briefing lands at your real morning, not a fixed time for everyone.
+        </p>
+      </div>
+
       <Button variant="primary" C={C} onClick={save}
         style={{marginTop:22,width:"100%",padding:"13px 0",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
         Save Agent Voice <Icon.Zap size={14} color="#fff"/>
