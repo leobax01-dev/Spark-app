@@ -130,7 +130,7 @@ function NeighborhoodReport(){
       const r = await fetch("/api/claude",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:"You are SPARK, a real estate market intelligence expert. Create engaging, authoritative market reports that position agents as local experts. Return ONLY valid JSON, no markdown.",
+          system:"You are SPARK's Analyst — the team member who tracks this agent's market and business performance so they always know exactly where they stand. Speak with real authority on the numbers. Create engaging, authoritative market reports that position agents as local experts. Return ONLY valid JSON, no markdown.",
           messages:[{role:"user",content:
             `Create a neighborhood intelligence report for ${inputs.neighborhood}, ${inputs.city}, ${inputs.state}.
 
@@ -190,7 +190,7 @@ Return ONLY valid JSON:
       </MCard>
 
       <MBtn onClick={generate} loading={loading} color={C.cyan}>
-        📊 Generate Neighborhood Report
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Market size={14}/> Generate Neighborhood Report</span>
       </MBtn>
 
       {result&&(
@@ -305,7 +305,7 @@ function LeadResponse(){
       const r = await fetch("/api/claude",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:"You are SPARK, a real estate lead conversion expert. Generate personalized, high-converting lead response sequences. Return ONLY valid JSON, no markdown.",
+          system:"You are SPARK's Analyst — the team member who turns raw leads into a real conversion plan for this agent. Generate personalized, high-converting lead response sequences. Return ONLY valid JSON, no markdown.",
           messages:[{role:"user",content:
             `Generate a complete lead response sequence for:
 Lead: ${inputs.leadName}, Source: ${inputs.leadSource}
@@ -371,7 +371,7 @@ Return ONLY valid JSON:
       </MCard>
 
       <MBtn onClick={generate} loading={loading} color={C.emerald}>
-        ⚡ Generate Full Response Sequence
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Zap size={14}/> Generate Full Response Sequence</span>
       </MBtn>
 
       {result&&(
@@ -616,7 +616,7 @@ function BusinessDashboard({ user }){
       const r = await fetch("/api/claude",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:"You are SPARK, a real estate business coach. Give honest, specific, actionable business analysis. Return ONLY valid JSON.",
+          system:"You are SPARK's Analyst — the team member who tells this agent the truth about their business performance, like a real colleague would, not a generic AI coach. Give honest, specific, actionable analysis. Return ONLY valid JSON.",
           messages:[{role:"user",content:
             `Analyze this agent's business performance:
 Monthly GCI Target: ${goals.monthlyGciTarget}, Current month GCI: ${goals.currentMonth}, YTD GCI: ${goals.yearToDate}
@@ -764,7 +764,7 @@ Return ONLY valid JSON:
                   </div>
                   <button onClick={()=>removeDeal(deal.id)}
                     style={{background:"transparent",border:"none",color:C.textDim,
-                      cursor:"pointer",fontSize:14,flexShrink:0,padding:"2px 4px"}}>✕</button>
+                      cursor:"pointer",flexShrink:0,padding:"2px 4px",display:"flex"}}><Icon.Close size={13}/></button>
                 </div>
               );
             })}
@@ -773,7 +773,7 @@ Return ONLY valid JSON:
       </MCard>
 
       <MBtn onClick={generateAnalysis} loading={loading} color={C.indigo}>
-        📈 Generate Business Analysis
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Market size={14}/> Generate Business Analysis</span>
       </MBtn>
 
       {analysis&&(
@@ -832,6 +832,50 @@ Return ONLY valid JSON:
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN MARKET PANEL
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ANALYST HEADER — establishes who this workspace belongs to, same pattern
+// as ClientPanel's RelationshipManagerHeader. Status line computed from
+// real goal-progress data, not generic copy.
+// ─────────────────────────────────────────────────────────────────────────────
+function AnalystHeader(){
+  const goals = lsGet(LS_KEY_GOALS, {});
+  const pipeline = lsGet(LS_KEY_PIPELINE_VALUE, []);
+  const monthlyTarget = parseFloat(String(goals.monthlyGciTarget||"").replace(/[$,]/g,""))||0;
+  const currentGci = parseFloat(String(goals.currentMonth||"").replace(/[$,]/g,""))||0;
+  const pipelineValue = pipeline.reduce((s,d)=>s+(parseFloat(d.value)||0),0);
+
+  let statusLine;
+  if(monthlyTarget>0){
+    const pct = Math.round((currentGci/monthlyTarget)*100);
+    statusLine = `${pct}% toward your $${Math.round(monthlyTarget/1000)}k goal this month${pipelineValue>0?` · $${Math.round(pipelineValue/1000)}k in pipeline`:""}`;
+  } else if(pipelineValue>0){
+    statusLine = `Tracking $${Math.round(pipelineValue/1000)}k in your pipeline. Set a GCI target and I'll track progress toward it too.`;
+  } else {
+    statusLine = "Set your GCI target and I'll track your progress toward it every month.";
+  }
+
+  return(
+    <div style={{background:`linear-gradient(135deg,${C.emerald}10,${C.cyan}06)`,
+      border:`1px solid ${C.emerald}22`,borderRadius:14,padding:"14px 16px",marginBottom:18,
+      display:"flex",alignItems:"center",gap:12}}>
+      <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
+        background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        boxShadow:`0 4px 14px ${C.emerald}40`}}>
+        <Icon.Market size={18} color="#fff"/>
+      </div>
+      <div>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:13,color:C.text}}>
+          Your Analyst
+        </div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,marginTop:2}}>
+          {statusLine}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MarketPanel({ user, planKey }){
   const [tool, setTool] = useState("leads");
 
@@ -843,6 +887,8 @@ export default function MarketPanel({ user, planKey }){
 
   return(
     <div style={{paddingBottom:40}}>
+      <AnalystHeader/>
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
           const TIcon = Icon[t.icon];
