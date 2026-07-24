@@ -63,10 +63,10 @@ function CCopyBtn({text}){
 // PIPELINE STAGES
 // ─────────────────────────────────────────────────────────────────────────────
 const STAGES = [
-  { id:"prospect",   label:"Prospect",      color:C.textDim,  icon:"👤" },
-  { id:"active",     label:"Active",        color:C.indigo,   icon:"🔥" },
-  { id:"contract",   label:"Under Contract",color:C.amber,    icon:"📋" },
-  { id:"closed",     label:"Closed",        color:C.emerald,  icon:"🏆" },
+  { id:"prospect",   label:"Prospect",      color:C.textDim,  icon:"Clients" },
+  { id:"active",     label:"Active",        color:C.indigo,   icon:"Zap" },
+  { id:"contract",   label:"Under Contract",color:C.amber,    icon:"Script" },
+  { id:"closed",     label:"Closed",        color:C.emerald,  icon:"Trophy" },
 ];
 
 const BLANK_CLIENT = {
@@ -255,8 +255,8 @@ Return ONLY valid JSON:
           <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16}}>
             <div style={{width:44,height:44,borderRadius:"50%",flexShrink:0,
               background:`linear-gradient(135deg,${stage.color},${stage.color}88)`,
-              display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
-              {stage.icon}
+              display:"flex",alignItems:"center",justifyContent:"center",color:"#fff"}}>
+              {Icon[stage.icon] && (()=>{ const SI=Icon[stage.icon]; return <SI size={19}/>; })()}
             </div>
             <div style={{flex:1}}>
               <div style={{fontFamily:C.F,fontWeight:800,fontSize:17,color:C.text}}>{client.name}</div>
@@ -448,8 +448,8 @@ Return ONLY valid JSON:
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
                     <div style={{width:34,height:34,borderRadius:"50%",flexShrink:0,
                       background:`${stage.color}18`,border:`1px solid ${stage.color}28`,
-                      display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>
-                      {stage.icon}
+                      display:"flex",alignItems:"center",justifyContent:"center",color:stage.color}}>
+                      {Icon[stage.icon] && (()=>{ const SI2=Icon[stage.icon]; return <SI2 size={15}/>; })()}
                     </div>
                     <div>
                       <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>{client.name}</div>
@@ -544,17 +544,20 @@ function ClientForm({initial, onSave, onCancel, onDelete}){
         <div style={{marginBottom:10}}>
           <div style={{fontSize:9,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:7}}>PIPELINE STAGE</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6}}>
-            {STAGES.map(s=>(
+            {STAGES.map(s=>{
+              const StageIcon = Icon[s.icon];
+              return(
               <button key={s.id} onClick={()=>set("stage")(s.id)}
                 style={{padding:"8px 4px",borderRadius:8,
                   border:`1px solid ${form.stage===s.id?s.color+"55":C.border}`,
                   background:form.stage===s.id?`${s.color}10`:"transparent",
                   color:form.stage===s.id?s.color:C.textDim,cursor:"pointer",
                   fontFamily:C.F,fontSize:10,fontWeight:700,textAlign:"center"}}>
-                <div style={{fontSize:14,marginBottom:3}}>{s.icon}</div>
+                <div style={{display:"flex",justifyContent:"center",marginBottom:3}}>{StageIcon&&<StageIcon size={14}/>}</div>
                 {s.label}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -738,7 +741,7 @@ function DailyBriefing(){
       const r = await fetch("/api/claude",{
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:"You are SPARK, an elite real estate AI coach. Generate a personalized, motivating, action-oriented daily briefing. Be direct and specific. Return ONLY valid JSON.",
+          system:"You are SPARK's Relationship Manager — the team member who tracks every client relationship for this agent so nothing falls through the cracks. Speak in first person, like a real colleague reporting in, not a generic AI assistant. Be direct and specific, reference real names. Return ONLY valid JSON.",
           messages:[{role:"user",content:
             `Generate a daily briefing for a real estate agent.
 Today: ${today}
@@ -748,7 +751,7 @@ Client details: ${clientSummary}
 Agent goals: Monthly GCI target: ${goals.monthlyGci||"not set"}, Focus area: ${goals.focusArea||"not set"}
 
 Return ONLY valid JSON:
-{"greeting":"personalized good morning message — motivating, specific to their situation, 1-2 sentences","todays_priority":"the single most important thing to accomplish today — specific and actionable","pipeline_health":"honest 1-2 sentence assessment of their pipeline status","top_3_actions":["3 most important actions for today — each specific, with client names where relevant"],"follow_up_alerts":["clients who need immediate contact — name + why + suggested message opener"],"market_insight":"one timely real estate insight or strategy tip relevant to their situation","motivation":"one powerful motivating statement to start the day","schedule_suggestion":"suggested time blocks for the day — morning/midday/afternoon focus areas"}`
+{"greeting":"open in first person, like a colleague checking in — 'Good morning — here's where things stand with your clients today' style, specific to their real situation, 1-2 sentences","todays_priority":"the single most important thing to accomplish today — specific and actionable","pipeline_health":"honest 1-2 sentence assessment of their pipeline status","top_3_actions":["3 most important actions for today — each specific, with client names where relevant"],"follow_up_alerts":["clients who need immediate contact — name + why + suggested message opener"],"market_insight":"one timely real estate insight or strategy tip relevant to their situation","motivation":"one powerful motivating statement to start the day","schedule_suggestion":"suggested time blocks for the day — morning/midday/afternoon focus areas"}`
           }]
         })
       });
@@ -784,7 +787,7 @@ Return ONLY valid JSON:
       {/* Generate button */}
       {(!briefing||!isToday)&&(
         <CBtn onClick={generateBriefing} loading={loading} color={C.indigo}>
-          ☀️ Generate Today's Briefing
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Sun size={14}/> Generate Today's Briefing</span>
         </CBtn>
       )}
 
@@ -1408,6 +1411,48 @@ function ClientImport({ user, onImported }){
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN CLIENT PANEL
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// RELATIONSHIP MANAGER HEADER — establishes who this workspace belongs to,
+// the same way Autopilot's header does. Status line is computed from real
+// client data, not generic copy — matches TeamRoster's pattern of actual
+// state, not decoration.
+// ─────────────────────────────────────────────────────────────────────────────
+function RelationshipManagerHeader(){
+  const clients = lsGet(LS_KEY, []);
+  const overdue = clients.filter(c=>{
+    if(!c.lastContact) return false;
+    const days = Math.round((Date.now()-new Date(c.lastContact))/864e5);
+    return days>7;
+  });
+
+  const statusLine = clients.length===0
+    ? "Add your first client and I'll start tracking your relationships."
+    : overdue.length>0
+      ? `Watching ${clients.length} client${clients.length!==1?"s":""} — ${overdue.length} need${overdue.length===1?"s":""} a follow-up soon.`
+      : `Watching ${clients.length} client${clients.length!==1?"s":""} — everyone's been heard from recently.`;
+
+  return(
+    <div style={{background:`linear-gradient(135deg,${C.indigo}10,${C.violet}06)`,
+      border:`1px solid ${C.indigo}22`,borderRadius:14,padding:"14px 16px",marginBottom:18,
+      display:"flex",alignItems:"center",gap:12}}>
+      <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
+        background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        boxShadow:`0 4px 14px ${C.indigo}40`}}>
+        <Icon.Clients size={18} color="#fff"/>
+      </div>
+      <div>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:13,color:C.text}}>
+          Your Relationship Manager
+        </div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,marginTop:2}}>
+          {statusLine}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientPanel({ user, planKey }){
   const [tool, setTool] = useState("briefing");
 
@@ -1420,6 +1465,8 @@ export default function ClientPanel({ user, planKey }){
 
   return(
     <div style={{paddingBottom:40}}>
+      <RelationshipManagerHeader/>
+
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
