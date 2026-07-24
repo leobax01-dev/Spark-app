@@ -36,7 +36,11 @@ const BASE_URL = "https://usesparkai.app";
 // and an agent in NYC both get their briefing at their own 7am, generated
 // by two different hourly invocations of the same job — not simultaneously
 // at one fixed UTC time.
-const TARGET_LOCAL_HOUR = 7; // 7am in each agent's own timezone
+const TARGET_LOCAL_HOUR = 8; // 8am in each agent's own timezone — deliberately aligned with the
+// TCPA-safe SMS window (8am-9pm), not the more typical "7am morning brief" time. If this ran
+// at 7am, the brief-ready SMS below would silently miss its own send window every single day
+// (sendSMS refuses to send before 8am) — moving generation itself to 8am keeps the in-app
+// brief and its SMS notification arriving together, instead of a text that never fires.
 const DEFAULT_TIMEZONE = "America/New_York"; // fallback for agents who haven't set one yet
 
 function getLocalHour(timezone){
@@ -425,7 +429,7 @@ export default async function handler(req, res){
           overallHealth: analysis.deal_intelligence?.overall_health||"stable",
           memory: { patterns: analysis.coaching_insight?.observation||"" },
           notifyEmail, agentName: sync?.profile?.name,
-          phone: sync?.profile?.phone, smsEnabled: sync?.profile?.smsEnabled,
+          phone: sync?.profile?.phone, smsEnabled: sync?.profile?.smsEnabled, timezone: sync?.profile?.timezone,
         }),
       });
 
@@ -435,14 +439,16 @@ export default async function handler(req, res){
       // since the whole point is getting the agent to open the brief).
       if(sync?.profile?.smsEnabled && sync?.profile?.phone){
         try{
-          await fetch(`${BASE_URL}/api/google-data`,{
+          const smsRes = await fetch(`${BASE_URL}/api/google-data`,{
             method:"POST", headers:{"Content-Type":"application/json"},
             body:JSON.stringify({
               email: u.email, action:"send_brief_sms",
               phone: sync.profile.phone, headline: analysis.mission?.headline,
+              timezone: sync.profile.timezone,
             }),
           });
-          summary.smsSent++;
+          const smsData = await smsRes.json().catch(()=>({}));
+          if(smsData.sent) summary.smsSent++; // false means the TCPA-safe-hour guard held it, not an error
         }catch(e){
           console.warn(`Cron: brief SMS failed for ${u.email}:`, e.message);
         }
