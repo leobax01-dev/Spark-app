@@ -2537,6 +2537,107 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
 // ─────────────────────────────────────────────────────────────────────────────
 // AGENT VOICE PANEL
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// PUSH NOTIFICATIONS — the free trigger channel, no per-message cost unlike
+// SMS, works even with the app fully closed on the agent's phone. Requires
+// the PWA's service worker (already installed via public/sw.js) plus a real
+// VAPID key pair — see api/google-data.js for the server-side half.
+// ─────────────────────────────────────────────────────────────────────────────
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+function PushNotificationCard({ user }){
+  const toast = useToast();
+  const [supported, setSupported] = useState(true);
+  const [subscribed, setSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(()=>{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)){
+      setSupported(false);
+      return;
+    }
+    navigator.serviceWorker.ready
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => setSubscribed(!!sub))
+      .catch(()=>{});
+  },[]);
+
+  async function subscribe(){
+    if(!user?.email){ toast("Save your profile first","error"); return; }
+    const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+    if(!vapidKey){ toast("Push isn't configured yet","error"); return; }
+
+    setLoading(true);
+    try{
+      const permission = await Notification.requestPermission();
+      if(permission!=="granted"){
+        toast(permission==="denied" ? "Notifications blocked — enable them in your browser settings" : "Permission not granted", "error");
+        setLoading(false);
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+      await fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ email:user.email, action:"save_push_subscription", subscription: subscription.toJSON() }),
+      });
+      setSubscribed(true);
+      toast("Push notifications on — your team can reach you even with the app closed");
+    }catch(e){
+      console.error("Push subscribe error:", e);
+      toast("Couldn't enable push notifications","error");
+    }
+    setLoading(false);
+  }
+
+  async function unsubscribe(){
+    setLoading(true);
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if(sub) await sub.unsubscribe();
+      if(user?.email){
+        fetch("/api/google-data",{
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({ email:user.email, action:"save_push_subscription", subscription:{ endpoint:"" } }),
+        }).catch(()=>{});
+      }
+      setSubscribed(false);
+      toast("Push notifications off");
+    }catch(e){
+      console.error("Push unsubscribe error:", e);
+    }
+    setLoading(false);
+  }
+
+  if(!supported) return null; // browser doesn't support push — no point showing a dead toggle
+
+  return(
+    <div style={{marginTop:16,background:C.surfaceUp,border:`1px solid ${C.borderMd}`,borderRadius:12,padding:"14px 16px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>Push notifications</div>
+          <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>Free — works even with SPARK closed. Same alerts as text, no message rates.</div>
+        </div>
+        <button onClick={()=>subscribed?unsubscribe():subscribe()} disabled={loading}
+          style={{width:38,height:22,borderRadius:11,border:"none",cursor:loading?"default":"pointer",flexShrink:0,opacity:loading?.6:1,
+            background:subscribed?C.indigo:"rgba(255,255,255,.12)",position:"relative",transition:"background .15s"}}>
+          <div style={{width:16,height:16,borderRadius:"50%",background:"#fff",position:"absolute",top:3,
+            left:subscribed?19:3,transition:"left .15s"}}/>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
   const toast=useToast();
   const [copiedLink, setCopiedLink] = useState(false);
@@ -2578,7 +2679,7 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           email:user.email, action:"sync_data",
-          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta, timezone:saved.timezone||detectedTz, phone:saved.phone||"", smsEnabled:!!saved.smsEnabled },
+          profile:{ name:saved.name, brokerage:saved.brokerage, market:saved.market, specialty:saved.specialty, cta:saved.cta, tone:saved.tone||"", targetClient:saved.targetClient||"", timezone:saved.timezone||detectedTz, phone:saved.phone||"", smsEnabled:!!saved.smsEnabled },
         }),
       }).catch(()=>{});
     }
@@ -2634,6 +2735,8 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
           </div>
         )}
       </div>
+
+      <PushNotificationCard user={user}/>
 
       <Button variant="primary" C={C} onClick={save}
         style={{marginTop:22,width:"100%",padding:"13px 0",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
@@ -4286,6 +4389,32 @@ function MainApp({user,onLogout}){
   useEffect(()=>{
     if(!PLANS[planKey].voiceMemory&&voice.saved){ const v={...voice,saved:false}; setVoice(v); LS.set("sp_voice",v); }
   },[planKey]);
+
+  // Hydrate the voice profile from Supabase on mount — without this, a
+  // phone/timezone/SMS preference set on one device is invisible on any
+  // other, since voice state above only ever reads localStorage. Profile
+  // fields win over whatever's in local storage (server is the more
+  // likely up-to-date source across devices); fields Supabase doesn't
+  // carry (like a mid-edit draft) are left alone rather than wiped.
+  useEffect(()=>{
+    if(!user?.email) return;
+    fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email:user.email, action:"load_data" }),
+    })
+      .then(r=>r.json())
+      .then(d=>{
+        const profile = d?.data?.profile;
+        if(profile && Object.keys(profile).length>0){
+          setVoice(v=>{
+            const merged = { ...v, ...profile, saved:true };
+            LS.set("sp_voice", merged);
+            return merged;
+          });
+        }
+      })
+      .catch(()=>{}); // offline or first-ever load — local state (or defaults) still works fine
+  },[user?.email]);
 
   // Refresh credits and plan from Supabase when user returns to the tab
   // (e.g. after completing Stripe checkout)
