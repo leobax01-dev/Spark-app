@@ -3790,7 +3790,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       if(shouldNotify) apLsSet("spark_last_alerted_risk", riskSignature);
 
       if(user?.email){
-        apSync(user.email,"save_run",{result:{...analysis,value_ledger:updatedLedger},clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory,notifyEmail:shouldNotify,agentName:voice?.name,phone:voice?.phone,smsEnabled:voice?.smsEnabled})
+        apSync(user.email,"save_run",{result:{...analysis,value_ledger:updatedLedger},clientCount:freshData.totalClients,dealCount:freshData.totalDeals,overallHealth:analysis.deal_intelligence?.overall_health||"stable",memory:newMemory,notifyEmail:shouldNotify,agentName:voice?.name,phone:voice?.phone,smsEnabled:voice?.smsEnabled,timezone:voice?.timezone})
           .then(()=>{
             apSync(user.email,"load_history").then(h=>{ if(h?.runs) setRunHistory(h.runs); });
             syncAgentData(user.email);
