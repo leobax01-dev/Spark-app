@@ -3,6 +3,19 @@
 // Autopilot actions: save_run, load_latest, load_history, sync_data, load_data
 
 import { createClient } from "@supabase/supabase-js";
+import webpush from "web-push";
+
+// VAPID keys authenticate SPARK's server as the sender for push
+// notifications — one key pair for the whole app, not per-agent.
+// VAPID_PRIVATE_KEY must stay a secret env var; the public key is safe
+// to expose client-side (it's also set as VITE_VAPID_PUBLIC_KEY there).
+if(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY){
+  webpush.setVapidDetails(
+    "mailto:support@usesparkai.app",
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
 
 function getSupabase(){
   return createClient(
@@ -174,6 +187,40 @@ async function sendSMS(toPhone, message, recipientTimezone){
   }
 }
 
+// ─── PUSH NOTIFICATIONS (Web Push API via the web-push package) ──────────
+// The free trigger channel — no per-message cost unlike SMS, and it works
+// even with the app fully closed on the agent's phone. Fires for the same
+// moments SMS does. Requires VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY env vars
+// (see top of file) and the agent to have subscribed via the PWA install +
+// notification-permission flow client-side. Silently no-ops if VAPID isn't
+// configured or the agent has no stored subscription — same pattern as
+// every other notification helper in this file.
+async function sendPushNotification(subscription, payload, sb, email){
+  if(!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY || !subscription) return false;
+
+  try{
+    await webpush.sendNotification(subscription, JSON.stringify(payload));
+    return true;
+  }catch(e){
+    // 404/410 means the browser has permanently unsubscribed (uninstalled,
+    // cleared data, etc) — clean up the dead subscription so we stop
+    // trying to push to it, rather than silently failing forever.
+    if((e.statusCode===404 || e.statusCode===410) && sb && email){
+      try{
+        const { data: existing } = await sb.from("agent_data_sync").select("profile").eq("user_email", email).single();
+        if(existing?.profile){
+          const cleaned = { ...existing.profile, pushSubscription: null };
+          await sb.from("agent_data_sync").update({ profile: cleaned }).eq("user_email", email);
+        }
+      }catch{}
+    } else {
+      console.error("Push send error:", e.message);
+    }
+    return false;
+  }
+}
+
+
 // ─── GOOGLE HELPERS ───────────────────────────────────────────────────────────
 async function refreshAccessToken(refreshToken, clientId, clientSecret){
   const res = await fetch("https://oauth2.googleapis.com/token",{
@@ -269,7 +316,7 @@ async function handleAutopilot(action, email, body, res){
   const sb = getSupabase();
 
   if(action==="save_run"){
-    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName, phone, smsEnabled, timezone } = body;
+    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName, phone, smsEnabled, timezone, pushSubscription } = body;
     if(!result) return res.status(400).json({ error:"Result required" });
 
     const { error: runError } = await sb.from("autopilot_runs").insert({
@@ -288,6 +335,11 @@ async function handleAutopilot(action, email, body, res){
         await sendCriticalRiskEmail(email, topRisk, agentName);
         if(smsEnabled && phone){
           await sendSMS(phone, `SPARK: ${topRisk.deal} needs you — ${(topRisk.risk||"").slice(0,100)} Open: usesparkai.app`, timezone);
+        }
+        if(pushSubscription && isTcpaSafeHour(timezone)){
+          await sendPushNotification(pushSubscription, {
+            title: "Your team needs you", body: `${topRisk.deal} — ${(topRisk.risk||"").slice(0,120)}`, url: "/", tag: "spark-risk",
+          }, sb, email);
         }
       }
     }
@@ -431,6 +483,11 @@ async function handleAutopilot(action, email, body, res){
     if(existing?.profile?.smsEnabled && existing?.profile?.phone){
       sendSMS(existing.profile.phone, `SPARK: New lead — ${newClient.name}${newClient.phone?` (${newClient.phone})`:""}. They're already in your pipeline. usesparkai.app`, existing.profile.timezone).catch(()=>{});
     }
+    if(existing?.profile?.pushSubscription && isTcpaSafeHour(existing.profile.timezone)){
+      sendPushNotification(existing.profile.pushSubscription, {
+        title: "New lead", body: `${newClient.name} just reached out — already in your pipeline`, url: "/", tag: "spark-lead",
+      }, sb, email).catch(()=>{});
+    }
 
     return res.status(200).json({ captured:true });
   }
@@ -439,12 +496,34 @@ async function handleAutopilot(action, email, body, res){
   // a short "your brief is ready" text, not the whole brief. Agents live
   // in texts far more than email or an app they have to remember to open;
   // this is the trigger that actually gets them to look.
-  if(action==="send_brief_sms"){
-    const { phone, headline, timezone } = body;
-    if(!phone) return res.status(400).json({ error:"phone required" });
+  if(action==="send_brief_notification"){
+    const { phone, headline, timezone, pushSubscription } = body;
+    if(pushSubscription && isTcpaSafeHour(timezone)){
+      sendPushNotification(pushSubscription, {
+        title: "Your brief is ready", body: headline ? String(headline).slice(0,140) : "Your team has been working overnight — see what's new.", url: "/", tag: "spark-brief",
+      }, sb, email).catch(()=>{});
+    }
+    if(!phone) return res.status(200).json({ sent:false }); // push may have fired above even with no phone on file
     const message = `Good morning! Your SPARK brief is ready.${headline?` Today: ${String(headline).slice(0,100)}`:""} Open it: usesparkai.app`;
     const sent = await sendSMS(phone, message, timezone);
     return res.status(200).json({ sent });
+  }
+
+  // Stores the browser's push subscription object (endpoint + keys) so the
+  // server can push to this specific device later. One agent can have
+  // subscriptions from multiple devices in theory, but this keeps it
+  // simple for now — most recent subscription wins, matching how phone/
+  // timezone/smsEnabled already work in the same profile object.
+  if(action==="save_push_subscription"){
+    const { subscription } = body;
+    if(!subscription?.endpoint) return res.status(400).json({ error:"subscription required" });
+    const { data: existing } = await sb.from("agent_data_sync").select("profile").eq("user_email", email).single();
+    const updatedProfile = { ...(existing?.profile||{}), pushSubscription: subscription };
+    const { error } = await sb.from("agent_data_sync").upsert({
+      user_email: email, profile: updatedProfile, synced_at: new Date().toISOString(),
+    },{ onConflict:"user_email" });
+    if(error) return res.status(500).json({ error: error.message });
+    return res.status(200).json({ saved:true });
   }
 
   // ─── SEND IT FOR ME — agent-initiated email to their own client, sent via
@@ -557,7 +636,8 @@ export default async function handler(req, res){
     "save_run","load_latest","load_history","sync_data","load_data",
     "save_weekly_report","load_weekly_reports",
     "save_conversation","load_conversations",
-    "get_public_profile","capture_lead","send_message","send_brief_sms",
+    "get_public_profile","capture_lead","send_message","send_brief_notification",
+    "save_push_subscription",
   ];
   if(autopilotActions.includes(action)){
     try{ return await handleAutopilot(action, userEmail, req.body, res); }
