@@ -430,27 +430,33 @@ export default async function handler(req, res){
           memory: { patterns: analysis.coaching_insight?.observation||"" },
           notifyEmail, agentName: sync?.profile?.name,
           phone: sync?.profile?.phone, smsEnabled: sync?.profile?.smsEnabled, timezone: sync?.profile?.timezone,
+          pushSubscription: sync?.profile?.pushSubscription,
         }),
       });
 
-      // The daily "your brief is ready" text — the actual trigger channel.
-      // Separate from the critical-risk SMS above (that only fires when
-      // something's genuinely wrong; this fires every morning regardless,
-      // since the whole point is getting the agent to open the brief).
-      if(sync?.profile?.smsEnabled && sync?.profile?.phone){
+      // The daily "your brief is ready" notification — the actual trigger
+      // channel this whole cron job exists to deliver on. Fires by SMS,
+      // push, or both — whichever the agent has opted into — separate
+      // from the critical-risk alert above (that only fires when
+      // something's genuinely wrong; this fires every morning regardless).
+      const wantsSms = sync?.profile?.smsEnabled && sync?.profile?.phone;
+      const wantsPush = !!sync?.profile?.pushSubscription;
+      if(wantsSms || wantsPush){
         try{
-          const smsRes = await fetch(`${BASE_URL}/api/google-data`,{
+          const notifyRes = await fetch(`${BASE_URL}/api/google-data`,{
             method:"POST", headers:{"Content-Type":"application/json"},
             body:JSON.stringify({
-              email: u.email, action:"send_brief_sms",
-              phone: sync.profile.phone, headline: analysis.mission?.headline,
+              email: u.email, action:"send_brief_notification",
+              phone: wantsSms ? sync.profile.phone : null,
+              pushSubscription: wantsPush ? sync.profile.pushSubscription : null,
+              headline: analysis.mission?.headline,
               timezone: sync.profile.timezone,
             }),
           });
-          const smsData = await smsRes.json().catch(()=>({}));
-          if(smsData.sent) summary.smsSent++; // false means the TCPA-safe-hour guard held it, not an error
+          const notifyData = await notifyRes.json().catch(()=>({}));
+          if(notifyData.sent) summary.smsSent++; // false just means the TCPA-safe-hour guard held it, not an error
         }catch(e){
-          console.warn(`Cron: brief SMS failed for ${u.email}:`, e.message);
+          console.warn(`Cron: brief notification failed for ${u.email}:`, e.message);
         }
       }
 
