@@ -116,11 +116,40 @@ async function sendNewLeadEmail(toEmail, lead){
 // TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER env vars.
 // Silently no-ops if unconfigured or the agent hasn't opted in — never
 // blocks or breaks whatever called it, same pattern as the email helpers.
-async function sendSMS(toPhone, message){
+
+const TCPA_WINDOW_START = 8;  // 8am
+const TCPA_WINDOW_END   = 21; // 9pm — federal TCPA baseline for automated texts
+const DEFAULT_SMS_TIMEZONE = "America/New_York"; // used only if no timezone is known for the recipient
+
+// Checked against the RECIPIENT's local time, not the server's. A team
+// member wouldn't text you at 3am, and neither should an automated one —
+// this applies to every SMS this app ever sends, not just messages to
+// clients, on purpose: the trust the "your team" story depends on breaks
+// the first time an agent gets an off-hours text, even from their own
+// account notifications.
+function isTcpaSafeHour(timezone){
+  try{
+    const formatter = new Intl.DateTimeFormat("en-US", { timeZone: timezone||DEFAULT_SMS_TIMEZONE, hour:"numeric", hour12:false });
+    const hour = parseInt(formatter.format(new Date()), 10) % 24;
+    return hour >= TCPA_WINDOW_START && hour < TCPA_WINDOW_END;
+  }catch(e){
+    // Unrecognized timezone string — fail safe by treating it as unsafe
+    // rather than risking an off-hours send on a bad value.
+    console.warn("isTcpaSafeHour: invalid timezone, treating as unsafe:", timezone, e.message);
+    return false;
+  }
+}
+
+async function sendSMS(toPhone, message, recipientTimezone){
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
   const fromNumber = process.env.TWILIO_PHONE_NUMBER;
   if(!sid || !token || !fromNumber || !toPhone) return false;
+
+  if(!isTcpaSafeHour(recipientTimezone)){
+    console.log(`SMS held — outside TCPA-safe window (8am-9pm) for timezone ${recipientTimezone||DEFAULT_SMS_TIMEZONE}. Not sent.`);
+    return false;
+  }
 
   try{
     const auth = Buffer.from(`${sid}:${token}`).toString("base64");
@@ -240,7 +269,7 @@ async function handleAutopilot(action, email, body, res){
   const sb = getSupabase();
 
   if(action==="save_run"){
-    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName, phone, smsEnabled } = body;
+    const { result, clientCount, dealCount, overallHealth, memory, notifyEmail, agentName, phone, smsEnabled, timezone } = body;
     if(!result) return res.status(400).json({ error:"Result required" });
 
     const { error: runError } = await sb.from("autopilot_runs").insert({
@@ -258,7 +287,7 @@ async function handleAutopilot(action, email, body, res){
       if(topRisk){
         await sendCriticalRiskEmail(email, topRisk, agentName);
         if(smsEnabled && phone){
-          await sendSMS(phone, `SPARK: ${topRisk.deal} needs you — ${(topRisk.risk||"").slice(0,100)} Open: usesparkai.app`);
+          await sendSMS(phone, `SPARK: ${topRisk.deal} needs you — ${(topRisk.risk||"").slice(0,100)} Open: usesparkai.app`, timezone);
         }
       }
     }
@@ -400,7 +429,7 @@ async function handleAutopilot(action, email, body, res){
     // Notify the agent immediately — reuses the existing Resend integration
     sendNewLeadEmail(email, newClient).catch(()=>{});
     if(existing?.profile?.smsEnabled && existing?.profile?.phone){
-      sendSMS(existing.profile.phone, `SPARK: New lead — ${newClient.name}${newClient.phone?` (${newClient.phone})`:""}. They're already in your pipeline. usesparkai.app`).catch(()=>{});
+      sendSMS(existing.profile.phone, `SPARK: New lead — ${newClient.name}${newClient.phone?` (${newClient.phone})`:""}. They're already in your pipeline. usesparkai.app`, existing.profile.timezone).catch(()=>{});
     }
 
     return res.status(200).json({ captured:true });
@@ -411,10 +440,10 @@ async function handleAutopilot(action, email, body, res){
   // in texts far more than email or an app they have to remember to open;
   // this is the trigger that actually gets them to look.
   if(action==="send_brief_sms"){
-    const { phone, headline } = body;
+    const { phone, headline, timezone } = body;
     if(!phone) return res.status(400).json({ error:"phone required" });
     const message = `Good morning! Your SPARK brief is ready.${headline?` Today: ${String(headline).slice(0,100)}`:""} Open it: usesparkai.app`;
-    const sent = await sendSMS(phone, message);
+    const sent = await sendSMS(phone, message, timezone);
     return res.status(200).json({ sent });
   }
 
