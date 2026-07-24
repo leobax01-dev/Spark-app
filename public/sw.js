@@ -12,7 +12,7 @@
 //
 // Bump CACHE_VERSION whenever this file changes so old caches get purged
 // on the next activate.
-const CACHE_VERSION = "spark-sw-v1";
+const CACHE_VERSION = "spark-sw-v2";
 const OFFLINE_FALLBACK_CACHE = `${CACHE_VERSION}-offline`;
 
 self.addEventListener("install", (event) => {
@@ -66,6 +66,50 @@ self.addEventListener("fetch", (event) => {
         }
         throw err;
       }
+    })()
+  );
+});
+
+// ─── PUSH NOTIFICATIONS ─────────────────────────────────────────────────────
+// The free trigger channel — no per-message cost unlike SMS, works even
+// with the app fully closed. Fires for the same moments SMS does (critical
+// risk, new lead, daily brief) — see api/google-data.js sendPushNotification.
+self.addEventListener("push", (event) => {
+  let payload = { title: "SPARK", body: "You have an update.", url: "/" };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch (err) {
+    // Payload wasn't valid JSON — fall back to the generic message above
+    // rather than let the whole notification silently fail to show.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: payload.url || "/" },
+      tag: payload.tag || "spark-notification", // same tag replaces, not stacks
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    (async () => {
+      // Focus an already-open SPARK tab if one exists, instead of opening
+      // a duplicate — most agents will already have it open somewhere.
+      const allClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of allClients) {
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(targetUrl);
     })()
   );
 });
