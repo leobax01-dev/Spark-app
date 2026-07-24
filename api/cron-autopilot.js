@@ -354,7 +354,7 @@ export default async function handler(req, res){
   }
 
   const sb = getSupabase();
-  const summary = { processed:0, skippedNoClients:0, skippedWrongHour:0, sphereRefreshed:0, listingsRefreshed:0, errors:[] };
+  const summary = { processed:0, skippedNoClients:0, skippedWrongHour:0, sphereRefreshed:0, listingsRefreshed:0, smsSent:0, errors:[] };
 
   const { data: users, error: usersError } = await sb
     .from("users")
@@ -425,8 +425,28 @@ export default async function handler(req, res){
           overallHealth: analysis.deal_intelligence?.overall_health||"stable",
           memory: { patterns: analysis.coaching_insight?.observation||"" },
           notifyEmail, agentName: sync?.profile?.name,
+          phone: sync?.profile?.phone, smsEnabled: sync?.profile?.smsEnabled,
         }),
       });
+
+      // The daily "your brief is ready" text — the actual trigger channel.
+      // Separate from the critical-risk SMS above (that only fires when
+      // something's genuinely wrong; this fires every morning regardless,
+      // since the whole point is getting the agent to open the brief).
+      if(sync?.profile?.smsEnabled && sync?.profile?.phone){
+        try{
+          await fetch(`${BASE_URL}/api/google-data`,{
+            method:"POST", headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+              email: u.email, action:"send_brief_sms",
+              phone: sync.profile.phone, headline: analysis.mission?.headline,
+            }),
+          });
+          summary.smsSent++;
+        }catch(e){
+          console.warn(`Cron: brief SMS failed for ${u.email}:`, e.message);
+        }
+      }
 
       summary.processed++;
     }catch(err){
