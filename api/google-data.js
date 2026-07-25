@@ -526,6 +526,25 @@ async function handleAutopilot(action, email, body, res){
     return res.status(200).json({ saved:true });
   }
 
+  // Deliberately bypasses the TCPA-safe-hour gate that every automated push
+  // (critical risk, new lead, daily brief) goes through — this one is
+  // explicitly requested by the agent clicking a button right now, not an
+  // unprompted automated send, so the "don't message someone at 3am"
+  // reasoning doesn't apply here the same way.
+  if(action==="send_test_notification"){
+    const { data: existing } = await sb.from("agent_data_sync").select("profile").eq("user_email", email).single();
+    const subscription = existing?.profile?.pushSubscription;
+    if(!subscription){
+      return res.status(200).json({ sent:false, reason:"No push subscription found — toggle push off and on again." });
+    }
+    const sent = await sendPushNotification(subscription, {
+      title: "Test from your team",
+      body: "If you're seeing this, push notifications are working.",
+      url: "/", tag: "spark-test",
+    }, sb, email);
+    return res.status(200).json({ sent, reason: sent ? null : "Send failed — check VAPID keys are set correctly in Vercel." });
+  }
+
   // ─── SEND IT FOR ME — agent-initiated email to their own client, sent via
   // Resend but branded as coming from the agent, with reply-to set to the
   // agent's own inbox so any response lands directly with them. This is
@@ -637,7 +656,7 @@ export default async function handler(req, res){
     "save_weekly_report","load_weekly_reports",
     "save_conversation","load_conversations",
     "get_public_profile","capture_lead","send_message","send_brief_notification",
-    "save_push_subscription",
+    "save_push_subscription","send_test_notification",
   ];
   if(autopilotActions.includes(action)){
     try{ return await handleAutopilot(action, userEmail, req.body, res); }
