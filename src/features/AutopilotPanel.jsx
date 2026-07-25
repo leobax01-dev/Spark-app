@@ -3177,6 +3177,86 @@ function TransactionCoordinator({ voice, onDiscuss }){
 // protection/catches, not anxiety — this is what your team caught for you,
 // not a list of things going wrong.
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// EXAMPLE DATA — for "See a live example" on a brand-new account. A new
+// agent with zero clients sees an empty, unconvincing Autopilot; this lets
+// them see the real thing fully populated first, using an obviously
+// fictional agent and clients, before they've entered a single real one.
+// Shaped to match exactly what TeamBriefing/TeamRoster/BusinessHealthHero
+// already expect from a real apResult/sphere/listingPerf — same components,
+// same code paths, just fed example data instead of live data.
+// ─────────────────────────────────────────────────────────────────────────────
+const EXAMPLE_VOICE = { name:"Sarah Chen", brokerage:"Coldwell Banker", market:"Austin, TX" };
+
+const EXAMPLE_AP_RESULT = {
+  mission:{
+    headline:"Protect the $1,850,000 Bennett contract by confirming inspection repair credits before Thursday's deadline.",
+    why:"The Bennett deal is your highest-value active contract (78% close probability, 14 days out) and represents roughly $46,250 in commission at 2.5%. The repair credit negotiation is still open, and the response deadline is Thursday — if it slips, the buyer can walk.",
+    top3:[
+      { rank:1, action:"Confirm repair credit response with the Bennetts before Thursday's deadline", client:"Michael & Dana Bennett", urgency:"critical",
+        message:"Hi Michael and Dana — wanted to flag that Thursday is the deadline for the repair credit response on the inspection items. Can you confirm you're comfortable with the $4,200 credit, or would you like to counter? I want to make sure we don't lose momentum this close to closing." },
+      { rank:2, action:"Follow up with David Park on this week's two showings before he loses momentum", client:"David Park", urgency:"high",
+        message:"Hey David — wanted to check in on the two showings from this week. Any feedback from your agent? At 19 days on market I want to make sure we're staying proactive — happy to talk pricing strategy if it'd help." },
+      { rank:3, action:"Send a market update to the Ramirez family ahead of their 90-day buying window", client:"The Ramirez Family", urgency:"medium",
+        message:"Hi there — quick market update for your area: inventory's up slightly this month, which could work in your favor as buyers. Let me know if you'd like to see anything new that's come on." },
+    ],
+  },
+  deal_intelligence:{
+    overall_health:"stable",
+    health_summary:"Your pipeline is healthy overall — one deal needs attention this week, but nothing else is at risk right now.",
+    risks:[
+      { deal:"Bennett Contract", risk:"Inspection repair credit response deadline is Thursday and hasn't been confirmed yet.", severity:"high",
+        action:"Get written confirmation from the Bennetts on the repair credit before the deadline.",
+        message:"Hi Michael and Dana — following up on the repair credit deadline this Thursday. Can you confirm you're good with the $4,200 credit so we can keep things moving toward closing?", value:46250 },
+    ],
+    opportunities:[
+      { description:"Median days on market in David Park's zip code dropped 12% this month — good moment to push pricing confidence.", action:"Share the updated market data with David to reinforce his listing strategy.", value:12000 },
+    ],
+  },
+  client_scores:[
+    { name:"Michael & Dana Bennett", score:88, trend:"rising", reason:"Under contract, responsive, high engagement", next_action:"Confirm repair credit response", probability:"85%" },
+    { name:"David Park", score:61, trend:"steady", reason:"2 showings this week, no offer yet", next_action:"Follow up on feedback", probability:"45%" },
+    { name:"The Ramirez Family", score:54, trend:"rising", reason:"Pre-approved, actively browsing", next_action:"Send curated listings", probability:"35%" },
+  ],
+  relationship_alerts:[
+    { type:"overdue", client:"Jennifer Walsh", days:11, reason:"11 days since last contact — closed 8 months ago, good referral candidate",
+      message:"Hi Jennifer — it's been a bit! Hope the house is treating you well. Wanted to check in and see how everything's settling — no agenda, just thinking of you." },
+  ],
+  market_intelligence:{
+    insight:"Inventory in Austin's 78704 zip is up 8% month-over-month, giving buyers slightly more leverage than last quarter.",
+    opportunity:"Sellers who price competitively right now are still closing in under 20 days — worth reinforcing with any hesitant listing clients.",
+    talking_point:"Homes priced within 2% of recent comps are closing 30% faster than overpriced listings in this market.",
+  },
+  coaching_insight:{
+    observation:"You're strong on follow-through with active contracts, but 2 prospects haven't been touched in over a week.",
+    recommendation:"Block 15 minutes each morning for prospect check-ins before the day gets reactive.",
+    this_week:"Reconnect with David Park and the Ramirez family before Friday.",
+  },
+  performance_forecast:{ gci_projection:"$58,000 projected this month", deals_likely_to_close:"1-2", biggest_risk_to_target:"Bennett deal slipping past its repair credit deadline", momentum:"rising" },
+};
+
+const EXAMPLE_SPHERE = {
+  sphere_summary:"Your sphere is mostly warm, with one strong reactivation opportunity worth acting on this week.",
+  opportunities:[
+    { name:"Jennifer Walsh", trigger:"Post-Close Market Update", why_now:"Closed 8 months ago, hasn't been contacted since — a warm, low-pressure moment to reconnect.",
+      message:"Hi Jennifer — happy 8-month home-aversary! Wanted to share a quick update on how your neighborhood's values have moved since closing. No agenda, just thought you'd want to know.", ask:"offering a market update, no pressure", days:242 },
+    { name:"Marcus Webb", trigger:"1-Year Home Anniversary", why_now:"Coming up on their 1-year anniversary — a natural, warm reason to check in and ask for referrals.",
+      message:"Hi Marcus — can't believe it's almost been a year in the new place! Hope you're loving it. If any friends or family are thinking about buying or selling, I'd love an introduction.", ask:"a soft referral ask", days:352 },
+  ],
+  top_pick:"Jennifer Walsh — recently closed, genuinely warm, and the most natural next touchpoint in your sphere right now.",
+  total_dormant:2,
+};
+
+const EXAMPLE_LISTING_PERF = {
+  summary:"One active listing is underperforming against the local market and could use a pricing conversation.",
+  listings:[
+    { name:"David Park", status:"needs_attention", property:"4521 Oak Meadow Dr", trackedDays:19,
+      assessment:"This listing has been on the market 19 days against a local median of 12 — two showings so far with no offer, which suggests either pricing or presentation is holding it back.",
+      recommended_action:"Consider a small price adjustment or refreshed photos ahead of the weekend open house.",
+      seller_update_script:"Hi David — wanted to give you an honest update. We've had 2 showings and good interest, but no offers yet. Local homes are moving in about 12 days on average, so I'd recommend we talk about a small adjustment to stay competitive. Can we chat this week?" },
+  ],
+};
+
 function BusinessHealthHero({ apResult, sphere, ledger }){
   if(!apResult?.deal_intelligence) return null;
 
@@ -3437,6 +3517,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
   const [apRunning,   setApRunning]   = useState(false);
+  const [viewingExample, setViewingExample] = useState(false); // "See a live example" — new-account time-to-value
   const [apError,     setApError]     = useState(null);
   const [lastRun,     setLastRun]     = useState(()=>apLsGet(RUN_KEY,null));
   const [runHistory,  setRunHistory]  = useState([]);
@@ -4049,7 +4130,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
             {apError&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:10,padding:"12px 14px",marginBottom:12,fontFamily:C.F,fontSize:12,color:C.rose}}>{apError}</div>}
 
             {/* Premium with no data */}
-            {isPremium&&!hasEnoughData&&!apResult&&(
+            {isPremium&&!hasEnoughData&&!apResult&&!viewingExample&&(
               <div style={{textAlign:"center",padding:"32px 16px",animation:"fadeUp .4s ease"}}>
                 <div style={{width:64,height:64,borderRadius:18,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${C.indigo}40`}}><Icon.Bot size={30} color="#fff"/></div>
                 <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,margin:"0 0 10px"}}>Autopilot is ready.</h3>
@@ -4072,6 +4153,48 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
                   </div>
                   );
                 })}
+
+                <button onClick={()=>setViewingExample(true)}
+                  style={{marginTop:14,background:"transparent",border:"none",
+                    color:C.textDim,cursor:"pointer",fontFamily:C.F,fontWeight:600,
+                    fontSize:11,textDecoration:"underline",textUnderlineOffset:3}}>
+                  Not ready yet? See a live example first →
+                </button>
+              </div>
+            )}
+
+            {/* Example mode — same components, same code paths, fed EXAMPLE_DATA
+                instead of live state. This is what a brand-new agent sees when
+                they're not ready to add real clients yet but want to know what
+                they're actually signing up for. */}
+            {viewingExample&&(
+              <div style={{animation:"fadeUp .3s ease"}}>
+                <div style={{background:`linear-gradient(135deg,${C.amber}12,${C.amber}05)`,
+                  border:`1px solid ${C.amber}30`,borderRadius:12,padding:"11px 14px",
+                  marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                  <span style={{fontFamily:C.F,fontSize:11,color:C.amber,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
+                    <Icon.Eye size={13}/> You're viewing an example — this isn't your real data.
+                  </span>
+                  <div style={{display:"flex",gap:8}}>
+                    <Button variant="secondary" C={C} style={{padding:"5px 12px",fontSize:10}}
+                      onClick={()=>setViewingExample(false)}>
+                      Exit example
+                    </Button>
+                    <Button variant="primary" C={C} style={{padding:"5px 12px",fontSize:10}}
+                      onClick={()=>{ setViewingExample(false); onNavigate("clients"); }}>
+                      Add my first client →
+                    </Button>
+                  </div>
+                </div>
+                <TeamBriefing apResult={EXAMPLE_AP_RESULT} sphere={EXAMPLE_SPHERE} listingPerf={EXAMPLE_LISTING_PERF}
+                  ledger={{total:0,count:0}} voice={EXAMPLE_VOICE}
+                  onDiscuss={()=>{ setViewingExample(false); onNavigate("clients"); }}
+                  onJumpTab={()=>{}} onOpenSituationRoom={()=>{}}/>
+                <div style={{marginTop:24,paddingTop:20,borderTop:`1px solid ${C.border}`}}>
+                  <TeamRoster tabs={AP_TABS} activeTab="mission" onSelect={()=>{}}
+                    apResult={EXAMPLE_AP_RESULT} sphere={EXAMPLE_SPHERE} listingPerf={EXAMPLE_LISTING_PERF}
+                    weeklyReport={null} runHistory={[]}/>
+                </div>
               </div>
             )}
 
