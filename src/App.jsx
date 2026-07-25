@@ -3860,11 +3860,17 @@ function CommissionCalculator({user, planKey}){
         })
       });
       const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw = d.content?.[0]?.text||"";
       const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
       const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
       if(first!==-1&&last!==-1){ setAiExplain(JSON.parse(cleaned.slice(first,last+1))); }
-    }catch(e){ toast("AI explainer failed — try again","error"); }
+    }catch(e){
+      console.error("AI explainer failed:", e);
+      toast(`AI explainer failed: ${e.message}`,"error");
+    }
     finally{ setLoadingAi(false); }
   }
 
