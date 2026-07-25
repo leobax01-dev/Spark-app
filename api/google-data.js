@@ -692,6 +692,19 @@ export default async function handler(req, res){
     });
   }catch(err){
     console.error("google-data error:",err);
+    // A dead refresh token (revoked access, expired from inactivity, or a
+    // Google security event) will fail this exact way every single time —
+    // retrying on every page load forever just wastes invocations and
+    // clutters the logs. Clear it and tell the client to prompt
+    // reconnection instead, using the same shape the "not connected" path
+    // above already returns — the client already knows how to handle this.
+    if(err.message?.includes("Token refresh failed")||err.message?.includes("No refresh token")){
+      try{
+        const sb = getSupabase();
+        await sb.from("users").update({ google_tokens:null, google_email:null, google_connected_at:null }).eq("email",userEmail);
+      }catch(cleanupErr){ console.error("Failed to clear dead Google token:",cleanupErr); }
+      return res.status(200).json({ disconnected:true, reason:"Google connection expired — please reconnect." });
+    }
     return res.status(500).json({ error:err.message||"Failed to fetch Google data" });
   }
 }
