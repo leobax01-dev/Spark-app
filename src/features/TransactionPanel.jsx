@@ -5,6 +5,7 @@
 import { useState, useRef, useCallback } from "react";
 import Icon from "../components/Icons";
 import { Card, Label, Button, CopyButton } from "../components/UI";
+import { lsGet } from "../utils/storage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMP FETCHER — shared by Presentation and CMA tools
@@ -151,9 +152,9 @@ function CompsPanel({ compsLoading, compsError, compsData, overrides, setOverrid
   );
 
   if(compsError) return(
-    <div style={{background:"rgba(244,63,94,.06)",border:"1px solid rgba(244,63,94,.2)",
+    <div style={{background:"rgba(239, 68, 68,.06)",border:"1px solid rgba(239, 68, 68,.2)",
       borderRadius:11,padding:"12px 14px",marginBottom:14}}>
-      <span style={{fontFamily:C.F,fontSize:12,color:C.rose}}>⚠ {compsError}</span>
+      <span style={{fontFamily:C.F,fontSize:12,color:C.rose,display:"inline-flex",alignItems:"center",gap:5}}><Icon.Alerts size={12}/> {compsError}</span>
       <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,display:"block",marginTop:4}}>
         Enter comps manually below.
       </span>
@@ -241,7 +242,7 @@ function CompsPanel({ compsLoading, compsError, compsData, overrides, setOverrid
                     style={{background:`${C.emerald}18`,border:`1px solid ${C.emerald}30`,
                       color:C.emerald,borderRadius:6,padding:"4px 12px",
                       cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700}}>
-                    ✓ Done
+                    <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon.Check size={10}/> Done</span>
                   </button>
                 </div>
               )}
@@ -344,7 +345,7 @@ function TransactionTimeline(){
         </div>
         <TField label="NOTES / SPECIAL CONDITIONS" value={inputs.notes} onChange={set("notes")} placeholder="Cash offer, no financing contingency, as-is..." area rows={2}/>
         <TBtn onClick={generate} loading={loading} color={C.indigo}>
-          📋 Generate Transaction Timeline
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Script size={14}/> Generate Transaction Timeline</span>
         </TBtn>
       </TCard>
 
@@ -463,7 +464,7 @@ function ListingPresentation(){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:"You are SPARK, an elite real estate AI. Generate a compelling, data-driven listing presentation. Return ONLY valid JSON, no markdown.",
+          system:"You are SPARK's Coordinator — the team member who keeps every transaction on track from contract to close. Generate a compelling, data-driven listing presentation. Return ONLY valid JSON, no markdown.",
           messages:[{role:"user",content:
             `Create a full listing presentation for: ${inputs.address}, asking ${inputs.askingPrice}, ${inputs.beds}bd/${inputs.baths}ba, ${inputs.sqft}sqft. Features: ${inputs.keyFeatures}. Neighborhood: ${inputs.neighborhood}. Comparable sales: ${compsString}. Agent: ${inputs.agentName}, ${inputs.agentYears} years experience, ${inputs.agentSales} listings sold, avg ${inputs.agentDom} days on market, specializes in ${inputs.agentMarket}. Seller goal: ${inputs.sellerGoal}.
 
@@ -518,7 +519,7 @@ Return ONLY valid JSON:
       </TCard>
 
       <TBtn onClick={generate} loading={loading} color={C.violet}>
-        🏆 Build Listing Presentation
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Trophy size={14}/> Build Listing Presentation</span>
       </TBtn>
 
       {result&&(
@@ -624,7 +625,7 @@ function CMAAnalyzer(){
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
-          system:"You are SPARK, an expert real estate pricing strategist. Analyze comps and generate a comprehensive CMA. Return ONLY valid JSON, no markdown.",
+          system:"You are SPARK's Coordinator — the team member who keeps every transaction on track from contract to close. Analyze comps and generate a comprehensive CMA, with the pricing precision the agent needs to move fast. Return ONLY valid JSON, no markdown.",
           messages:[{role:"user",content:
             `Analyze this CMA: Subject property: ${inputs.address}, ${inputs.beds}bd/${inputs.baths}ba, ${inputs.sqft}sqft, built ${inputs.yearBuilt}, condition: ${inputs.condition}, features: ${inputs.features}, neighborhood: ${inputs.neighborhood}, lot: ${inputs.lotSize}. Comparable sales: ${compsString}. Market trend: ${inputs.marketTrend}. Avg days on market: ${inputs.daysOnMarket}.
 
@@ -671,7 +672,7 @@ Return ONLY valid JSON:
       />
 
       <TBtn onClick={generate} loading={loading} color={C.cyan}>
-        📊 Analyze & Generate CMA
+        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Market size={14}/> Analyze & Generate CMA</span>
       </TBtn>
 
       {result&&(
@@ -701,10 +702,10 @@ Return ONLY valid JSON:
             </div>
             <div style={{display:"flex",justifyContent:"center",gap:20}}>
               <div style={{fontSize:11,color:C.textMd,fontFamily:C.F}}>
-                📐 {result.price_per_sqft}/sqft
+                {result.price_per_sqft}/sqft
               </div>
               <div style={{fontSize:11,color:C.textMd,fontFamily:C.F}}>
-                📅 {result.days_on_market_prediction}
+                <span style={{display:"inline-flex",alignItems:"center",gap:4}}><Icon.Weekly size={11}/> {result.days_on_market_prediction}</span>
               </div>
             </div>
           </div>
@@ -734,6 +735,44 @@ Return ONLY valid JSON:
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN TRANSACTION PANEL — tab switcher for all 3 tools
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// COORDINATOR HEADER — establishes who this workspace belongs to, same
+// pattern as ClientPanel's RelationshipManagerHeader and MarketPanel's
+// AnalystHeader. Reads the same shared clients data ClientPanel tracks
+// (this file has no local state of its own) — a Coordinator's whole job
+// is contract-to-close, so "N deals under contract" is the one number
+// that's genuinely theirs to report on.
+// ─────────────────────────────────────────────────────────────────────────────
+function CoordinatorHeader(){
+  const clients = lsGet("spark_clients_v1", []);
+  const underContract = clients.filter(c=>c.stage==="contract");
+
+  const statusLine = underContract.length===0
+    ? "No deals under contract right now — I'll be ready the moment one lands."
+    : `Tracking ${underContract.length} deal${underContract.length!==1?"s":""} under contract right now.`;
+
+  return(
+    <div style={{background:`linear-gradient(135deg,${C.indigo}10,${C.violet}06)`,
+      border:`1px solid ${C.indigo}22`,borderRadius:14,padding:"14px 16px",marginBottom:18,
+      display:"flex",alignItems:"center",gap:12}}>
+      <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
+        background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        boxShadow:`0 4px 14px ${C.indigo}40`}}>
+        <Icon.Coordinator size={18} color="#fff"/>
+      </div>
+      <div>
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:13,color:C.text}}>
+          Your Coordinator
+        </div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,marginTop:2}}>
+          {statusLine}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TransactionPanel({ user, planKey }){
   const [tool,setTool]=useState("timeline");
 
@@ -745,6 +784,8 @@ export default function TransactionPanel({ user, planKey }){
 
   return(
     <div style={{paddingBottom:40}}>
+      <CoordinatorHeader/>
+
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
