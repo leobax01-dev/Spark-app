@@ -62,6 +62,9 @@ Return ONLY this JSON:
       })
     });
     const d = await r.json();
+    if(!r.ok || d?.error || d?.type==="error"){
+      throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+    }
     const raw = d.content?.[0]?.text||"";
 
     let parsed = null;
@@ -396,6 +399,9 @@ async function generateDailyBrief(voice, autopilotResult, googleData, conversati
       })
     });
     const d = await r.json();
+    if(!r.ok || d?.error || d?.type==="error"){
+      throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+    }
     const brief = sanitizeResponse(d.content?.[0]?.text||"");
     if(!brief) throw new Error("Empty brief");
 
@@ -831,6 +837,9 @@ async function generateSituationRoomBrief(risk, client, deal, voice){
     })
   });
   const d = await r.json();
+  if(!r.ok || d?.error || d?.type==="error"){
+    throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+  }
   const raw = d.content?.[0]?.text||"";
   for(const attempt of [
     ()=>JSON.parse(raw.trim()),
@@ -1879,6 +1888,9 @@ For each, generate a specific reactivation opportunity. Return ONLY this JSON:
     })
   });
   const d = await r.json();
+  if(!r.ok || d?.error || d?.type==="error"){
+    throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+  }
   const raw = d.content?.[0]?.text||"";
   let parsed = null;
   for(const attempt of [
@@ -2047,6 +2059,9 @@ Return ONLY this JSON:
     })
   });
   const d = await r.json();
+  if(!r.ok || d?.error || d?.type==="error"){
+    throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+  }
   const raw = d.content?.[0]?.text||"";
   let parsed = null;
   for(const attempt of [
@@ -2142,6 +2157,9 @@ async function generateStakeholderUpdates(client, milestone, allMilestones, voic
     })
   });
   const d = await r.json();
+  if(!r.ok || d?.error || d?.type==="error"){
+    throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+  }
   const raw = d.content?.[0]?.text||"";
   let parsed = null;
   for(const attempt of [
@@ -2209,6 +2227,9 @@ async function generateNegotiationStrategy(situation, situationType, dealContext
     })
   });
   const d = await r.json();
+  if(!r.ok || d?.error || d?.type==="error"){
+    throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+  }
   const raw = d.content?.[0]?.text||"";
   let parsed = null;
   for(const attempt of [
@@ -2280,6 +2301,9 @@ async function generateWeeklyReport(data, apResult, conversations, email){
     })
   });
   const d = await r.json();
+  if(!r.ok || d?.error || d?.type==="error"){
+    throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+  }
   const raw = d.content?.[0]?.text||"";
   let parsed = null;
   for(const attempt of [
@@ -3975,6 +3999,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         })
       });
       const d=await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw=d.content?.[0]?.text||"I couldn't generate a response — please try again.";
       const text=sanitizeResponse(raw);
 
@@ -4002,7 +4029,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
     }catch(e){
       setChatLoading(false);
-      setMessages(prev=>[...prev,{role:"assistant",content:"Connection error — check your internet and try again.",timestamp:Date.now()}]);
+      console.error("SPARK Assistant chat failed:", e);
+      const reason = e.message?.startsWith("HTTP")||e.message?.length<150 ? e.message : "check your internet and try again";
+      setMessages(prev=>[...prev,{role:"assistant",content:`Sorry, I hit an error: ${reason}`,timestamp:Date.now()}]);
     }
   }
 
