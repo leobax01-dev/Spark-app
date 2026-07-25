@@ -5392,21 +5392,34 @@ function AuthPage({mode,onAuth,onSwitch}){
             const startCredits = isTrialChoice ? 10 : 0;
             const startPlan = "trial"; // always created as trial pre-payment; webhook upgrades on payment success
 
-            // Create user row server-side (bypasses RLS reliably)
+            // Create user row server-side (bypasses RLS reliably). This MUST
+            // succeed before sending anyone to Stripe — if it doesn't, and we
+            // proceed anyway, a real payment can land with no account row to
+            // attach it to, and the webhook silently has nothing to update.
+            // One retry for genuinely transient issues; if it still fails,
+            // stop here rather than send someone into checkout blind.
             let finalPlan=startPlan, finalCredits=startCredits, finalIntended=plan;
-            try{
-              const resp=await fetch('/api/create-user',{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ email, plan:startPlan, credits:startCredits, intendedPlan:plan })
-              });
-              const cuData=await resp.json();
-              if(resp.ok){
-                finalPlan=cuData.plan; finalCredits=cuData.credits; finalIntended=cuData.intendedPlan||plan;
-              } else {
-                console.warn("create-user failed:", cuData.error);
-              }
-            }catch(e){ console.warn("create-user request failed:", e.message); }
+            let userRowReady=false;
+            for(let attempt=0; attempt<2 && !userRowReady; attempt++){
+              if(attempt>0) await new Promise(r=>setTimeout(r,1800));
+              try{
+                const resp=await fetch('/api/create-user',{
+                  method:'POST',
+                  headers:{'Content-Type':'application/json'},
+                  body:JSON.stringify({ email, plan:startPlan, credits:startCredits, intendedPlan:plan })
+                });
+                const cuData=await resp.json();
+                if(resp.ok){
+                  finalPlan=cuData.plan; finalCredits=cuData.credits; finalIntended=cuData.intendedPlan||plan;
+                  userRowReady=true;
+                } else {
+                  console.warn(`create-user failed (attempt ${attempt+1}):`, cuData.error);
+                }
+              }catch(e){ console.warn(`create-user request failed (attempt ${attempt+1}):`, e.message); }
+            }
+            if(!userRowReady){
+              throw new Error("We couldn't finish setting up your account — please try again in a moment. If this keeps happening, contact support before entering payment details.");
+            }
 
             const accounts=LS.get("sp_accounts",{});
             accounts[email.toLowerCase()]={ plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended };
