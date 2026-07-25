@@ -474,11 +474,17 @@ Return ONLY valid JSON:
         })
       });
       const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw = d.content?.[0]?.text||"";
       const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
       const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
       if(first!==-1&&last!==-1){ setResult(JSON.parse(cleaned.slice(first,last+1))); }
-    }catch(e){ alert("Generation failed — try again"); }
+    }catch(e){
+      console.error("Listing presentation failed:", e);
+      alert(`Couldn't generate the presentation: ${e.message}`);
+    }
     setLoading(false);
   }
 
@@ -635,11 +641,17 @@ Return ONLY valid JSON:
         })
       });
       const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw = d.content?.[0]?.text||"";
       const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
       const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
       if(first!==-1&&last!==-1){ setResult(JSON.parse(cleaned.slice(first,last+1))); }
-    }catch(e){ alert("Generation failed — try again"); }
+    }catch(e){
+      console.error("CMA analysis failed:", e);
+      alert(`Couldn't generate the analysis: ${e.message}`);
+    }
     setLoading(false);
   }
 
