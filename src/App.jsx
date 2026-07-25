@@ -2555,6 +2555,7 @@ function PushNotificationCard({ user }){
   const [supported, setSupported] = useState(true);
   const [subscribed, setSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(()=>{
     if(!("serviceWorker" in navigator) || !("PushManager" in window)){
@@ -2618,6 +2619,27 @@ function PushNotificationCard({ user }){
     setLoading(false);
   }
 
+  async function sendTest(){
+    if(!user?.email) return;
+    setTesting(true);
+    try{
+      const r = await fetch("/api/google-data",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ email:user.email, action:"send_test_notification" }),
+      });
+      const d = await r.json();
+      if(d.sent){
+        toast("Test sent — check your notifications now");
+      } else {
+        toast(d.reason || "Couldn't send — check your setup", "error");
+      }
+    }catch(e){
+      console.error("Test notification error:", e);
+      toast("Test failed — check your connection","error");
+    }
+    setTesting(false);
+  }
+
   if(!supported) return null; // browser doesn't support push — no point showing a dead toggle
 
   return(
@@ -2634,6 +2656,14 @@ function PushNotificationCard({ user }){
             left:subscribed?19:3,transition:"left .15s"}}/>
         </button>
       </div>
+      {subscribed && (
+        <button onClick={sendTest} disabled={testing}
+          style={{marginTop:10,width:"100%",background:"transparent",border:`1px solid ${C.borderMd}`,
+            color:testing?C.textDim:C.indigoLt,borderRadius:8,padding:"7px 0",cursor:testing?"default":"pointer",
+            fontFamily:C.F,fontWeight:700,fontSize:10,transition:"all .15s"}}>
+          {testing ? "Sending..." : "Send test notification"}
+        </button>
+      )}
     </div>
   );
 }
@@ -4638,18 +4668,6 @@ function MainApp({user,onLogout}){
 
         {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
 
-        {tab==="voice"&&(
-          <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:isMobile?16:26}}>
-            {voice.saved&&plan.voiceMemory&&(
-              <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:18}}>
-                <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>
-                <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update and save to refresh</span>
-              </div>
-            )}
-            <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade} user={user}/>
-          </div>
-        )}
-
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
@@ -4807,17 +4825,6 @@ function MainApp({user,onLogout}){
               <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
 
               {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
-              {tab==="voice"&&(
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:16}}>
-                  {voice.saved&&plan.voiceMemory&&(
-                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:16}}>
-                      <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,flexShrink:0}}/>
-                      <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active</span>
-                    </div>
-                  )}
-                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade} user={user}/>
-                </div>
-              )}
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
@@ -4868,17 +4875,6 @@ function MainApp({user,onLogout}){
 
               <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
               {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
-              {tab==="voice"&&(
-                <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:26}}>
-                  {voice.saved&&plan.voiceMemory&&(
-                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7,marginBottom:18}}>
-                      <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`}}/>
-                      <span style={{fontSize:11,color:C.emerald,fontWeight:600,fontFamily:C.F}}>Agent voice active — update any field and save to refresh</span>
-                    </div>
-                  )}
-                  <VoicePanel planKey={planKey} voice={voice} setVoice={setVoice} onSave={()=>setTab("generate")} onGoUpgrade={handleGoUpgrade} user={user}/>
-                </div>
-              )}
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
