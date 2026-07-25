@@ -43,6 +43,40 @@ function getRawBody(req) {
   });
 }
 
+// Real money came in and this webhook couldn't figure out what plan to grant
+// for it — that's not a "log it and move on" situation, it's the exact
+// silent-failure pattern that costs a paying customer their access with
+// nobody finding out until they complain. Alerts whoever's watching ALERT_EMAIL
+// immediately instead. Silently no-ops if ALERT_EMAIL or RESEND_API_KEY aren't
+// set, so this never blocks the webhook itself from returning 200 to Stripe.
+async function alertUnmatchedPayment(reason, details){
+  const apiKey = process.env.RESEND_API_KEY;
+  const alertTo = process.env.ALERT_EMAIL;
+  if(!apiKey || !alertTo) {
+    console.error('ALERT_EMAIL not configured — this payment issue will only be visible in Vercel logs:', reason, details);
+    return;
+  }
+  try{
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: 'SPARK Alerts <alerts@usesparkai.app>',
+        to: alertTo,
+        subject: `⚠️ Payment received but couldn't be matched to a plan — ${reason}`,
+        html: `<div style="font-family:sans-serif;padding:20px;">
+          <h2>A Stripe payment came in that this webhook couldn't process</h2>
+          <p><strong>Reason:</strong> ${reason}</p>
+          <p><strong>Details:</strong> ${JSON.stringify(details)}</p>
+          <p>This customer paid but may not have received their plan/credits. Check Stripe and Supabase directly, and consider manually granting access via the update-plan endpoint or Supabase dashboard.</p>
+        </div>`,
+      }),
+    });
+  }catch(e){
+    console.error('Failed to send payment alert email:', e.message);
+  }
+}
+
 async function findUser(email, retries = 2) {
   for (let i = 0; i < retries; i++) {
     const { data, error } = await supabase
@@ -93,14 +127,18 @@ export default async function handler(req, res) {
 
       if (!userData) {
         console.error('User not found after retries:', email)
+        await alertUnmatchedPayment('No user account found for this email after retries', { email, sessionId: session.id, paymentLink })
         return res.status(200).json({ received: true, note: 'User not found' })
       }
 
-      // Subscription plan purchase — try payment link first, then product ID
+      // Subscription plan purchase — try payment link first, then product ID.
+      // The product-ID fallback used to be gated behind `session.line_items`,
+      // but Stripe does NOT include line_items on checkout.session.completed
+      // payloads by default — that gate was almost always false, meaning this
+      // "fallback" never actually ran. It's unconditional now.
       let planData = LINK_TO_PLAN[paymentLink]
 
-      // Fallback: match by product ID from line items
-      if (!planData && session.line_items) {
+      if (!planData) {
         try {
           const expanded = await stripe.checkout.sessions.retrieve(session.id, {
             expand: ['line_items.data.price.product']
@@ -132,6 +170,7 @@ export default async function handler(req, res) {
 
         if (updateError) {
           console.error('Plan update failed:', email, updateError.message)
+          await alertUnmatchedPayment('Plan matched but the database update failed', { email, plan: planData.plan, error: updateError.message })
           return res.status(200).json({ received: true, note: 'Update failed' })
         }
 
@@ -153,6 +192,7 @@ export default async function handler(req, res) {
 
         if (updateError) {
           console.error('Credit pack update failed:', email, updateError.message)
+          await alertUnmatchedPayment('Credit pack matched but the database update failed', { email, creditsToAdd, error: updateError.message })
           return res.status(200).json({ received: true, note: 'Update failed' })
         }
 
@@ -160,7 +200,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true })
       }
 
+      // Neither a plan nor a credit pack matched — this is the exact
+      // "customer paid, nobody knows what for" scenario. Real money, no
+      // idea what to grant for it. This needs a human, right now.
       console.warn('Webhook: no plan/credit mapping for payment_link:', paymentLink)
+      await alertUnmatchedPayment('Payment link and product ID both unmatched to any known plan or credit pack', { email, paymentLink, sessionId: session.id })
     }
 
     // ── MONTHLY RENEWAL ─────────────────────────────────────────────────────
@@ -212,6 +256,7 @@ export default async function handler(req, res) {
 
           if (updateError) {
             console.error('Renewal update failed:', email, updateError.message)
+            await alertUnmatchedPayment('Monthly renewal payment succeeded but the credit/plan refresh failed', { email, plan: planData.plan, error: updateError.message })
           } else {
             console.log(`Monthly renewal: ${email} -> ${planData.plan} (${renewedCredits} credits)`)
           }
