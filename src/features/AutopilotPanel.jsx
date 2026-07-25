@@ -590,6 +590,15 @@ ${marketCtx}`;
       })
     });
     const d=await r.json();
+    // Surface the REAL upstream error first — without this check, any
+    // Anthropic API failure (rate limit, invalid key, overloaded model)
+    // silently becomes an empty string here, then a generic, unhelpful
+    // "Response format error" — actively hiding what actually went wrong.
+    if(!r.ok || d?.error || d?.type==="error"){
+      const msg = d?.error?.message || d?.error || `HTTP ${r.status}`;
+      console.error("Claude API error:", msg);
+      throw new Error("api_error:"+String(msg).slice(0,150));
+    }
     const raw=d.content?.[0]?.text||"";
     for(const attempt of [
       ()=>JSON.parse(raw.trim()),
@@ -3813,7 +3822,13 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
       }
     }catch(e){
       console.error("Autopilot error:",e);
-      setApError(e.message?.includes("parse_failed")?"Response format error — try running again.":"Analysis failed — check your connection and try again.");
+      if(e.message?.includes("api_error:")){
+        setApError(`Couldn't reach Claude: ${e.message.replace("api_error:","").trim()}`);
+      } else if(e.message?.includes("parse_failed")){
+        setApError("Response format error — try running again.");
+      } else {
+        setApError("Analysis failed — check your connection and try again.");
+      }
     }
     setApRunning(false);
   }
