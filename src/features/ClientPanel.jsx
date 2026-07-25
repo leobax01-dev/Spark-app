@@ -206,6 +206,9 @@ Return ONLY valid JSON:
         })
       });
       const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw = d.content?.[0]?.text||"";
       const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
       const first=cleaned.indexOf("{"); const last=cleaned.lastIndexOf("}");
@@ -213,7 +216,10 @@ Return ONLY valid JSON:
         const ai = JSON.parse(cleaned.slice(first,last+1));
         setClients(prev=>prev.map(c=>c.id===client.id?{...c,aiAction:JSON.stringify(ai)}:c));
       }
-    }catch(e){}
+    }catch(e){
+      console.error("generateAiAction failed:", e);
+      alert(`Couldn't generate an action: ${e.message}`);
+    }
     setLoadingAi(null);
   }
 
@@ -611,11 +617,17 @@ Return ONLY valid JSON:
         })
       });
       const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw = d.content?.[0]?.text||"";
       const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
       const first=cleaned.indexOf("{"); const last=cleaned.lastIndexOf("}");
       if(first!==-1&&last!==-1){ setResult(JSON.parse(cleaned.slice(first,last+1))); }
-    }catch(e){ alert("Generation failed — try again"); }
+    }catch(e){
+      console.error("Note analysis failed:", e);
+      alert(`Couldn't analyze notes: ${e.message}`);
+    }
     setLoading(false);
   }
 
@@ -756,6 +768,9 @@ Return ONLY valid JSON:
         })
       });
       const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
       const raw = d.content?.[0]?.text||"";
       const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
       const first=cleaned.indexOf("{"); const last=cleaned.lastIndexOf("}");
@@ -765,7 +780,10 @@ Return ONLY valid JSON:
         setBriefing(briefingData);
         lsSet(BRIEFING_KEY, briefingData);
       }
-    }catch(e){ alert("Generation failed — try again"); }
+    }catch(e){
+      console.error("Daily briefing failed:", e);
+      alert(`Couldn't generate your briefing: ${e.message}`);
+    }
     setLoading(false);
   }
 
