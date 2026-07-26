@@ -278,7 +278,7 @@ function buildAutopilotContext(autopilotResult){
 }
 
 function buildGoogleContext(googleData){
-  if(!googleData) return "";
+  if(!googleData?.connected) return "";
   const lines=["\nGOOGLE INTEGRATION (live data):"];
   lines.push(`Connected Gmail: ${googleData.googleEmail}`);
   if(googleData.events?.length>0){
@@ -3520,10 +3520,15 @@ function TeamRoster({ tabs, activeTab, onSelect, apResult, sphere, listingPerf, 
   );
 }
 
-function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab }){
+function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab, googleData }){
   const [dismissed, setDismissed] = useState(()=>apLsGet("sp_onboarding_dismissed", false));
 
   const clients = apLsGet("spark_clients_v1", []);
+  // Once the real server check has resolved (googleData is defined either
+  // way), trust it completely — it reflects the actual account, not this
+  // one device. Before it resolves, fall back to the last-known local
+  // flag just to avoid a flash of "not done" while that check is in flight.
+  const googleConnected = googleData!==null ? !!googleData?.connected : !!apLsGet("spark_google_connected", false);
   const steps = [
     { id:"voice",   label:"Set your agent voice profile",      done:!!voice?.saved,
       action:()=>onNavigate("settings") },
@@ -3533,7 +3538,7 @@ function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab }
       action:()=>onOpenTab?.("mission") },
     { id:"share",   label:"Share your lead capture page",       done:!!apLsGet("sp_lead_page_shared", false),
       action:()=>onNavigate("settings") },
-    { id:"google",  label:"Connect Google Calendar & Gmail",    done:!!apLsGet("spark_google_connected", false),
+    { id:"google",  label:"Connect Google Calendar & Gmail",    done:googleConnected,
       action:()=>onNavigate("settings") },
     { id:"pwa",     label:"Install SPARK on your phone",        done:!!apLsGet("sp_pwa_installed", false),
       action:()=>onNavigate("settings") },
@@ -3805,8 +3810,15 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
         // Generate AI brief once conversations are loaded
         if(messages.length===0) triggerDailyBrief(convs);
       });
-      if(apLsGet("spark_google_connected",false)) fetchGoogleData().then(gd=>{
-        // Regenerate brief with Google context if we got calendar data
+      // Always check the server for real Google connection status on
+      // mount — this used to be gated behind a localStorage flag that
+      // only gets SET as a side effect of this same check succeeding,
+      // which meant a fresh device (localStorage empty) would never even
+      // ask the server, and would silently show "not connected" forever
+      // even when the account genuinely was connected from another
+      // device. Google tokens live server-side against the account, not
+      // per-device — the check needs to match that.
+      fetchGoogleData().then(gd=>{
         if(messages.length===0 && gd?.events?.length) triggerDailyBrief(null, gd);
       });
       // Live market data for the agent's active pipeline — cached ~6hrs,
@@ -3957,7 +3969,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
       const r=await fetch("/api/google-data",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:user.email,action:"fetch"})});
       const d=await r.json();
       if(d.connected){ setGoogleData(d); apLsSet("spark_google_connected",true); return d; }
-      else if(d.disconnected){ apLsSet("spark_google_connected",false); setGoogleData(null); }
+      else if(d.disconnected){ apLsSet("spark_google_connected",false); setGoogleData({connected:false}); }
     }catch(e){ console.warn("Google fetch failed:",e); }
     return null;
   }
@@ -4267,7 +4279,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
       minHeight:500,position:"relative"}}>
 
       <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
-        onNavigate={onNavigate} onOpenTab={setApTab}/>
+        onNavigate={onNavigate} onOpenTab={setApTab} googleData={googleData}/>
 
       {/* ── TOP HEADER ── */}
       <div style={{flexShrink:0,marginBottom:12}}>
