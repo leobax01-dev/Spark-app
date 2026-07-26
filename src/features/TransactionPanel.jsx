@@ -2,10 +2,10 @@
 // Transaction Intelligence Layer — Timeline Generator, Listing Presentation, CMA Analyzer
 // Standalone feature file — imported into App.jsx, zero changes to existing code
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "../components/Icons";
 import { Card, Label, Button, CopyButton } from "../components/UI";
-import { lsGet } from "../utils/storage";
+import { lsGet, lsSet } from "../utils/storage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMP FETCHER — shared by Presentation and CMA tools
@@ -380,13 +380,19 @@ function DocumentDropzone({ fields, onExtracted, label }){
 }
 
 function TransactionTimeline(){
-  const [inputs,setInputs]=useState({
+  // Was pure in-memory state with zero persistence anywhere — filling out
+  // this form, then refreshing the page or just switching tabs and back,
+  // silently lost everything, even on the same device. Fixed with the
+  // same local-persistence pattern already proven elsewhere in the app.
+  const [inputs,setInputs]=useState(()=>lsGet("spark_txn_timeline_v1",{
     address:"",offerDate:"",closeDate:"",salePrice:"",
     buyerName:"",buyerAgent:"",inspectionDays:"10",
     appraisalDays:"21",financingDays:"25",notes:""
-  });
+  }));
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
+
+  useEffect(()=>{ lsSet("spark_txn_timeline_v1", inputs); }, [inputs]);
 
   function set(k){ return v=>setInputs(p=>({...p,[k]:v})); }
 
@@ -561,16 +567,18 @@ function TransactionTimeline(){
 // TOOL 2 — LISTING PRESENTATION BUILDER
 // ─────────────────────────────────────────────────────────────────────────────
 function ListingPresentation(){
-  const [inputs,setInputs]=useState({
+  const [inputs,setInputs]=useState(()=>lsGet("spark_txn_presentation_v1",{
     address:"", askingPrice:"", beds:"", baths:"", sqft:"",
     keyFeatures:"", neighborhood:"",
     agentName:"", agentYears:"", agentSales:"", agentDom:"",
     agentMarket:"", sellerGoal:""
-  });
+  }));
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
   const [compOverrides,setCompOverrides]=useState({});
   const { compsLoading, compsError, compsData, fetchComps } = useCompFetcher();
+
+  useEffect(()=>{ lsSet("spark_txn_presentation_v1", inputs); }, [inputs]);
 
   function set(k){ return v=>{
     setInputs(p=>({...p,[k]:v}));
@@ -726,15 +734,17 @@ Return ONLY valid JSON:
 // TOOL 3 — PRICING STRATEGY & CMA ANALYZER
 // ─────────────────────────────────────────────────────────────────────────────
 function CMAAnalyzer(){
-  const [inputs,setInputs]=useState({
+  const [inputs,setInputs]=useState(()=>lsGet("spark_txn_cma_v1",{
     address:"", beds:"", baths:"", sqft:"", condition:"",
     lotSize:"", yearBuilt:"", features:"", neighborhood:"",
     marketTrend:"", daysOnMarket:""
-  });
+  }));
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
   const [compOverrides,setCompOverrides]=useState({});
   const { compsLoading, compsError, compsData, fetchComps } = useCompFetcher();
+
+  useEffect(()=>{ lsSet("spark_txn_cma_v1", inputs); }, [inputs]);
 
   function set(k){ return v=>{
     setInputs(p=>({...p,[k]:v}));
