@@ -3296,10 +3296,14 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
   const fmt = n => n>=1000 ? `$${Math.round(n/1000)}K` : `$${n}`;
 
   const LifetimeStrip = ()=> ledger?.total>0 ? (
-    <div style={{display:"flex",alignItems:"center",gap:6,marginTop:12,paddingTop:12,
-      borderTop:`1px solid rgba(255,255,255,.06)`,fontFamily:C.F,fontSize:10,color:C.textDim}}>
-      <Icon.Sparkle size={11} color={C.indigoLt}/>
-      Since you started with SPARK: <strong style={{color:C.text,fontWeight:700}}>{fmt(ledger.total)}</strong> in commission caught across <strong style={{color:C.text,fontWeight:700}}>{ledger.count}</strong> distinct catches
+    <div style={{marginTop:12,paddingTop:12,borderTop:`1px solid rgba(255,255,255,.06)`}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,fontFamily:C.F,fontSize:9,color:C.textDim,marginBottom:3}}>
+        <Icon.Sparkle size={10} color={C.indigoLt}/>
+        SINCE YOU STARTED WITH SPARK
+      </div>
+      <div style={{fontFamily:C.F,fontSize:12,color:C.textMd}}>
+        <strong style={{color:C.text,fontWeight:700}}>{fmt(ledger.total)}</strong> in commission caught across <strong style={{color:C.text,fontWeight:700}}>{ledger.count}</strong> distinct catch{ledger.count!==1?"es":""}
+      </div>
     </div>
   ) : null;
 
@@ -3327,12 +3331,14 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
         WHAT YOUR TEAM CAUGHT TODAY
       </div>
       {hasDollarFigure ? (
-        <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,color:C.text,
-          letterSpacing:"-0.02em",lineHeight:1,marginBottom:8}}>
-          {fmt(totalValue)}
-          <span style={{fontSize:14,fontWeight:600,color:C.textMd,marginLeft:8}}>
+        <div style={{marginBottom:8}}>
+          <div style={{fontFamily:C.F,fontWeight:800,fontSize:32,color:C.text,
+            letterSpacing:"-0.02em",lineHeight:1}}>
+            {fmt(totalValue)}
+          </div>
+          <div style={{fontFamily:C.F,fontSize:14,fontWeight:600,color:C.textMd,marginTop:4}}>
             {riskValue>0?"in commission being actively protected":"in commission opportunity found"}
-          </span>
+          </div>
         </div>
       ) : (
         <div style={{fontFamily:C.F,fontWeight:800,fontSize:22,color:C.text,
