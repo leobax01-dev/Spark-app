@@ -1706,7 +1706,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
       }
 
       // Save to content history
-      saveGeneration({ type, inputs, platform, result:content, planKey });
+      saveGeneration({ type, inputs, platform, result:content, planKey, email:user?.email });
       setHistoryCount(getHistory().length);
 
       // Track usage stats for dashboard
@@ -1936,7 +1936,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
 
       {/* History view */}
       {genView==="history"&&(
-        <ContentHistory onReuse={(entry)=>{
+        <ContentHistory user={user} onReuse={(entry)=>{
           setType(entry.type);
           setInputs(entry.inputs||{});
           if(entry.platform) setPlatform(entry.platform);
