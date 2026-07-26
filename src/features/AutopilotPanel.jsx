@@ -3647,6 +3647,22 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
       console.warn("Speech recognition error:", e.error);
       setVoiceActive(false);
       setTranscript("");
+      // Silent failure here means the agent taps the mic, says something,
+      // and it just... doesn't work, with zero explanation — the exact
+      // pattern fixed everywhere else in this app this weekend. A few of
+      // these are common enough to give a real, specific reason instead of
+      // just going quiet.
+      const reasons = {
+        "not-allowed": "Microphone access is blocked — check your browser's site permissions.",
+        "audio-capture": "No microphone found on this device.",
+        "network": "Voice input needs an internet connection — check your signal and try again.",
+        "no-speech": null, // agent just didn't say anything — not worth a message
+        "aborted": null,   // they stopped it themselves
+      };
+      const reason = reasons[e.error];
+      if(reason!==null && reason!==undefined){
+        setMessages(prev=>[...prev,{role:"assistant",content:`Voice input didn't work: ${reason}`,timestamp:Date.now()}]);
+      }
     };
 
     recognition.start();
