@@ -1617,14 +1617,14 @@ function RunHistory({ runs, memory, conversations }){
 // ─────────────────────────────────────────────────────────────────────────────
 // CHAT MESSAGE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
-function ChatMessage({ msg, onRegenerate, onSaveNote }){
+function ChatMessage({ msg, onRegenerate, onSaveNote, onConfirmProposal, onCancelProposal }){
   const [copied,setCopied]=useState(false);
   const [showActions,setShowActions]=useState(false);
   const [complianceResult, setComplianceResult] = useState(null);
   const [complianceChecking, setComplianceChecking] = useState(false);
   const [listening, setListening] = useState(false);
   const isUser=msg.role==="user";
-  const formattedContent = msg.content.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>");
+  const formattedContent = msg.content ? msg.content.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>") : "";
 
   function copyText(){
     navigator.clipboard.writeText(msg.content).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
@@ -1657,6 +1657,52 @@ function ChatMessage({ msg, onRegenerate, onSaveNote }){
       console.warn("Compliance check failed:", e.message);
     }
     setComplianceChecking(false);
+  }
+
+  // Proposal messages (from a voice command SPARK interpreted as an
+  // action) render as their own dedicated card, not a normal chat bubble —
+  // this is the "SPARK understood something and is waiting for you to
+  // confirm before it changes anything real" moment.
+  if(msg.type==="proposal"){
+    const p = msg.proposal||{};
+    const applied = p.applied;
+    return(
+      <div style={{marginBottom:16,background:`${C.indigo}0a`,border:`1px solid ${C.indigo}28`,
+        borderRadius:13,padding:"14px 16px",maxWidth:"88%"}}>
+        <div style={{fontFamily:C.F,fontSize:9,fontWeight:700,color:C.indigoLt,letterSpacing:1,marginBottom:7}}>
+          {p.matchType==="existing" ? "UPDATING AN EXISTING CLIENT" : "THIS LOOKS LIKE A NEW CLIENT"}
+          {p.confidence==="low" && <span style={{color:C.amber}}> · not fully sure — please check this</span>}
+        </div>
+        <div style={{fontFamily:C.F,fontSize:13,color:C.text,fontWeight:600,marginBottom:applied?0:10}}>
+          {p.summary}
+        </div>
+        {!applied && (
+          <>
+            <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 11px",marginBottom:11}}>
+              {Object.entries(p.updates||{}).filter(([k,v])=>v&&String(v).trim()).map(([k,v])=>(
+                <div key={k} style={{display:"flex",gap:8,fontFamily:C.F,fontSize:11,marginBottom:4}}>
+                  <span style={{color:C.textDim,minWidth:80,textTransform:"capitalize"}}>{k.replace(/([A-Z])/g," $1")}:</span>
+                  <span style={{color:C.textMd}}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <Button variant="secondary" C={C} onClick={()=>onCancelProposal?.()} style={{flex:1,padding:"8px 0",fontSize:11}}>
+                Not quite
+              </Button>
+              <Button variant="primary" C={C} onClick={()=>onConfirmProposal?.(p)} style={{flex:1,padding:"8px 0",fontSize:11}}>
+                {p.matchType==="existing" ? "Confirm update" : "Confirm & add"}
+              </Button>
+            </div>
+          </>
+        )}
+        {applied && (
+          <div style={{fontFamily:C.F,fontSize:11,color:C.emerald,fontWeight:700,display:"flex",alignItems:"center",gap:5}}>
+            <Icon.Check size={13}/> Saved
+          </div>
+        )}
+      </div>
+    );
   }
 
   return(
@@ -3580,6 +3626,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
 
   // Voice state
   const [voiceActive,   setVoiceActive]   = useState(false); // mic is listening
+  // Tracks whether the CURRENT input text came from dictation, independent
+  // of whether the mic is still actively listening — recognition can
+  // auto-stop on silence before the agent taps send, so checking
+  // voiceActive at click-time isn't reliable on its own.
+  const [lastInputWasVoice, setLastInputWasVoice] = useState(false);
   const [voiceEnabled,  setVoiceEnabled]  = useState(false); // voice output toggled on
   const [voiceSupported,setVoiceSupported]= useState(false); // browser supports it
   const [transcript,    setTranscript]    = useState("");    // live transcript while speaking
@@ -3622,7 +3673,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
     recognition.interimResults = true;
     recognition.lang           = "en-US";
 
-    recognition.onstart = ()=>{ setVoiceActive(true); setTranscript(""); };
+    recognition.onstart = ()=>{ setVoiceActive(true); setTranscript(""); setLastInputWasVoice(true); };
 
     recognition.onresult = (e)=>{
       let interim = "";
@@ -4055,6 +4106,125 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
       const reason = e.message?.startsWith("HTTP")||e.message?.length<150 ? e.message : "check your internet and try again";
       setMessages(prev=>[...prev,{role:"assistant",content:`Sorry, I hit an error: ${reason}`,timestamp:Date.now()}]);
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // VOICE COMMANDS — speak to SPARK and ask it to do something, not just
+  // answer a question. Deliberately a SEPARATE path from sendMessage above,
+  // not a rewrite of it: the existing typed-chat flow is complex, already
+  // working, and used everywhere — this only activates when a message
+  // actually came from the mic, so ordinary typed chat is completely
+  // unaffected. Never writes to a real record on its own — same
+  // propose-then-confirm principle as Smart Intake and Send It For Me
+  // elsewhere in this app. One tap always stands between "SPARK understood
+  // something" and "SPARK changed something real."
+  // ─────────────────────────────────────────────────────────────────────────
+  async function sendVoiceCommand(content){
+    if(!content?.trim()||chatLoading) return;
+
+    const userMsg={role:"user",content:content.trim(),timestamp:Date.now()};
+    const baseMessages=[...messages,userMsg];
+    setMessages(baseMessages);
+    setInput("");
+    setChatLoading(true);
+    if(textareaRef.current) textareaRef.current.style.height="44px";
+
+    try{
+      const clients = apLsGet("spark_clients_v1",[]);
+      const clientList = clients.map(c=>({id:c.id, name:c.name})).filter(c=>c.name);
+
+      const r = await fetch("/api/claude",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          system:"You are SPARK, a real estate agent's AI assistant, listening to something they just said out loud. Most of what agents say is a normal question or request to talk through — answer those conversationally, like usual. But sometimes they're asking you to DO something: add or update a client, log what happened at a showing, set a follow-up task, change a deal stage. When that's what's happening, don't just talk about it — propose the actual update so it can be confirmed and saved. Be conservative about matching an existing client; if you're not confident, treat it as a new client rather than guessing wrong. Only extract information actually said; never invent details. Return ONLY valid JSON.",
+          messages:[{
+            role:"user",
+            content:`Existing clients (for matching only): ${JSON.stringify(clientList)}\n\nThe agent just said: "${content.trim()}"\n\n` +
+              `Return ONLY this JSON: {"isAction":true or false,"reply":"if isAction is false, your normal conversational answer here — otherwise leave empty","summary":"if isAction is true, one plain sentence describing what you understood and are about to do, written to say out loud and show for confirmation","matchType":"existing or new, only if isAction is true","matchedClientId":"id from the list above, or null","matchedClientName":"the client's name","updates":{"name":"","phone":"","email":"","type":"buyer, seller, both, or empty","stage":"prospect, active, contract, closed, or empty","property":"","budget":"","timeline":"","motivation":"","noteToAdd":"","nextAction":""}}`
+          }],
+          max_tokens:900,
+        }),
+      });
+      const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
+      const raw = d.content?.[0]?.text||"";
+      const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
+      if(first===-1||last===-1) throw new Error("Couldn't make sense of that");
+      const parsed = JSON.parse(cleaned.slice(first,last+1));
+
+      setChatLoading(false);
+
+      if(!parsed.isAction){
+        // Just a normal conversational exchange — render and speak it
+        // exactly like the regular chat path does.
+        const text = sanitizeResponse(parsed.reply || "I'm not sure how to help with that — can you say it differently?");
+        setMessages(prev=>[...prev,{role:"assistant",content:text,timestamp:Date.now()}]);
+        if(voiceEnabled) speakResponse(text);
+        return;
+      }
+
+      // Validate enum fields before they ever reach a real record.
+      if(parsed.updates){
+        if(!["prospect","active","contract","closed"].includes(parsed.updates.stage)) parsed.updates.stage = "";
+        if(!["buyer","seller","both"].includes(parsed.updates.type)) parsed.updates.type = "";
+      }
+
+      setMessages(prev=>[...prev,{role:"assistant",type:"proposal",proposal:parsed,timestamp:Date.now()}]);
+      if(voiceEnabled) speakResponse(parsed.summary || "I understood something — take a look and confirm.");
+    }catch(e){
+      setChatLoading(false);
+      console.error("Voice command failed:", e);
+      const reason = e.message?.startsWith("HTTP")||e.message?.length<150 ? e.message : "check your internet and try again";
+      setMessages(prev=>[...prev,{role:"assistant",content:`Sorry, I hit an error: ${reason}`,timestamp:Date.now()}]);
+    }
+  }
+
+  // Applies a confirmed voice proposal — same logic as Smart Intake's
+  // apply step (appends to notes rather than overwriting, same
+  // lsSet+cloudSync persistence), duplicated here deliberately rather
+  // than shared across files, matching how cron-autopilot.js already
+  // duplicates AutopilotPanel's own engine logic instead of importing it.
+  function applyVoiceProposal(proposal, messageIndex){
+    const clients = apLsGet("spark_clients_v1",[]);
+    const now = new Date().toISOString();
+    const u = proposal.updates||{};
+    let updated;
+
+    if(proposal.matchType==="existing" && proposal.matchedClientId){
+      updated = clients.map(c=>{
+        if(c.id!==proposal.matchedClientId) return c;
+        const noteAddition = u.noteToAdd ? `\n[${new Date().toLocaleDateString()}] ${u.noteToAdd}` : "";
+        return {
+          ...c,
+          phone: u.phone||c.phone, email: u.email||c.email, type: u.type||c.type,
+          stage: u.stage||c.stage, property: u.property||c.property,
+          budget: u.budget||c.budget, timeline: u.timeline||c.timeline,
+          motivation: u.motivation||c.motivation,
+          notes: (c.notes||"")+noteAddition,
+          nextAction: u.nextAction||c.nextAction,
+          lastContact: now,
+        };
+      });
+    } else {
+      const newClient = {
+        id:`voice_${Date.now()}`, name: u.name||proposal.matchedClientName||"Unnamed client",
+        phone:u.phone||"", email:u.email||"", type:u.type||"buyer", stage:u.stage||"prospect",
+        property:u.property||"", budget:u.budget||"", timeline:u.timeline||"",
+        motivation:u.motivation||"", notes:u.noteToAdd||"", nextAction:u.nextAction||"",
+        lastContact:now, createdAt:now, aiAction:"", activities:[], tags:[], tasks:[],
+        source:"voice_command",
+      };
+      updated = [...clients, newClient];
+    }
+
+    apLsSet("spark_clients_v1", updated);
+    if(user?.email) apCloudSync(user.email, { clients: updated });
+
+    setMessages(prev=>prev.map((m,i)=>i===messageIndex?{...m,proposal:{...m.proposal,applied:true}}:m));
   }
 
   try {
@@ -4613,7 +4783,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
               <ChatMessage key={i} msg={msg}
                 isLast={i===messages.length-1&&msg.role==="assistant"}
                 onRegenerate={()=>{ const lu=messages.filter(m=>m.role==="user").slice(-1)[0]; if(lu) sendMessage(lu.content,true); }}
-                onSaveNote={saveNote}/>
+                onSaveNote={saveNote}
+                onConfirmProposal={p=>applyVoiceProposal(p,i)}
+                onCancelProposal={()=>setMessages(prev=>prev.filter((m,mi)=>mi!==i))}/>
             ))}
             {chatLoading&&<TypingIndicator/>}
             <div ref={messagesEndRef}/>
@@ -4689,7 +4861,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
             <textarea ref={textareaRef}
               data-voice="true"
               value={voiceActive&&transcript ? input+transcript : input}
-              onChange={e=>{ if(!voiceActive){ setInput(e.target.value); autoResize(e); } }}
+              onChange={e=>{ if(!voiceActive){ setInput(e.target.value); autoResize(e); setLastInputWasVoice(false); } }}
               onKeyDown={e=>{ if(!voiceActive) handleKey(e); }}
               placeholder={voiceActive?"Listening... speak now":isPremium&&apResult?"Ask Autopilot anything — it knows your business...":voice?.saved?`Ask anything, ${voice.name?.split(" ")[0]||""}... (${currentMode.description})`:`Ask anything... (${currentMode.description})`}
               rows={1}
@@ -4701,7 +4873,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
               onFocus={e=>{ if(!voiceActive){ e.target.style.borderColor=`${currentMode.color}55`; e.target.style.boxShadow=`0 0 0 3px ${currentMode.color}10`; } }}
               onBlur={e=>{ e.target.style.borderColor=voiceActive?C.rose+"30":C.borderMd; e.target.style.boxShadow="none"; }}/>
 
-            <button onClick={()=>{ stopVoice(); sendMessage(input); }}
+            <button onClick={()=>{ const wasVoice=lastInputWasVoice; stopVoice(); if(wasVoice) sendVoiceCommand(input); else sendMessage(input); }}
               disabled={chatLoading||(!input.trim()&&!transcript)}
               style={{width:44,height:44,borderRadius:11,flexShrink:0,
                 background:(input.trim()||transcript)&&!chatLoading
