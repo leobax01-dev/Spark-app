@@ -3537,7 +3537,7 @@ function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab }
   );
 }
 
-export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
+export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMobile }){
   // Autopilot state
   const [apResult,    setApResult]    = useState(()=>apLsGet(AP_KEY,null));
   const [apRunning,   setApRunning]   = useState(false);
@@ -4067,18 +4067,19 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
           background:`linear-gradient(135deg,${C.indigo}10,${C.violet}06)`,
           border:`1px solid ${C.indigo}22`,borderRadius:14,
-          padding:"12px 16px",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:"-30%",right:"-5%",width:140,height:140,borderRadius:"50%",pointerEvents:"none",background:`radial-gradient(circle,${C.indigo}16,transparent 70%)`}}/>
+          padding:isMobile?"9px 12px":"12px 16px",position:"relative",overflow:"hidden"}}>
+          {/* Purely decorative — real estate a narrow screen can't spare */}
+          {!isMobile&&<div style={{position:"absolute",top:"-30%",right:"-5%",width:140,height:140,borderRadius:"50%",pointerEvents:"none",background:`radial-gradient(circle,${C.indigo}16,transparent 70%)`}}/>}
 
           {/* Identity */}
-          <div style={{display:"flex",alignItems:"center",gap:10,position:"relative"}}>
-            <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
+          <div style={{display:"flex",alignItems:"center",gap:isMobile?8:10,position:"relative"}}>
+            <div style={{width:isMobile?30:38,height:isMobile?30:38,borderRadius:9,flexShrink:0,
               background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
               display:"flex",alignItems:"center",justifyContent:"center",
               boxShadow:`0 4px 14px ${C.indigo}40`,
-              animation:apRunning?"spin 2s linear infinite":"none"}}><Icon.Sparkle size={19} color="#fff"/></div>
+              animation:apRunning?"spin 2s linear infinite":"none"}}><Icon.Sparkle size={isMobile?15:19} color="#fff"/></div>
             <div>
-              <div style={{fontFamily:C.F,fontWeight:800,fontSize:14,color:C.text,
+              <div style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?12:14,color:C.text,
                 display:"flex",alignItems:"center",gap:6}}>
                 SPARK Autopilot
                 {isPremium&&<span style={{fontSize:8,background:`${C.violet}18`,border:`1px solid ${C.violet}30`,color:C.violet,borderRadius:8,padding:"1px 7px",fontWeight:700,letterSpacing:1}}>✦ PREMIUM</span>}
@@ -4086,7 +4087,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
               <div style={{fontFamily:C.F,fontSize:9,marginTop:2,display:"flex",alignItems:"center",gap:5,color:apRunning?C.amber:apResult?C.emerald:C.textDim}}>
                 <div style={{width:4,height:4,borderRadius:"50%",background:apRunning?C.amber:apResult?C.emerald:C.textDim,animation:apRunning?"pulse 1s ease infinite":"none"}}/>
                 {apRunning?"Analyzing your business...":apResult?"Monitoring your business · Always on":"Ready to analyze"}
-                {isPremium&&apResult&&!apRunning&&(
+                {/* Nice to know, not essential — cut on mobile where every
+                    extra clause pushes this card's line count up */}
+                {!isMobile&&isPremium&&apResult&&!apRunning&&(
                   <span style={{color:C.textDim,marginLeft:2,display:"inline-flex",alignItems:"center",gap:3}}><Icon.Mail size={9}/> Email alerts on</span>
                 )}
               </div>
@@ -4095,14 +4098,14 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate }){
 
           {/* Controls */}
           <div style={{display:"flex",gap:6,alignItems:"center",position:"relative"}}>
-            {syncing&&<span style={{fontSize:9,color:C.amber,fontFamily:C.F}}>syncing...</span>}
-            {isGoogle&&<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(34, 197, 94,.08)",border:"1px solid rgba(34, 197, 94,.2)",borderRadius:7,padding:"3px 8px",cursor:"pointer"}} onClick={fetchGoogleData}>
+            {syncing&&!isMobile&&<span style={{fontSize:9,color:C.amber,fontFamily:C.F}}>syncing...</span>}
+            {isGoogle&&!isMobile&&<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(34, 197, 94,.08)",border:"1px solid rgba(34, 197, 94,.2)",borderRadius:7,padding:"3px 8px",cursor:"pointer"}} onClick={fetchGoogleData}>
               <div style={{width:4,height:4,borderRadius:"50%",background:C.emerald}}/>
               <span style={{fontSize:8,color:C.emerald,fontFamily:C.F,fontWeight:700}}>Google</span>
             </div>}
             {isPremium&&(
               <Button variant="primary" C={C} onClick={runAutopilot} disabled={apRunning||!hasEnoughData}
-                style={{padding:"7px 14px",fontSize:11,borderRadius:9}}>
+                style={{padding:isMobile?"6px 12px":"7px 14px",fontSize:isMobile?10:11,borderRadius:9}}>
                 {apRunning?"Analyzing...":"▶ Run"}
               </Button>
             )}
