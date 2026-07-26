@@ -894,7 +894,7 @@ function AnalystHeader(){
   );
 }
 
-export default function MarketPanel({ user, planKey }){
+export default function MarketPanel({ user, planKey, isMobile }){
   const [tool, setTool] = useState("leads");
 
   const TOOLS=[
@@ -907,7 +907,7 @@ export default function MarketPanel({ user, planKey }){
     <div style={{paddingBottom:40}}>
       <AnalystHeader/>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(3,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
           const TIcon = Icon[t.icon];
           return(
