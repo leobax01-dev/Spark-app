@@ -395,7 +395,7 @@ async function handleAutopilot(action, email, body, res){
   }
 
   if(action==="sync_data"){
-    const { clients, pipeline, goals, profile } = body;
+    const { clients, pipeline, goals, profile, transactions } = body;
     const patch = { user_email: email, synced_at: new Date().toISOString() };
     if(clients  !== undefined) patch.clients  = clients;
     if(pipeline !== undefined) patch.pipeline = pipeline;
@@ -403,7 +403,36 @@ async function handleAutopilot(action, email, body, res){
     if(profile  !== undefined) patch.profile  = profile;
     const { error } = await sb.from("agent_data_sync").upsert(patch,{ onConflict:"user_email" });
     if(error){ console.error("Sync error:",error.message); return res.status(500).json({ error:error.message }); }
-    return res.status(200).json({ synced:true });
+
+    // Synced as a genuinely SEPARATE, isolated write — deliberately not
+    // folded into the patch above. If the `transactions` column doesn't
+    // exist yet (the migration below hasn't been run), this fails on its
+    // own without ever touching the clients/pipeline/goals/profile write
+    // that already succeeded above. One combined upsert would risk the
+    // whole atomic write failing together if the column is missing.
+    // Merged, not replaced — three independent tools (Timeline/
+    // Presentation/CMA) share this one column, each only knowing about
+    // its own slice. A straight .update({transactions}) would silently
+    // wipe out whatever the OTHER two tools had stored, since jsonb
+    // columns don't merge on their own. Fetch what's there, merge the
+    // incoming slice into it, write the merged result back.
+    let transactionsSynced = true;
+    if(transactions !== undefined){
+      try{
+        const { data: existing } = await sb.from("agent_data_sync").select("transactions").eq("user_email", email).single();
+        const merged = { ...(existing?.transactions||{}), ...transactions };
+        const { error: txnError } = await sb.from("agent_data_sync").update({ transactions: merged }).eq("user_email", email);
+        if(txnError){
+          console.warn("Transactions sync failed (has the migration been run yet?):", txnError.message);
+          transactionsSynced = false;
+        }
+      }catch(e){
+        console.warn("Transactions sync failed (has the migration been run yet?):", e.message);
+        transactionsSynced = false;
+      }
+    }
+
+    return res.status(200).json({ synced:true, transactionsSynced });
   }
 
   if(action==="load_data"){
@@ -412,7 +441,19 @@ async function handleAutopilot(action, email, body, res){
       .select("clients,pipeline,goals,profile,synced_at")
       .eq("user_email", email)
       .single();
-    return res.status(200).json({ data:data||null });
+
+    // Loaded as a genuinely separate query, same reasoning as above — if
+    // this column doesn't exist yet, this query alone fails, leaving the
+    // core data above completely unaffected rather than taking the whole
+    // response down with it.
+    let transactions = null;
+    try{
+      const { data: txnData, error: txnError } = await sb
+        .from("agent_data_sync").select("transactions").eq("user_email", email).single();
+      if(!txnError) transactions = txnData?.transactions || null;
+    }catch(e){ /* column doesn't exist yet — transactions just stays null, nothing else affected */ }
+
+    return res.status(200).json({ data: data ? { ...data, transactions } : null });
   }
 
   // ─── PUBLIC LEAD CAPTURE — no auth required, deliberately narrow ─────────
