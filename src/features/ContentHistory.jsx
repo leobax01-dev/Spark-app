@@ -3,6 +3,7 @@
 // Exports: default ContentHistory component + saveGeneration + getHistory utilities
 
 import { useState, useEffect, useMemo } from "react";
+import { cloudSync, cloudLoad } from "../utils/storage";
 
 const LS_KEY      = "spark_content_history_v1";
 const MAX_ENTRIES = 100;
@@ -37,7 +38,7 @@ export function getHistory(){
   catch{ return []; }
 }
 
-export function saveGeneration({ type, inputs, platform, result, planKey }){
+export function saveGeneration({ type, inputs, platform, result, planKey, email }){
   try{
     const history = getHistory();
     const entry = {
@@ -51,6 +52,10 @@ export function saveGeneration({ type, inputs, platform, result, planKey }){
     };
     const updated = [entry, ...history].slice(0, MAX_ENTRIES);
     localStorage.setItem(LS_KEY, JSON.stringify(updated));
+    // Fire-and-forget — never block returning the new entry on a network
+    // call. If it fails (offline, migration not run yet), the local copy
+    // above already has it; the next successful sync catches it up.
+    if(email) cloudSync(email, { generations: updated }).catch(()=>{});
     return entry;
   }catch(e){ console.warn("ContentHistory save failed:", e); return null; }
 }
@@ -348,7 +353,7 @@ function HistoryCard({ entry, onSelect, onToggleStar, index }){
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
-export default function ContentHistory({ onReuse }){
+export default function ContentHistory({ onReuse, user }){
   const [history,    setHistory]    = useState(()=>getHistory());
   const [search,     setSearch]     = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -358,10 +363,28 @@ export default function ContentHistory({ onReuse }){
 
   useEffect(()=>{ setHistory(getHistory()); }, []);
 
+  // Reconcile with the cloud copy on mount. saveGeneration's own cloud
+  // sync is fire-and-forget, so there's a small window right after
+  // generating something where the cloud copy could still be a beat
+  // behind — comparing entry counts instead of blindly trusting the
+  // cloud avoids clobbering fresher local data with a stale sync that
+  // just hasn't landed yet.
+  useEffect(()=>{
+    if(!user?.email) return;
+    cloudLoad(user.email).then(cloud=>{
+      const cloudGenerations = cloud?.generations;
+      if(Array.isArray(cloudGenerations) && cloudGenerations.length > history.length){
+        setHistory(cloudGenerations);
+        localStorage.setItem(LS_KEY, JSON.stringify(cloudGenerations));
+      }
+    }).catch(()=>{});
+  },[user?.email]);
+
   function toggleStar(id){
     const updated = history.map(e=>e.id===id?{...e,starred:!e.starred}:e);
     setHistory(updated);
     localStorage.setItem(LS_KEY, JSON.stringify(updated));
+    if(user?.email) cloudSync(user.email, { generations: updated }).catch(()=>{});
     if(selected?.id===id) setSelected(p=>({...p,starred:!p.starred}));
   }
 
@@ -369,12 +392,14 @@ export default function ContentHistory({ onReuse }){
     const updated = history.filter(e=>e.id!==id);
     setHistory(updated);
     localStorage.setItem(LS_KEY, JSON.stringify(updated));
+    if(user?.email) cloudSync(user.email, { generations: updated }).catch(()=>{});
     setSelected(null);
   }
 
   function clearAll(){
     if(!window.confirm(`Delete all ${history.length} entries? This cannot be undone.`)) return;
     setHistory([]); localStorage.removeItem(LS_KEY); setSelected(null);
+    if(user?.email) cloudSync(user.email, { generations: [] }).catch(()=>{});
   }
 
   const filtered = useMemo(()=>{
