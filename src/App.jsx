@@ -3036,6 +3036,40 @@ function GoogleIntegration({ user }){
   const [connected,     setConnected]     = useState(()=>LS.get("spark_google_connected",false));
   const [googleEmail,   setGoogleEmail]   = useState(()=>LS.get("spark_google_email",""));
   const [disconnecting, setDisconnecting] = useState(false);
+  const [checking,      setChecking]      = useState(false);
+
+  // The local flag above is only ever set as a side effect of the OAuth
+  // callback completing ON THIS DEVICE, or of this exact check succeeding
+  // before. On any other device — a phone, after connecting from a
+  // laptop — that flag was simply never set, and until now nothing here
+  // ever asked the server what the real, account-wide truth actually is.
+  // Google tokens live server-side against the account, not per-device,
+  // so the UI needs to match that instead of trusting a local flag that
+  // may just never have been written on this particular browser.
+  useEffect(()=>{
+    if(!user?.email) return;
+    setChecking(true);
+    fetch("/api/google-data",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ email:user.email, action:"fetch" }),
+    })
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.connected){
+          setConnected(true);
+          setGoogleEmail(d.googleEmail||"");
+          LS.set("spark_google_connected", true);
+          if(d.googleEmail) LS.set("spark_google_email", d.googleEmail);
+        } else if(d.disconnected){
+          setConnected(false);
+          setGoogleEmail("");
+          LS.set("spark_google_connected", false);
+          LS.del("spark_google_email");
+        }
+      })
+      .catch(()=>{}) // offline or transient — leave the last-known local state as-is rather than flip it on a network hiccup
+      .finally(()=>setChecking(false));
+  },[user?.email]);
 
   // Check for Google OAuth callback result in URL — works even if on landing page
   useEffect(()=>{
