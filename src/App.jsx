@@ -3282,12 +3282,119 @@ function InstallSparkCard(){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HELP MODAL — real, in-app guidance instead of a link to a /guide page
+// that was never built. Covers what's actually in the product today, not
+// a marketing description of it.
+// ─────────────────────────────────────────────────────────────────────────────
+function HelpModal({ onClose }){
+  const SECTIONS = [
+    { icon:"Sparkle", color:C.indigo, title:"Autopilot — your team, running in the background",
+      items:[
+        "Runs automatically every morning at your local time — no need to open the app for it to work.",
+        "Opens to a real briefing: what needs your judgment today, and what's already being quietly handled for you.",
+        "Tap \"Talk this through with me\" on anything to jump straight into a conversation about it.",
+        "The team roster below the briefing shows real, live status for each specialist — tap any of them to go deeper.",
+      ]},
+    { icon:"Chat", color:C.violet, title:"Talk to Autopilot — ask it anything, or ask it to act",
+      items:[
+        "Tap the mic in Autopilot's chat and just talk — SPARK listens, transcribes, and responds.",
+        "Ask a question and it answers like a real conversation, grounded in your actual clients and deals.",
+        "Ask it to DO something — \"update Sarah's stage to under contract\" — and it proposes the exact change before touching anything. Nothing is ever saved without your tap to confirm.",
+      ]},
+    { icon:"Clients", color:C.emerald, title:"Smart Intake — speak or drop a file instead of typing",
+      items:[
+        "In Clients, there's an always-visible box at the top — speak into it or drop a screenshot of a text thread or contract.",
+        "SPARK figures out whether it's about an existing client or a new one, shows you exactly what it found, and waits for your confirmation before saving anything.",
+      ]},
+    { icon:"Script", color:C.cyan, title:"Generate — content in your own voice",
+      items:[
+        "Listing descriptions, scripts, social captions, and more — all written to match the voice profile you set up in Settings.",
+        "Every past generation is saved in History, searchable and reusable, and now follows you across devices.",
+      ]},
+    { icon:"Coordinator", color:C.amber, title:"Deals — drop a document instead of retyping it",
+      items:[
+        "The Timeline tool has a dropzone at the top — drop a screenshot of a contract or MLS sheet and SPARK reads it directly into the form.",
+        "Compliance guardrails automatically check listing copy for fair housing issues before you publish anything.",
+      ]},
+    { icon:"Market", color:C.rose, title:"Market — real numbers, not guesses",
+      items:[
+        "Lead response sequences, neighborhood reports, and your business dashboard, all grounded in live market data for your actual zip codes.",
+      ]},
+    { icon:"Wrench", color:C.textDim, title:"Settings — get the most out of it",
+      items:[
+        "Connect Google Calendar & Gmail so your Assistant can see your real schedule and inbox.",
+        "Turn on push notifications and text alerts — free, and they respect real hours (8am–9pm your local time), never at 3am.",
+        "Your voice profile (name, brokerage, market, tone) feeds every piece of content SPARK generates — set it up once, it's used everywhere.",
+      ]},
+  ];
+
+  return(
+    <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:300,
+      background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",
+      padding:20,animation:"fadeUp .15s ease"}}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,
+        maxWidth:560,width:"100%",maxHeight:"85vh",overflowY:"auto",padding:"24px 24px 20px"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+          <div style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text}}>How to Use SPARK</div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",
+            color:C.textDim,cursor:"pointer",fontSize:20,lineHeight:1,padding:4}}>×</button>
+        </div>
+        {SECTIONS.map((s,i)=>{
+          const SecIcon = Icon[s.icon];
+          return(
+            <div key={i} style={{marginBottom:i<SECTIONS.length-1?20:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <div style={{width:26,height:26,borderRadius:7,flexShrink:0,
+                  background:`${s.color}14`,border:`1px solid ${s.color}28`,
+                  display:"flex",alignItems:"center",justifyContent:"center",color:s.color}}>
+                  {SecIcon&&<SecIcon size={13}/>}
+                </div>
+                <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text}}>{s.title}</div>
+              </div>
+              <ul style={{margin:0,paddingLeft:22,display:"flex",flexDirection:"column",gap:5}}>
+                {s.items.map((item,j)=>(
+                  <li key={j} style={{fontFamily:C.F,fontSize:12,color:C.textMd,lineHeight:1.55}}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+        <div style={{marginTop:20,paddingTop:16,borderTop:`1px solid ${C.border}`,
+          fontFamily:C.F,fontSize:11,color:C.textDim,textAlign:"center"}}>
+          Still stuck? <a href="mailto:team@usesparkai.app" style={{color:C.indigoLt}}>team@usesparkai.app</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}){
   const toast = useToast();
   const plan  = PLANS[planKey];
   const [showVidKey, setShowVidKey] = useState(false);
   const [vidKey, setVidKey]         = useState(apiKeys.higgsfield||"");
   const [showDeleteConfirm, setDeleteConfirm] = useState(false);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
+  async function openBillingPortal(){
+    if(!user?.email || billingLoading) return;
+    setBillingLoading(true);
+    try{
+      const r = await fetch("/api/create-billing-portal",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({ email:user.email }),
+      });
+      const d = await r.json();
+      if(!r.ok || d?.error) throw new Error(d?.error || `HTTP ${r.status}`);
+      window.location.href = d.url;
+    }catch(e){
+      toast(e.message?.includes("appears once you upgrade") ? e.message : "Couldn't open billing — try again in a moment", "error");
+      setBillingLoading(false);
+    }
+  }
 
   function saveVidKey(){
     const updated = {...apiKeys, higgsfield:vidKey};
@@ -3508,22 +3615,26 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
         <div style={{fontSize:9,color:C.textDim,letterSpacing:2,fontFamily:C.F,
           fontWeight:700,marginBottom:14}}>SUPPORT</div>
         {[
-          {icon:"📧",label:"Email Support",    sub:"Get help from the SPARK team",    href:"mailto:support@usesparkai.app"},
-          {icon:"💳",label:"Manage Billing",   sub:"Update payment method or cancel",  href:"https://billing.stripe.com"},
-          {icon:"📖",label:"How to Use SPARK", sub:"Tips, guides and best practices",  href:"https://usesparkai.app/guide"},
-        ].map((s,i)=>(
-          <a key={i} href={s.href} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>
+          {icon:"Mail",  label:"Email Support",    sub:"Get help from the SPARK team",
+            href:"mailto:team@usesparkai.app"},
+          {icon:"Dollar",label:billingLoading?"Opening billing...":"Manage Billing", sub:"Update payment method or cancel",
+            onClick:openBillingPortal},
+          {icon:"Bulb",  label:"How to Use SPARK", sub:"Tips, guides and best practices",
+            onClick:()=>setShowHelpModal(true)},
+        ].map((s,i)=>{
+          const SIcon = Icon[s.icon];
+          const content = (
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",
               borderBottom:i<2?`1px solid ${C.border}`:"none",cursor:"pointer",
-              transition:"opacity .14s"}}
+              transition:"opacity .14s",opacity:billingLoading&&i===1?.5:1}}
               onMouseEnter={e=>e.currentTarget.style.opacity=".7"}
-              onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+              onMouseLeave={e=>e.currentTarget.style.opacity=billingLoading&&i===1?".5":"1"}>
               <div style={{width:36,height:36,borderRadius:9,
                 background:"rgba(255,255,255,.04)",
                 border:`1px solid ${C.border}`,
                 display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:16,flexShrink:0}}>
-                {s.icon}
+                color:C.textDim,flexShrink:0}}>
+                {SIcon&&<SIcon size={16}/>}
               </div>
               <div style={{flex:1}}>
                 <div style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text}}>{s.label}</div>
@@ -3531,9 +3642,16 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
               </div>
               <span style={{color:C.textDim,fontSize:16}}>›</span>
             </div>
-          </a>
-        ))}
+          );
+          return s.href ? (
+            <a key={i} href={s.href} target="_blank" rel="noreferrer" style={{textDecoration:"none"}}>{content}</a>
+          ) : (
+            <div key={i} onClick={s.onClick}>{content}</div>
+          );
+        })}
       </div>
+
+      {showHelpModal && <HelpModal onClose={()=>setShowHelpModal(false)}/>}
 
       {/* App info */}
       <div style={{textAlign:"center",padding:"8px 0 4px"}}>
