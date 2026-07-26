@@ -1482,7 +1482,7 @@ function RelationshipManagerHeader(){
 const VALID_STAGES = ["prospect","active","contract","closed"];
 const VALID_TYPES  = ["buyer","seller","both"];
 
-function SmartIntake({ user }){
+function SmartIntake({ user, isMobile }){
   const [mode, setMode] = useState("idle"); // idle | listening | reading | reviewing | applying | error
   const [inputText, setInputText] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -1700,47 +1700,56 @@ function SmartIntake({ user }){
           <div
             onDragOver={e=>e.preventDefault()}
             onDrop={e=>{ e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }}
-            style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+            style={{display:"flex",flexDirection:isMobile?"column":"row",gap:8,alignItems:isMobile?"stretch":"flex-end"}}>
             <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}}
               onChange={e=>handleFile(e.target.files?.[0])}/>
             <textarea
               value={mode==="listening"?inputText:inputText}
               onChange={e=>setInputText(e.target.value)}
-              placeholder={mode==="listening"?"Listening... speak naturally":"Type, speak, or drop a screenshot here..."}
+              placeholder={mode==="listening"?"Listening...":isMobile?"Type, speak, or drop a file...":"Type, speak, or drop a screenshot here..."}
               disabled={mode==="reading"}
               rows={2}
               style={{flex:1,background:mode==="listening"?`${C.rose}08`:C.surface,
                 border:`1px solid ${mode==="listening"?C.rose+"40":C.border}`,borderRadius:9,
-                padding:"9px 11px",color:C.text,fontFamily:C.F,fontSize:12,resize:"none",outline:"none"}}/>
-            {voiceSupported && (
-              <button onClick={()=>mode==="listening"?stopVoice():startVoice()} disabled={mode==="reading"}
-                title={mode==="listening"?"Stop":"Speak"}
-                style={{width:36,height:36,borderRadius:9,flexShrink:0,cursor:"pointer",
-                  border:`1px solid ${mode==="listening"?C.rose+"50":C.border}`,
-                  background:mode==="listening"?C.rose:"transparent",
+                padding:"9px 11px",color:C.text,fontFamily:C.F,fontSize:12,resize:"none",outline:"none",
+                width:isMobile?"100%":"auto",boxSizing:"border-box"}}/>
+            {/* On mobile the buttons get their own full-width row below the
+                textarea instead of squeezing beside it — on a narrow phone
+                that was leaving barely 150px for actual typing, cramped
+                enough to undercut the entire point of a friction-reducing
+                input. Full-width stacking actually solves this rather than
+                just shrinking the same problem. */}
+            <div style={{display:"flex",gap:8,width:isMobile?"100%":"auto"}}>
+              {voiceSupported && (
+                <button onClick={()=>mode==="listening"?stopVoice():startVoice()} disabled={mode==="reading"}
+                  title={mode==="listening"?"Stop":"Speak"}
+                  style={{width:isMobile?44:36,height:isMobile?44:36,borderRadius:9,flexShrink:0,cursor:"pointer",
+                    border:`1px solid ${mode==="listening"?C.rose+"50":C.border}`,
+                    background:mode==="listening"?C.rose:"transparent",
+                    display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke={mode==="listening"?"#fff":C.textDim} strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="23"/>
+                    <line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </button>
+              )}
+              <button onClick={()=>fileInputRef.current?.click()} disabled={mode==="reading"}
+                title="Drop a screenshot"
+                style={{width:isMobile?44:36,height:isMobile?44:36,borderRadius:9,flexShrink:0,cursor:"pointer",
+                  border:`1px solid ${C.border}`,background:"transparent",
                   display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-                  stroke={mode==="listening"?"#fff":C.textDim} strokeWidth="2"
-                  strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
+                <Icon.Script size={15} color={C.textDim}/>
               </button>
-            )}
-            <button onClick={()=>fileInputRef.current?.click()} disabled={mode==="reading"}
-              title="Drop a screenshot"
-              style={{width:36,height:36,borderRadius:9,flexShrink:0,cursor:"pointer",
-                border:`1px solid ${C.border}`,background:"transparent",
-                display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <Icon.Script size={15} color={C.textDim}/>
-            </button>
-            <Button variant="primary" C={C} disabled={mode==="reading"||!inputText.trim()}
-              onClick={()=>processInput(inputText, null)}
-              style={{padding:"9px 14px",fontSize:12,flexShrink:0}}>
-              {mode==="reading"?"...":"Go"}
-            </Button>
+              <Button variant="primary" C={C} disabled={mode==="reading"||!inputText.trim()}
+                onClick={()=>processInput(inputText, null)}
+                style={{padding:"9px 14px",fontSize:12,flexShrink:0,flex:isMobile?1:"none"}}>
+                {mode==="reading"?"...":"Go"}
+              </Button>
+            </div>
           </div>
           {mode==="error" && (
             <div style={{fontFamily:C.F,fontSize:11,color:C.rose,marginTop:8}}>{errorMsg}</div>
@@ -1751,7 +1760,7 @@ function SmartIntake({ user }){
   );
 }
 
-export default function ClientPanel({ user, planKey }){
+export default function ClientPanel({ user, planKey, isMobile }){
   const [tool, setTool] = useState("briefing");
 
   const TOOLS=[
@@ -1764,7 +1773,7 @@ export default function ClientPanel({ user, planKey }){
   return(
     <div style={{paddingBottom:40}}>
       <RelationshipManagerHeader/>
-      <SmartIntake user={user}/>
+      <SmartIntake user={user} isMobile={isMobile}/>
 
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
