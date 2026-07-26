@@ -5,7 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "../components/Icons";
 import { Card, Label, Button, CopyButton } from "../components/UI";
-import { lsGet, lsSet } from "../utils/storage";
+import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMP FETCHER — shared by Presentation and CMA tools
@@ -379,11 +379,12 @@ function DocumentDropzone({ fields, onExtracted, label }){
   );
 }
 
-function TransactionTimeline(){
+function TransactionTimeline({ user }){
   // Was pure in-memory state with zero persistence anywhere — filling out
   // this form, then refreshing the page or just switching tabs and back,
   // silently lost everything, even on the same device. Fixed with the
-  // same local-persistence pattern already proven elsewhere in the app.
+  // same local-persistence pattern already proven elsewhere in the app,
+  // now also cloud-synced so it follows the agent across devices too.
   const [inputs,setInputs]=useState(()=>lsGet("spark_txn_timeline_v1",{
     address:"",offerDate:"",closeDate:"",salePrice:"",
     buyerName:"",buyerAgent:"",inspectionDays:"10",
@@ -391,8 +392,34 @@ function TransactionTimeline(){
   }));
   const [result,setResult]=useState(null);
   const [loading,setLoading]=useState(false);
+  const hydrated = useRef(false);
+
+  // On mount — pull from cloud (source of truth), reconcile with local
+  // cache. Silently does nothing if the transactions column doesn't
+  // exist yet (server returns transactions:null in that case).
+  useEffect(()=>{
+    if(!user?.email){ hydrated.current=true; return; }
+    (async ()=>{
+      const cloud = await cloudLoad(user.email);
+      const cloudTimeline = cloud?.transactions?.timeline;
+      if(cloudTimeline && Object.keys(cloudTimeline).length>0){
+        setInputs(cloudTimeline);
+        lsSet("spark_txn_timeline_v1", cloudTimeline);
+      }
+      hydrated.current = true;
+    })();
+  },[]);
 
   useEffect(()=>{ lsSet("spark_txn_timeline_v1", inputs); }, [inputs]);
+
+  // Debounced cloud sync whenever inputs change — sends only this tool's
+  // own slice; the server merges it with whatever Presentation/CMA
+  // already have stored rather than overwriting them.
+  useEffect(()=>{
+    if(!hydrated.current || !user?.email) return;
+    const timeout = setTimeout(()=>{ cloudSync(user.email, { transactions:{ timeline:inputs } }); }, 900);
+    return ()=>clearTimeout(timeout);
+  },[inputs]);
 
   function set(k){ return v=>setInputs(p=>({...p,[k]:v})); }
 
@@ -566,7 +593,7 @@ function TransactionTimeline(){
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 2 — LISTING PRESENTATION BUILDER
 // ─────────────────────────────────────────────────────────────────────────────
-function ListingPresentation(){
+function ListingPresentation({ user }){
   const [inputs,setInputs]=useState(()=>lsGet("spark_txn_presentation_v1",{
     address:"", askingPrice:"", beds:"", baths:"", sqft:"",
     keyFeatures:"", neighborhood:"",
@@ -577,8 +604,28 @@ function ListingPresentation(){
   const [loading,setLoading]=useState(false);
   const [compOverrides,setCompOverrides]=useState({});
   const { compsLoading, compsError, compsData, fetchComps } = useCompFetcher();
+  const hydrated = useRef(false);
+
+  useEffect(()=>{
+    if(!user?.email){ hydrated.current=true; return; }
+    (async ()=>{
+      const cloud = await cloudLoad(user.email);
+      const cloudPresentation = cloud?.transactions?.presentation;
+      if(cloudPresentation && Object.keys(cloudPresentation).length>0){
+        setInputs(cloudPresentation);
+        lsSet("spark_txn_presentation_v1", cloudPresentation);
+      }
+      hydrated.current = true;
+    })();
+  },[]);
 
   useEffect(()=>{ lsSet("spark_txn_presentation_v1", inputs); }, [inputs]);
+
+  useEffect(()=>{
+    if(!hydrated.current || !user?.email) return;
+    const timeout = setTimeout(()=>{ cloudSync(user.email, { transactions:{ presentation:inputs } }); }, 900);
+    return ()=>clearTimeout(timeout);
+  },[inputs]);
 
   function set(k){ return v=>{
     setInputs(p=>({...p,[k]:v}));
@@ -733,7 +780,7 @@ Return ONLY valid JSON:
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 3 — PRICING STRATEGY & CMA ANALYZER
 // ─────────────────────────────────────────────────────────────────────────────
-function CMAAnalyzer(){
+function CMAAnalyzer({ user }){
   const [inputs,setInputs]=useState(()=>lsGet("spark_txn_cma_v1",{
     address:"", beds:"", baths:"", sqft:"", condition:"",
     lotSize:"", yearBuilt:"", features:"", neighborhood:"",
@@ -743,8 +790,28 @@ function CMAAnalyzer(){
   const [loading,setLoading]=useState(false);
   const [compOverrides,setCompOverrides]=useState({});
   const { compsLoading, compsError, compsData, fetchComps } = useCompFetcher();
+  const hydrated = useRef(false);
+
+  useEffect(()=>{
+    if(!user?.email){ hydrated.current=true; return; }
+    (async ()=>{
+      const cloud = await cloudLoad(user.email);
+      const cloudCma = cloud?.transactions?.cma;
+      if(cloudCma && Object.keys(cloudCma).length>0){
+        setInputs(cloudCma);
+        lsSet("spark_txn_cma_v1", cloudCma);
+      }
+      hydrated.current = true;
+    })();
+  },[]);
 
   useEffect(()=>{ lsSet("spark_txn_cma_v1", inputs); }, [inputs]);
+
+  useEffect(()=>{
+    if(!hydrated.current || !user?.email) return;
+    const timeout = setTimeout(()=>{ cloudSync(user.email, { transactions:{ cma:inputs } }); }, 900);
+    return ()=>clearTimeout(timeout);
+  },[inputs]);
 
   function set(k){ return v=>{
     setInputs(p=>({...p,[k]:v}));
@@ -965,9 +1032,9 @@ export default function TransactionPanel({ user, planKey, isMobile }){
       </div>
 
       {/* Active tool */}
-      {tool==="timeline"     && <TransactionTimeline/>}
-      {tool==="presentation" && <ListingPresentation/>}
-      {tool==="cma"          && <CMAAnalyzer/>}
+      {tool==="timeline"     && <TransactionTimeline user={user}/>}
+      {tool==="presentation" && <ListingPresentation user={user}/>}
+      {tool==="cma"          && <CMAAnalyzer user={user}/>}
     </div>
   );
 }
