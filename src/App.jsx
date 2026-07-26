@@ -4710,23 +4710,19 @@ function MainApp({user,onLogout}){
       paddingTop:"calc(10px + env(safe-area-inset-top))"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <Logo small/>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {/* Credits pill — premium */}
-          <div onClick={()=>setTab("settings")} style={{display:"flex",alignItems:"center",gap:6,
-            background:`linear-gradient(135deg,${plan.accent}14,${C.violet}0a)`,
-            border:`1px solid ${plan.accent}30`,
-            borderRadius:10,padding:"6px 11px",cursor:"pointer",
-            boxShadow:`0 0 12px ${plan.accent}18`}}>
-            <div style={{width:5,height:5,borderRadius:"50%",background:plan.accent,boxShadow:`0 0 6px ${plan.accent}`}}/>
-            <span style={{fontSize:13,color:C.text,fontFamily:C.F,fontWeight:800,letterSpacing:-.3}}>{displayCredits(credits)}</span>
-            <span style={{fontSize:9,color:plan.accent,fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>CR</span>
-          </div>
-          <button className="signout-btn" onClick={doLogout}
-            style={{background:"transparent",border:`1px solid ${C.border}`,
-              color:C.textDim,cursor:"pointer",fontSize:11,fontFamily:C.F,
-              fontWeight:600,padding:"6px 11px",borderRadius:8,letterSpacing:.3}}>
-            Sign out
-          </button>
+        {/* Sign out lived here permanently on every single screen — that's
+            desktop-header thinking, not mobile. It's one tap away in
+            Settings (which already has its own Sign Out) via this same
+            credits pill, so removing the dedicated button here just gives
+            the header its space back without losing the action anywhere. */}
+        <div onClick={()=>setTab("settings")} style={{display:"flex",alignItems:"center",gap:6,
+          background:`linear-gradient(135deg,${plan.accent}14,${C.violet}0a)`,
+          border:`1px solid ${plan.accent}30`,
+          borderRadius:10,padding:"6px 11px",cursor:"pointer",
+          boxShadow:`0 0 12px ${plan.accent}18`}}>
+          <div style={{width:5,height:5,borderRadius:"50%",background:plan.accent,boxShadow:`0 0 6px ${plan.accent}`}}/>
+          <span style={{fontSize:13,color:C.text,fontFamily:C.F,fontWeight:800,letterSpacing:-.3}}>{displayCredits(credits)}</span>
+          <span style={{fontSize:9,color:plan.accent,fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>CR</span>
         </div>
       </div>
     </div>
