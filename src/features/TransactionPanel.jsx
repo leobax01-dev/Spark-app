@@ -785,7 +785,7 @@ function CoordinatorHeader(){
   );
 }
 
-export default function TransactionPanel({ user, planKey }){
+export default function TransactionPanel({ user, planKey, isMobile }){
   const [tool,setTool]=useState("timeline");
 
   const TOOLS=[
@@ -799,7 +799,7 @@ export default function TransactionPanel({ user, planKey }){
       <CoordinatorHeader/>
 
       {/* Tool selector */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(3,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
           const TIcon = Icon[t.icon];
           return(
