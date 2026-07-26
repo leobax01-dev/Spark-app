@@ -395,7 +395,7 @@ async function handleAutopilot(action, email, body, res){
   }
 
   if(action==="sync_data"){
-    const { clients, pipeline, goals, profile, transactions } = body;
+    const { clients, pipeline, goals, profile, transactions, generations } = body;
     const patch = { user_email: email, synced_at: new Date().toISOString() };
     if(clients  !== undefined) patch.clients  = clients;
     if(pipeline !== undefined) patch.pipeline = pipeline;
@@ -432,7 +432,21 @@ async function handleAutopilot(action, email, body, res){
       }
     }
 
-    return res.status(200).json({ synced:true, transactionsSynced });
+    // Same isolation principle as transactions above — a separate write
+    // that can't jeopardize the core sync if its own column doesn't
+    // exist yet. No merge needed here though: ContentHistory is the only
+    // thing that ever writes this field, so a straight replace is safe —
+    // the client always sends its own complete, already-deduped list.
+    let generationsSynced = true;
+    if(generations !== undefined){
+      const { error: genError } = await sb.from("agent_data_sync").update({ generations }).eq("user_email", email);
+      if(genError){
+        console.warn("Generations sync failed (has the migration been run yet?):", genError.message);
+        generationsSynced = false;
+      }
+    }
+
+    return res.status(200).json({ synced:true, transactionsSynced, generationsSynced });
   }
 
   if(action==="load_data"){
@@ -453,7 +467,14 @@ async function handleAutopilot(action, email, body, res){
       if(!txnError) transactions = txnData?.transactions || null;
     }catch(e){ /* column doesn't exist yet — transactions just stays null, nothing else affected */ }
 
-    return res.status(200).json({ data: data ? { ...data, transactions } : null });
+    let generations = null;
+    try{
+      const { data: genData, error: genError } = await sb
+        .from("agent_data_sync").select("generations").eq("user_email", email).single();
+      if(!genError) generations = genData?.generations || null;
+    }catch(e){ /* column doesn't exist yet — generations just stays null, nothing else affected */ }
+
+    return res.status(200).json({ data: data ? { ...data, transactions, generations } : null });
   }
 
   // ─── PUBLIC LEAD CAPTURE — no auth required, deliberately narrow ─────────
