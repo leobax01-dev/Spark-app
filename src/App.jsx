@@ -4428,6 +4428,8 @@ function MainApp({user,onLogout}){
   const [apiKeys,setApiKeys]=useState(()=>LS.get("sp_keys",{anthropic:"",higgsfield:""}));
   const [showOnboard,setOnboard] =useState(()=>LS.get("sp_onboarded",false)===false);
   const [isMobile,setIsMobile]   =useState(()=>window.innerWidth<768);
+  const [showMoreMenu,setShowMoreMenu] = useState(false); // mobile "More" sheet — see MobileNav
+  useEffect(()=>{ setShowMoreMenu(false); },[tab]); // closes it even when setTab is called from elsewhere (deep links, onNavigate from child panels) — not just the two handlers inside MobileNav itself
   const toast=useToast();
   const plan=PLANS[planKey];
 
@@ -4531,6 +4533,16 @@ function MainApp({user,onLogout}){
     {id:"settings",    icon:"⚙",  label:"Settings"},
   ];
 
+  // Mobile only — 8 tabs in one row is roughly double what a bottom nav
+  // should hold (Apple's own guidance caps it at 5). The 4 highest-frequency
+  // destinations stay directly visible; everything else lives one tap away
+  // behind "More" instead of being permanently crammed into the row.
+  // Desktop's sidebar still uses the full NAV array above, untouched.
+  const NAV_PRIMARY_IDS = ["autopilot","generate","clients","transactions"];
+  const NAV_PRIMARY = NAV.filter(n=>NAV_PRIMARY_IDS.includes(n.id));
+  const NAV_MORE     = NAV.filter(n=>!NAV_PRIMARY_IDS.includes(n.id));
+  const moreTabActive = NAV_MORE.some(n=>n.id===tab);
+
   const TITLES={
     autopilot:    <>SPARK <Shimmer>Autopilot</Shimmer></>,
     generate:     <>Generate <Shimmer>Content</Shimmer></>,
@@ -4566,6 +4578,7 @@ function MainApp({user,onLogout}){
   };
 
   const MobileNav = ()=>(
+    <>
     <div style={{
       position:"fixed",bottom:0,left:0,right:0,
       background:"rgba(4,4,10,.96)",
@@ -4576,10 +4589,10 @@ function MainApp({user,onLogout}){
       zIndex:200,
       paddingBottom:"env(safe-area-inset-bottom)",
     }}>
-      {NAV.map(item=>{
+      {NAV_PRIMARY.map(item=>{
         const active=tab===item.id;
         return(
-          <button key={item.id} className="mobile-nav-btn" onClick={()=>setTab(item.id)}
+          <button key={item.id} className="mobile-nav-btn" onClick={()=>{ setTab(item.id); setShowMoreMenu(false); }}
             style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",
               justifyContent:"center",gap:4,padding:"10px 0 8px",
               background:"transparent",border:"none",cursor:"pointer",
@@ -4612,20 +4625,78 @@ function MainApp({user,onLogout}){
                 width:5,height:5,borderRadius:"50%",
                 background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
             )}
-            {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
-              <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
-                width:6,height:6,borderRadius:"50%",
-                background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
-            )}
-            {item.id==="affiliate"&&(
-              <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
-                width:5,height:5,borderRadius:"50%",
-                background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
-            )}
           </button>
         );
       })}
+
+      {/* "More" — folds Market/Calc/Affiliate/Settings behind one tap instead
+          of cramming all 8 destinations into a single row. Carries forward
+          the same notification signals those items used to show individually
+          (low credits, affiliate badge) so nothing goes silently missed just
+          because it's one level deeper now. */}
+      <button className="mobile-nav-btn" onClick={()=>setShowMoreMenu(v=>!v)}
+        style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",
+          justifyContent:"center",gap:4,padding:"10px 0 8px",
+          background:"transparent",border:"none",cursor:"pointer",
+          position:"relative",minHeight:58}}>
+        {(moreTabActive||showMoreMenu)&&<div style={{position:"absolute",inset:"6px 4px",borderRadius:10,
+          background:`linear-gradient(135deg,${C.indigo}18,${C.violet}0e)`,
+          border:`1px solid ${C.indigo}28`}}/>}
+        <span style={{color:(moreTabActive||showMoreMenu)?C.indigoLt:"rgba(255,255,255,.32)",
+          transition:"all .16s ease",position:"relative",zIndex:1}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+        </span>
+        <span style={{fontSize:9,fontFamily:C.F,fontWeight:(moreTabActive||showMoreMenu)?700:500,
+          color:(moreTabActive||showMoreMenu)?C.indigoLt:"rgba(255,255,255,.28)",
+          letterSpacing:.3,position:"relative",zIndex:1}}>
+          More
+        </span>
+        {(credits<5&&planKey!=="premium")&&(
+          <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
+            width:6,height:6,borderRadius:"50%",
+            background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
+        )}
+      </button>
     </div>
+
+    {/* More sheet — slides up from the same spot the tab bar sits, so it
+        reads as an extension of the nav rather than a separate modal. */}
+    {showMoreMenu&&(
+      <>
+        <div onClick={()=>setShowMoreMenu(false)} style={{
+          position:"fixed",inset:0,zIndex:199,background:"rgba(0,0,0,.5)",
+          animation:"fadeUp .15s ease"}}/>
+        <div style={{
+          position:"fixed",bottom:"calc(58px + env(safe-area-inset-bottom))",left:0,right:0,zIndex:200,
+          background:"rgba(10,10,16,.98)",borderTop:`1px solid ${C.border}`,
+          borderRadius:"16px 16px 0 0",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",
+          padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",
+          display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,
+        }}>
+          {NAV_MORE.map(item=>{
+            const active=tab===item.id;
+            return(
+              <button key={item.id} onClick={()=>{ setTab(item.id); setShowMoreMenu(false); }}
+                style={{display:"flex",alignItems:"center",gap:10,padding:"13px 14px",
+                  borderRadius:11,border:`1px solid ${active?C.indigo+"40":C.border}`,
+                  background:active?`${C.indigo}12`:"transparent",cursor:"pointer",position:"relative"}}>
+                <span style={{color:active?C.indigoLt:"rgba(255,255,255,.5)"}}>{NAV_ICONS[item.id]||item.icon}</span>
+                <span style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:active?C.indigoLt:C.text}}>{item.label}</span>
+                {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
+                  <div style={{position:"absolute",top:8,right:8,width:6,height:6,borderRadius:"50%",
+                    background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
+                )}
+                {item.id==="affiliate"&&(
+                  <div style={{position:"absolute",top:8,right:8,width:5,height:5,borderRadius:"50%",
+                    background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </>
+    )}
+    </>
   );
 
   // ── MOBILE HEADER ──────────────────────────────────────────────────────────
