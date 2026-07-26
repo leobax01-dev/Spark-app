@@ -1471,6 +1471,286 @@ function RelationshipManagerHeader(){
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SMART INTAKE — speak or drop a file, SPARK figures out whether it's about
+// an existing client or a new one, extracts what it can, and shows exactly
+// what it's about to do before touching any real record. Never writes
+// automatically — same "propose, then confirm" principle "Send It For Me"
+// already uses elsewhere in this app, deliberately, because a misread here
+// means a corrupted client record, not just an unfilled form field.
+// ─────────────────────────────────────────────────────────────────────────────
+const VALID_STAGES = ["prospect","active","contract","closed"];
+const VALID_TYPES  = ["buyer","seller","both"];
+
+function SmartIntake({ user }){
+  const [mode, setMode] = useState("idle"); // idle | listening | reading | reviewing | applying | error
+  const [inputText, setInputText] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [proposal, setProposal] = useState(null); // the AI's classify+extract result
+  const [confirmedOk, setConfirmedOk] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  useEffect(()=>{
+    setVoiceSupported("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  },[]);
+
+  function startVoice(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SR();
+    recognitionRef.current = recognition;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onstart = ()=>{ setMode("listening"); setInputText(""); };
+    recognition.onresult = (e)=>{
+      let final = "";
+      for(let i=e.resultIndex; i<e.results.length; i++){
+        if(e.results[i].isFinal) final += e.results[i][0].transcript;
+      }
+      if(final) setInputText(prev=>(prev+" "+final).trim());
+    };
+    recognition.onend = ()=>{ setMode(prev=>prev==="listening"?"idle":prev); };
+    recognition.onerror = (e)=>{
+      const reasons = {
+        "not-allowed": "Microphone access is blocked — check your browser's site permissions.",
+        "audio-capture": "No microphone found on this device.",
+        "network": "Voice input needs an internet connection.",
+      };
+      if(reasons[e.error]){ setErrorMsg(reasons[e.error]); setMode("error"); }
+      else setMode("idle");
+    };
+    recognition.start();
+  }
+
+  function stopVoice(){
+    recognitionRef.current?.stop();
+  }
+
+  async function processInput(textInput, imageData){
+    setMode("reading");
+    setErrorMsg("");
+    try{
+      const clients = lsGet(LS_KEY, []);
+      const clientList = clients.map(c=>({id:c.id, name:c.name})).filter(c=>c.name);
+
+      const content = [];
+      if(imageData){
+        content.push({ type:"image", source:{ type:"base64", media_type:imageData.type, data:imageData.base64 } });
+      }
+      content.push({ type:"text", text:
+        `Existing clients (for matching only — never invent a match that isn't a strong fit): ${JSON.stringify(clientList)}\n\n` +
+        `Agent's input: ${textInput || "(see attached image)"}\n\n` +
+        `Return ONLY this JSON:\n{"matchType":"existing or new","matchedClientId":"id from the list above, or null","matchedClientName":"the client's name, best guess if new","confidence":"high, medium, or low","summary":"one plain sentence describing what you understood, written for the agent to review before anything is saved","updates":{"name":"","phone":"","email":"","type":"buyer, seller, both, or empty if unclear","stage":"prospect, active, contract, closed, or empty if not mentioned","property":"","budget":"","timeline":"","motivation":"","noteToAdd":"a short note capturing what happened, close to the agent's own words","nextAction":""}}`
+      });
+
+      const r = await fetch("/api/claude",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          system:"You are SPARK's Relationship Manager, reading a quick voice note, typed note, or document from a real estate agent to figure out what needs to be added or updated in their client records. Be conservative about matching — only mark matchType as 'existing' if you're genuinely confident which client this is about; otherwise treat it as 'new'. Only extract information actually present in the input; never invent details. Return ONLY valid JSON.",
+          messages:[{ role:"user", content }],
+          max_tokens:900,
+        }),
+      });
+      const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
+      const raw = d.content?.[0]?.text||"";
+      const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
+      if(first===-1||last===-1) throw new Error("Couldn't make sense of that");
+      const parsed = JSON.parse(cleaned.slice(first,last+1));
+
+      // Validate enum fields before they ever reach a real record — an
+      // unexpected stage/type string would silently break badges and
+      // filters elsewhere in this app that expect exact matches.
+      if(parsed.updates){
+        if(!VALID_STAGES.includes(parsed.updates.stage)) parsed.updates.stage = "";
+        if(!VALID_TYPES.includes(parsed.updates.type)) parsed.updates.type = "";
+      }
+
+      const hasAnyContent = parsed.updates && Object.values(parsed.updates).some(v=>v&&String(v).trim());
+      if(!hasAnyContent){
+        setMode("error");
+        setErrorMsg("Didn't find anything usable there — try again with a bit more detail.");
+        return;
+      }
+
+      setProposal(parsed);
+      setMode("reviewing");
+    }catch(e){
+      console.error("Smart intake failed:", e);
+      setMode("error");
+      setErrorMsg(`Couldn't process that: ${e.message}`);
+    }
+  }
+
+  async function handleFile(file){
+    if(!file) return;
+    if(!file.type.startsWith("image/")){
+      setMode("error");
+      setErrorMsg("Screenshots and photos only for now, not PDFs.");
+      return;
+    }
+    try{
+      const base64 = await new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>resolve(reader.result.split(",")[1]);
+        reader.onerror = ()=>reject(new Error("Couldn't read the file"));
+        reader.readAsDataURL(file);
+      });
+      await processInput("", { base64, type:file.type });
+    }catch(e){
+      setMode("error");
+      setErrorMsg(e.message);
+    }
+  }
+
+  function applyProposal(){
+    if(!proposal) return;
+    setMode("applying");
+    const clients = lsGet(LS_KEY, []);
+    const now = new Date().toISOString();
+    const u = proposal.updates||{};
+    let updated;
+
+    if(proposal.matchType==="existing" && proposal.matchedClientId){
+      updated = clients.map(c=>{
+        if(c.id!==proposal.matchedClientId) return c;
+        const noteAddition = u.noteToAdd ? `\n[${new Date().toLocaleDateString()}] ${u.noteToAdd}` : "";
+        return {
+          ...c,
+          phone: u.phone||c.phone, email: u.email||c.email, type: u.type||c.type,
+          stage: u.stage||c.stage, property: u.property||c.property,
+          budget: u.budget||c.budget, timeline: u.timeline||c.timeline,
+          motivation: u.motivation||c.motivation,
+          notes: (c.notes||"")+noteAddition,
+          nextAction: u.nextAction||c.nextAction,
+          lastContact: now,
+        };
+      });
+    } else {
+      const newClient = {
+        ...BLANK_CLIENT, id:`intake_${Date.now()}`,
+        name: u.name||proposal.matchedClientName||"Unnamed client",
+        phone:u.phone||"", email:u.email||"", type:u.type||"buyer", stage:u.stage||"prospect",
+        property:u.property||"", budget:u.budget||"", timeline:u.timeline||"",
+        motivation:u.motivation||"", notes:u.noteToAdd||"", nextAction:u.nextAction||"",
+        lastContact:now, createdAt:now, source:"smart_intake",
+      };
+      updated = [...clients, newClient];
+    }
+
+    lsSet(LS_KEY, updated);
+    if(user?.email) cloudSync(user.email, { clients: updated });
+
+    setConfirmedOk(true);
+    setTimeout(()=>{
+      setMode("idle"); setInputText(""); setProposal(null); setConfirmedOk(false);
+    }, 2200);
+  }
+
+  function cancelProposal(){
+    setProposal(null);
+    setMode("idle");
+  }
+
+  return(
+    <div style={{background:C.surfaceUp,border:`1px solid ${C.borderMd}`,borderRadius:14,padding:"14px 16px",marginBottom:18}}>
+      {mode==="reviewing" && proposal ? (
+        <div>
+          <div style={{fontFamily:C.F,fontSize:9,fontWeight:700,color:C.indigoLt,letterSpacing:1,marginBottom:8}}>
+            {proposal.matchType==="existing" ? "UPDATING AN EXISTING CLIENT" : "THIS LOOKS LIKE A NEW CLIENT"}
+            {proposal.confidence==="low" && <span style={{color:C.amber}}> · not fully sure — please check this</span>}
+          </div>
+          <div style={{fontFamily:C.F,fontSize:13,color:C.text,fontWeight:600,marginBottom:10}}>
+            {proposal.summary}
+          </div>
+          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:12}}>
+            {Object.entries(proposal.updates||{}).filter(([k,v])=>v&&String(v).trim()).map(([k,v])=>(
+              <div key={k} style={{display:"flex",gap:8,fontFamily:C.F,fontSize:11,marginBottom:4}}>
+                <span style={{color:C.textDim,minWidth:80,textTransform:"capitalize"}}>{k.replace(/([A-Z])/g," $1")}:</span>
+                <span style={{color:C.textMd}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <Button variant="secondary" C={C} onClick={cancelProposal} style={{flex:1,padding:"9px 0",fontSize:12}}>
+              Not quite — cancel
+            </Button>
+            <Button variant="primary" C={C} onClick={applyProposal} style={{flex:1,padding:"9px 0",fontSize:12}}>
+              {proposal.matchType==="existing" ? "Update this client" : "Add as new client"}
+            </Button>
+          </div>
+        </div>
+      ) : mode==="applying" && confirmedOk ? (
+        <div style={{textAlign:"center",padding:"8px 0"}}>
+          <div style={{fontFamily:C.F,fontSize:13,color:C.emerald,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <Icon.Check size={15}/> Saved
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{fontFamily:C.F,fontSize:11,fontWeight:700,color:C.text,marginBottom:8}}>
+            Speak or drop a file — SPARK will figure out where it goes
+          </div>
+          <div
+            onDragOver={e=>e.preventDefault()}
+            onDrop={e=>{ e.preventDefault(); handleFile(e.dataTransfer.files?.[0]); }}
+            style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+            <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}}
+              onChange={e=>handleFile(e.target.files?.[0])}/>
+            <textarea
+              value={mode==="listening"?inputText:inputText}
+              onChange={e=>setInputText(e.target.value)}
+              placeholder={mode==="listening"?"Listening... speak naturally":"Type, speak, or drop a screenshot here..."}
+              disabled={mode==="reading"}
+              rows={2}
+              style={{flex:1,background:mode==="listening"?`${C.rose}08`:C.surface,
+                border:`1px solid ${mode==="listening"?C.rose+"40":C.border}`,borderRadius:9,
+                padding:"9px 11px",color:C.text,fontFamily:C.F,fontSize:12,resize:"none",outline:"none"}}/>
+            {voiceSupported && (
+              <button onClick={()=>mode==="listening"?stopVoice():startVoice()} disabled={mode==="reading"}
+                title={mode==="listening"?"Stop":"Speak"}
+                style={{width:36,height:36,borderRadius:9,flexShrink:0,cursor:"pointer",
+                  border:`1px solid ${mode==="listening"?C.rose+"50":C.border}`,
+                  background:mode==="listening"?C.rose:"transparent",
+                  display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                  stroke={mode==="listening"?"#fff":C.textDim} strokeWidth="2"
+                  strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
+            )}
+            <button onClick={()=>fileInputRef.current?.click()} disabled={mode==="reading"}
+              title="Drop a screenshot"
+              style={{width:36,height:36,borderRadius:9,flexShrink:0,cursor:"pointer",
+                border:`1px solid ${C.border}`,background:"transparent",
+                display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <Icon.Script size={15} color={C.textDim}/>
+            </button>
+            <Button variant="primary" C={C} disabled={mode==="reading"||!inputText.trim()}
+              onClick={()=>processInput(inputText, null)}
+              style={{padding:"9px 14px",fontSize:12,flexShrink:0}}>
+              {mode==="reading"?"...":"Go"}
+            </Button>
+          </div>
+          {mode==="error" && (
+            <div style={{fontFamily:C.F,fontSize:11,color:C.rose,marginTop:8}}>{errorMsg}</div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ClientPanel({ user, planKey }){
   const [tool, setTool] = useState("briefing");
 
@@ -1484,6 +1764,7 @@ export default function ClientPanel({ user, planKey }){
   return(
     <div style={{paddingBottom:40}}>
       <RelationshipManagerHeader/>
+      <SmartIntake user={user}/>
 
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
