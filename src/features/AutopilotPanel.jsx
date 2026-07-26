@@ -4249,7 +4249,22 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
   ];
 
   return(
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 170px)",minHeight:500,position:"relative"}}>
+    <div style={{display:"flex",flexDirection:"column",
+      // The old flat "100vh - 170px" was one static number used for both
+      // desktop AND mobile — but mobile's actual header/nav are much
+      // shorter than whatever that number was tuned against, so the box
+      // rendered shorter than the real available space, leaving dead
+      // space at the bottom. On mobile the parent scroll container
+      // (spark-final.jsx) already reserves 90px of bottom padding to
+      // clear the fixed nav bar, so this shouldn't subtract nav height
+      // again — that would double-compensate and make the gap worse, not
+      // better. Uses dvh (dynamic viewport height) + real env() safe-area
+      // values instead of a guessed pixel number, since those are exact
+      // by definition rather than estimated.
+      height:isMobile
+        ? "calc(100dvh - 65px - env(safe-area-inset-top))"
+        : "calc(100vh - 170px)",
+      minHeight:500,position:"relative"}}>
 
       <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
         onNavigate={onNavigate} onOpenTab={setApTab}/>
