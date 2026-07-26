@@ -266,6 +266,119 @@ function CompsPanel({ compsLoading, compsError, compsData, overrides, setOverrid
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 1 — TRANSACTION TIMELINE GENERATOR
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCUMENT DROPZONE — drop a screenshot of a contract, MLS sheet, or text
+// thread and have Claude read it directly, instead of retyping it into a
+// form field by field. Uses the exact same /api/claude proxy every other
+// feature in this app already goes through — Claude accepts images natively,
+// so this needed zero new backend, zero new vendor, zero new cost. Scoped to
+// images specifically (screenshots/photos) for now, not raw PDFs — parsing a
+// multi-page PDF client-side needs its own render step (pdf.js) and that's a
+// real enough piece of work to deserve its own pass, not a rushed add-on here.
+// ─────────────────────────────────────────────────────────────────────────────
+function DocumentDropzone({ fields, onExtracted, label }){
+  const [dragActive, setDragActive] = useState(false);
+  const [status, setStatus] = useState("idle"); // idle | reading | error
+  const [errorMsg, setErrorMsg] = useState("");
+  const [previewName, setPreviewName] = useState("");
+  const fileInputRef = useRef(null);
+
+  async function handleFile(file){
+    if(!file) return;
+    if(!file.type.startsWith("image/")){
+      setStatus("error");
+      setErrorMsg("That's not an image — screenshots and photos only for now, not PDFs.");
+      return;
+    }
+    setPreviewName(file.name);
+    setStatus("reading");
+    setErrorMsg("");
+
+    try{
+      const base64 = await new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = ()=>resolve(reader.result.split(",")[1]);
+        reader.onerror = ()=>reject(new Error("Couldn't read the file"));
+        reader.readAsDataURL(file);
+      });
+
+      const fieldList = fields.map(f=>`"${f.key}":"${f.hint}"`).join(",");
+      const r = await fetch("/api/claude",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          system:"You are extracting real estate transaction details from a document image for SPARK's Coordinator. Read the image carefully — it may be a screenshot of a contract, an MLS sheet, or a text conversation. Only extract information you can actually see; never guess or invent a value. Return ONLY valid JSON, no markdown, no code fences.",
+          messages:[{
+            role:"user",
+            content:[
+              { type:"image", source:{ type:"base64", media_type:file.type, data:base64 } },
+              { type:"text", text:`Extract these fields if present in the image, leave any you can't find as an empty string: {${fieldList}}` },
+            ],
+          }],
+          max_tokens:1000,
+        }),
+      });
+      const d = await r.json();
+      if(!r.ok || d?.error || d?.type==="error"){
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
+      const raw = d.content?.[0]?.text||"";
+      const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
+      const first = cleaned.indexOf("{"); const last = cleaned.lastIndexOf("}");
+      if(first===-1||last===-1) throw new Error("Couldn't find readable text in that image");
+      const extracted = JSON.parse(cleaned.slice(first,last+1));
+
+      const foundCount = Object.values(extracted).filter(v=>v&&String(v).trim()).length;
+      if(foundCount===0){
+        setStatus("error");
+        setErrorMsg("Didn't find anything usable in that image — try a clearer screenshot, or fill it in manually.");
+        return;
+      }
+
+      onExtracted(extracted);
+      setStatus("idle");
+    }catch(e){
+      console.error("Document parse failed:", e);
+      setStatus("error");
+      setErrorMsg(`Couldn't read that: ${e.message}`);
+    }
+  }
+
+  return(
+    <div
+      onDragOver={e=>{ e.preventDefault(); setDragActive(true); }}
+      onDragLeave={()=>setDragActive(false)}
+      onDrop={e=>{ e.preventDefault(); setDragActive(false); handleFile(e.dataTransfer.files?.[0]); }}
+      onClick={()=>fileInputRef.current?.click()}
+      style={{
+        border:`1.5px dashed ${dragActive?C.indigo:status==="error"?C.rose+"60":C.border}`,
+        borderRadius:12, padding:"16px 14px", cursor:"pointer", textAlign:"center",
+        background:dragActive?`${C.indigo}0c`:"rgba(255,255,255,.015)",
+        transition:"all .15s ease", marginBottom:16,
+      }}>
+      <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}}
+        onChange={e=>handleFile(e.target.files?.[0])}/>
+      {status==="reading" ? (
+        <div style={{fontFamily:C.F,fontSize:12,color:C.indigoLt,fontWeight:600}}>
+          Reading {previewName}...
+        </div>
+      ) : status==="error" ? (
+        <div>
+          <div style={{fontFamily:C.F,fontSize:11,color:C.rose,fontWeight:600,marginBottom:2}}>{errorMsg}</div>
+          <div style={{fontFamily:C.F,fontSize:10,color:C.textDim}}>Tap to try another image</div>
+        </div>
+      ) : (
+        <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <Icon.Script size={15} color={C.textDim}/>
+          <div style={{fontFamily:C.F,fontSize:11,color:C.textMd,fontWeight:600}}>
+            {label || "Drop a screenshot of the contract or MLS sheet — SPARK will fill this in for you"}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TransactionTimeline(){
   const [inputs,setInputs]=useState({
     address:"",offerDate:"",closeDate:"",salePrice:"",
@@ -333,6 +446,25 @@ function TransactionTimeline(){
     <div style={{animation:"fadeUp .35s ease"}}>
       <TCard accent={C.indigo}>
         <TLabel color={C.indigo}>TRANSACTION DETAILS</TLabel>
+        <DocumentDropzone
+          fields={[
+            {key:"address",    hint:"property street address"},
+            {key:"salePrice",  hint:"sale or offer price, formatted like $1,250,000"},
+            {key:"buyerName",  hint:"buyer's full name(s)"},
+            {key:"buyerAgent", hint:"buyer's agent name"},
+            {key:"offerDate",  hint:"offer accepted date, formatted YYYY-MM-DD"},
+            {key:"closeDate",  hint:"closing date, formatted YYYY-MM-DD"},
+          ]}
+          onExtracted={extracted=>setInputs(p=>({
+            ...p,
+            address:    extracted.address    || p.address,
+            salePrice:  extracted.salePrice  || p.salePrice,
+            buyerName:  extracted.buyerName  || p.buyerName,
+            buyerAgent: extracted.buyerAgent || p.buyerAgent,
+            offerDate:  extracted.offerDate  || p.offerDate,
+            closeDate:  extracted.closeDate  || p.closeDate,
+          }))}
+        />
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <TField label="PROPERTY ADDRESS" value={inputs.address} onChange={set("address")} placeholder="123 Ocean Dr, Miami Beach"/>
           <TField label="SALE PRICE" value={inputs.salePrice} onChange={set("salePrice")} placeholder="$1,250,000"/>
