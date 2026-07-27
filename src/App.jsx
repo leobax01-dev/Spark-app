@@ -5115,6 +5115,84 @@ function MainApp({user,onLogout}){
 // ─────────────────────────────────────────────────────────────────────────────
 // LANDING PAGE
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// FOUNDING MEMBER BANNER — the actual scarcity offer, with a genuinely live
+// count, not a hardcoded fake number. Reads /api/founding-member-status,
+// which reads Stripe's real coupon redemption count — the same number
+// Stripe itself uses to enforce the 20-spot cap, so this can never say
+// "spots remaining" after they're actually gone.
+// ─────────────────────────────────────────────────────────────────────────────
+function FoundingMemberBanner({onStart}){
+  const [remaining, setRemaining] = useState(20);
+  const [total, setTotal] = useState(20);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(()=>{
+    fetch("/api/founding-member-status")
+      .then(r=>r.json())
+      .then(d=>{ setRemaining(d.remaining); setTotal(d.total); setLoaded(true); })
+      .catch(()=>setLoaded(true)); // fail quiet — banner still shows, just with the default 20
+  },[]);
+
+  const soldOut = loaded && remaining<=0;
+  const pctFilled = Math.min(100, Math.round(((total-remaining)/total)*100));
+
+  return(
+    <div style={{maxWidth:720,margin:"0 auto 64px",padding:"0 24px"}}>
+      <div style={{background:`linear-gradient(135deg,${C.amber}10,${C.rose}08)`,
+        border:`1.5px solid ${C.amber}35`,borderRadius:18,padding:"28px 28px 24px",
+        position:"relative",overflow:"hidden",textAlign:"center"}}>
+        <div style={{position:"absolute",top:"-40%",right:"-10%",width:220,height:220,
+          borderRadius:"50%",pointerEvents:"none",
+          background:`radial-gradient(circle,${C.amber}18,transparent 70%)`}}/>
+
+        <div style={{display:"inline-flex",alignItems:"center",gap:6,
+          background:`${C.amber}18`,border:`1px solid ${C.amber}40`,
+          borderRadius:20,padding:"5px 14px",fontSize:10,color:C.amber,
+          letterSpacing:1.5,fontWeight:800,marginBottom:14,position:"relative"}}>
+          FOUNDING MEMBER COHORT · 20 SPOTS ONLY
+        </div>
+
+        <div style={{fontFamily:C.F,fontWeight:800,fontSize:"clamp(22px,3.5vw,30px)",
+          color:C.text,marginBottom:8,position:"relative"}}>
+          50% off Premium — for life
+        </div>
+        <p style={{fontSize:14,color:C.textMd,maxWidth:480,margin:"0 auto 20px",
+          lineHeight:1.6,position:"relative"}}>
+          We're taking 20 agents into the Founding Member cohort before SPARK opens
+          to everyone. Lifetime discount, priority support, and direct input on
+          what we build next. Once the 20 spots are filled, this offer is gone.
+        </p>
+
+        {/* Live progress bar */}
+        <div style={{position:"relative",marginBottom:10}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,
+            fontFamily:C.F,fontSize:11,fontWeight:700}}>
+            <span style={{color:C.textDim}}>SPOTS CLAIMED</span>
+            <span style={{color:soldOut?C.rose:C.amber}}>
+              {loaded ? (soldOut ? "SOLD OUT" : `${remaining} of ${total} remaining`) : "loading..."}
+            </span>
+          </div>
+          <div style={{height:8,borderRadius:5,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${pctFilled}%`,borderRadius:5,
+              background:`linear-gradient(90deg,${C.amber},${C.rose})`,
+              transition:"width .5s ease"}}/>
+          </div>
+        </div>
+
+        <button onClick={()=>onStart("signup")} disabled={soldOut}
+          style={{marginTop:14,background:soldOut?"rgba(255,255,255,.08)":`linear-gradient(135deg,${C.amber},${C.rose})`,
+            border:"none",color:soldOut?C.textDim:"#fff",
+            padding:"14px 32px",borderRadius:11,cursor:soldOut?"default":"pointer",
+            fontWeight:800,fontSize:14,fontFamily:C.F,letterSpacing:.2,
+            boxShadow:soldOut?"none":`0 8px 28px ${C.amber}30`,position:"relative"}}>
+          {soldOut ? "Cohort full — join the waitlist" : "Claim your Founding Member spot →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LandingPage({onStart}){
   const [ready,setReady]=useState(false);
   useEffect(()=>{ const t=setTimeout(()=>setReady(true),60); return ()=>clearTimeout(t); },[]);
@@ -5210,6 +5288,14 @@ function LandingPage({onStart}){
       features:["Visual client pipeline manager","AI next-action per client","Deal notes analyzer","Overdue follow-up alerts","AI daily briefing every morning"],
     },
     {
+      icon:"Phone",color:C.rose,
+      badge:"MULTI-MODAL INTAKE — NEW",
+      title:"Talk to your business. Or just drop a file.",
+      subtitle:"No more typing everything by hand.",
+      body:"Speak to SPARK like a real assistant — tell it what happened at a showing, and it proposes the exact update to the right client record before anything is saved. Drop a screenshot of a contract or an MLS sheet, and SPARK reads it directly into your transaction forms. Every proposal is shown to you in plain language first — nothing is ever written to your business without your confirmation.",
+      features:["Voice commands that propose real updates, not just chat","Confirm-before-write on every single change — always","Drop a screenshot, SPARK fills the form for you","Works for new clients or updates to existing ones","Reads contracts, MLS sheets, and text threads directly"],
+    },
+    {
       icon:"Market",color:C.emerald,
       badge:"MARKET & BUSINESS INTELLIGENCE",
       title:"Respond to leads in 30 seconds.",
@@ -5277,6 +5363,8 @@ function LandingPage({onStart}){
             10 free credits · cancel anytime · 30 second setup
           </p>
         </div>
+
+        <FoundingMemberBanner onStart={onStart}/>
 
         {/* WHAT SPARK REPLACES */}
         <div style={{borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,
