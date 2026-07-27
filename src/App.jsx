@@ -4568,7 +4568,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
 }
 
 function MainApp({user,onLogout}){
-  const [tab,setTab]        =useState("generate");
+  const [tab,setTab]        =useState("autopilot");
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits??3));
   const [intendedPlan]=useState(()=>{
