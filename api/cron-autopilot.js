@@ -370,6 +370,8 @@ export default async function handler(req, res){
     return res.status(500).json({ error:usersError.message });
   }
 
+  console.log(`Cron: found ${users?.length||0} premium user(s) to check this tick`);
+
   for(const u of users||[]){
     try{
       const { data: sync } = await sb
@@ -379,13 +381,21 @@ export default async function handler(req, res){
         .single();
 
       const clients = sync?.clients||[];
-      if(clients.length===0){ summary.skippedNoClients++; continue; }
+      if(clients.length===0){
+        console.log(`Cron: ${u.email} skipped — 0 clients in agent_data_sync (this reads the DATABASE, not what the app shows locally — if the app displays clients but this is empty, they never finished syncing to the cloud)`);
+        summary.skippedNoClients++; continue;
+      }
 
       // Only run for this agent if it's currently their morning — this is
       // what makes the schedule per-agent instead of one fixed UTC time.
       // Cheap check, done before any Claude calls.
       const localHour = getLocalHour(sync?.profile?.timezone);
-      if(localHour !== TARGET_LOCAL_HOUR){ summary.skippedWrongHour++; continue; }
+      if(localHour !== TARGET_LOCAL_HOUR){
+        console.log(`Cron: ${u.email} skipped — local hour is ${localHour} (timezone: ${sync?.profile?.timezone||DEFAULT_TIMEZONE+" [default, none set]"}), target is ${TARGET_LOCAL_HOUR}`);
+        summary.skippedWrongHour++; continue;
+      }
+
+      console.log(`Cron: ${u.email} — ${clients.length} clients, correct local hour (${localHour}), proceeding to generate brief`);
 
       const businessData = aggregateBusinessData({
         clients, pipeline:sync?.pipeline||[], goals:sync?.goals||{}, profile:sync?.profile||{},
@@ -454,10 +464,17 @@ export default async function handler(req, res){
             }),
           });
           const notifyData = await notifyRes.json().catch(()=>({}));
-          if(notifyData.sent) summary.smsSent++; // false just means the TCPA-safe-hour guard held it, not an error
+          if(notifyData.sent){
+            console.log(`Cron: ${u.email} — notification SENT (sms:${wantsSms?"yes":"no"}, push:${wantsPush?"yes":"no"})`);
+            summary.smsSent++;
+          } else {
+            console.log(`Cron: ${u.email} — notification NOT sent (sms:${wantsSms?"yes":"no"}, push:${wantsPush?"yes":"no"}) — likely outside the 8am-9pm TCPA-safe window for their timezone, not an error`);
+          }
         }catch(e){
           console.warn(`Cron: brief notification failed for ${u.email}:`, e.message);
         }
+      } else {
+        console.log(`Cron: ${u.email} — brief generated, but no SMS or push opted in (smsEnabled:${!!sync?.profile?.smsEnabled}, phone:${!!sync?.profile?.phone}, pushSubscription:${!!sync?.profile?.pushSubscription})`);
       }
 
       summary.processed++;
