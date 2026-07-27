@@ -16,7 +16,7 @@ export const config = { api: { bodyParser: false } }
 const LINK_TO_PLAN = {
   'https://buy.stripe.com/00w28qa733TZ3Z3gqa0sU00': { plan:'starter',  credits:30  },
   'https://buy.stripe.com/dRm3cu4MJ1LRdzD0rc0sU07': { plan:'pro',      credits:100 },
-  'https://buy.stripe.com/6oUeVcfrnbmr3Z31vg0sU08': { plan:'premium',  credits:999 },
+  'https://buy.stripe.com/aFa7sKcfbbmr9jn5Lw0sU09': { plan:'premium',  credits:999 },
 }
 
 // Product ID → plan mapping (backup lookup)
