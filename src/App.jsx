@@ -170,7 +170,7 @@ const PLANS = {
     hooks:10, voiceMemory:true, videoQuality:"4K", maxPhotos:20, teamSeats:1, apiAccess:true,
     autopilot:true,
     perks:["Unlimited credits","Everything in Pro","SPARK Autopilot — AI business intelligence","4K cinematic video","Up to 20 listing photos","10 hook variants","Autopilot pattern memory","Deal risk detection","Client probability scores","Relationship alerts","Monthly business review","API access","Dedicated support"],
-    stripeLink:"https://buy.stripe.com/6oUeVcfrnbmr3Z31vg0sU08",
+    stripeLink:"https://buy.stripe.com/aFa7sKcfbbmr9jn5Lw0sU09",
   },
 };
 
@@ -5180,7 +5180,7 @@ function FoundingMemberBanner({onStart}){
           </div>
         </div>
 
-        <button onClick={()=>onStart("signup")} disabled={soldOut}
+        <button onClick={()=>{ window.history.replaceState(null,"","?founding=true"); onStart("signup"); }} disabled={soldOut}
           style={{marginTop:14,background:soldOut?"rgba(255,255,255,.08)":`linear-gradient(135deg,${C.amber},${C.rose})`,
             border:"none",color:soldOut?C.textDim:"#fff",
             padding:"14px 32px",borderRadius:11,cursor:soldOut?"default":"pointer",
@@ -5648,7 +5648,6 @@ function LandingPage({onStart}){
 function AuthPage({mode,onAuth,onSwitch}){
   const [email,setEmail]       =useState("");
   const [pass,setPass]         =useState("");
-  const [plan,setPlan]         =useState("trial");
   const [loading,setLoading]   =useState(false);
   const [mounted,setMounted]   =useState(false);
   const [view,setView]         =useState("auth"); // "auth" | "forgot" | "forgot_sent"
@@ -5660,6 +5659,15 @@ function AuthPage({mode,onAuth,onSwitch}){
   const params = new URLSearchParams(window.location.search);
   const googleJustConnected = params.get("google_connected")==="true";
   const googleEmail = params.get("google_email")||"";
+  // Detect Founding Member entry — set by the landing page's "Claim your
+  // Founding Member spot" button before switching to this screen. Pre-
+  // selects and locks Premium instead of defaulting to Free Trial, which
+  // is what was actually happening before this fix — someone clicking a
+  // 50%-off-Premium CTA landed on the exact same generic form as the
+  // regular "Start free" button, defaulted to Free Trial.
+  const foundingMember = params.get("founding")==="true";
+
+  const [plan,setPlan] =useState(()=> foundingMember ? "premium" : "trial");
 
   useEffect(()=>{ setMounted(true); },[]);
 
@@ -5977,7 +5985,29 @@ function AuthPage({mode,onAuth,onSwitch}){
                 </div>
               )}
 
-              {mode==="signup"&&(
+              {mode==="signup"&&foundingMember&&(
+                <div style={{marginBottom:18}}>
+                  <div style={{display:"inline-flex",alignItems:"center",gap:6,
+                    background:`${C.amber}14`,border:`1px solid ${C.amber}35`,
+                    borderRadius:20,padding:"4px 12px",fontSize:9,color:C.amber,
+                    letterSpacing:1,fontWeight:800,marginBottom:12}}>
+                    FOUNDING MEMBER · PREMIUM · 50% OFF FOR LIFE
+                  </div>
+                  <div style={{padding:"12px 14px",borderRadius:10,
+                    border:`1px solid ${PLANS.premium.accent}45`,
+                    background:`${PLANS.premium.accent}10`}}>
+                    <div style={{fontFamily:C.F,fontWeight:800,fontSize:13,color:C.text}}>
+                      {PLANS.premium.name} — ${PLANS.premium.price}/mo
+                    </div>
+                    <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginTop:6,lineHeight:1.6}}>
+                      You'll be taken to secure checkout next. Enter your Founding
+                      Member code there to lock in 50% off for life.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {mode==="signup"&&!foundingMember&&(
                 <div style={{marginBottom:18}}>
                   <div style={{fontSize:9,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:8}}>SELECT PLAN</div>
                   <div style={{display:"flex",gap:7}}>
