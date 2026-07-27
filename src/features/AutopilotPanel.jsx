@@ -4712,7 +4712,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                   <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`${C.violet}12`,border:`1px solid ${C.violet}28`,borderRadius:14,padding:"3px 12px",marginBottom:12,fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>✦ PREMIUM EXCLUSIVE</div>
                   <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:20,color:C.text,margin:"0 0 10px",letterSpacing:"-0.02em"}}>Autopilot Intelligence</h3>
                   <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 20px",lineHeight:1.7,maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>Upgrade to Premium to unlock the full Autopilot intelligence report — daily mission, deal risk detection, client probability scores, relationship alerts, market intelligence, and AI coaching — all in one view.</p>
-                  <button onClick={()=>window.open("https://buy.stripe.com/6oUeVcfrnbmr3Z31vg0sU08","_blank")}
+                  <button onClick={()=>window.open("https://buy.stripe.com/aFa7sKcfbbmr9jn5Lw0sU09","_blank")}
                     style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,border:"none",color:"#fff",padding:"13px 32px",borderRadius:11,cursor:"pointer",fontWeight:800,fontSize:14,fontFamily:C.F,boxShadow:`0 0 0 1px ${C.violet}40,0 6px 22px ${C.violet}28`,marginBottom:10}}>
                     Upgrade to Premium — $129/month ⚡
                   </button>
