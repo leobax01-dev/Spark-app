@@ -1,169 +1,63 @@
 // src/components/SparkCommandCenter.jsx
 //
-// SPARK OS Command Center — a standalone, futuristic dark-mode HUD, voiced
-// by "Alfred": a refined, unfailingly polite AI chief of staff (modeled on
+// SPARK OS Command Center — Elite Military OS / alien-tech HUD, voiced by
+// "Alfred": a refined, unfailingly polite AI chief of staff (modeled on
 // Bruce Wayne's butler) who always addresses the operator as "Mr. Bax".
 //
-// Center: a rotating 3D particle sphere ("Agent Core Brain") that pulses
-// with voice audio amplitude, and with a manual highlight pulse the moment
-// a wake word is detected. Left: system vitals (ARR, seats, white-label
-// deals). Right: Command Deck quick actions that file real tasks into
-// SPARK_OS/02-Tasks/Pending/ via /api/tasks. Bottom: a live feed read from
-// the latest files in SPARK_OS/05-Daily-Briefings/ via the same API (the
-// browser can't read the filesystem directly, so this proxies through a
-// serverless function — see api/tasks.js).
+// This file is the composition root; the actual visual/interactive pieces
+// live in src/components/command-center/:
+//   AgentCore.jsx        — shader-driven nebula core (idle/thinking/error/success)
+//   ArrTrajectoryMap.jsx — radial ARR "star chart" (center=$0, rim=target)
+//   VitalDrilldown.jsx   — tap-to-materialize seat/token-usage detail overlay
+//   HexPanel.jsx          — angular glowing-border panel shell
+//   PipelineHex.jsx        — clickable hex pipeline-count modules
+//   TaskDrawer.jsx         — holographic full-screen task manifest + APPROVE
+//   CommandInput.jsx       — typed direct-command field -> intent router
+//   LiveFeed.jsx            — per-agent colorized decoding feed
+//   ScanlineOverlay.jsx      — CRT/hologram post-process look
+//   TypewriterText.jsx        — decode-on-load text effect
+//   theme.js                   — shared palette
+// ../hooks/useSynthSound.js — WebAudio UI blips (no audio files)
 //
-// Voice, two paths:
+// Center: the Agent Core pulses with voice audio amplitude and reacts to
+// system state (thinking/error/success). Left: system vitals — ARR gets the
+// radial trajectory map, seats/white-label are tappable for drilldowns.
+// Right: Command Deck quick actions + Direct Command Input, both filing
+// real tasks into the Supabase `spark_os_tasks` table via /api/tasks.
+// Bottom: a live, per-agent colorized feed from SPARK_OS/05-Daily-Briefings/.
+//
+// Voice, two paths (unchanged from the prior revision):
 //   1. Hold-to-talk: the mic button records real audio, sent to /api/voice
 //      { action: "command" } for ElevenLabs speech-to-text.
-//   2. Hands-Free Mode: a continuous Web Speech API
-//      (webkitSpeechRecognition) listener watches for "Hey Alfred" /
-//      "Alfred" / "Excuse me Alfred". Once heard, it highlights the Agent
-//      Core, captures the rest of the utterance, strips the wake phrase,
-//      and sends the already-transcribed text to /api/voice
-//      { action: "text-command" } — no re-recording needed, since Web
-//      Speech API already produced text.
-// Both paths route through api/voice.js's intent classifier (CFO/CTO/CMO/
-// CRO/CEO), which either files a task or reads back today's briefing, and
-// returns an in-character Alfred line that's spoken via ElevenLabs
-// text-to-speech — that playback's live amplitude drives the brain's pulse.
-//
-// Self-contained: does not import the app's shared C/UI tokens so it can
-// be dropped in independently. Uses inline styles + a scoped <style> tag,
-// matching the rest of this codebase's approach (no Tailwind installed).
+//   2. Hands-Free Mode: a continuous Web Speech API listener watches for
+//      "Hey Alfred" / "Alfred" / "Excuse me Alfred", then sends the
+//      already-transcribed text to /api/voice { action: "text-command" }.
+// Both route through api/voice.js's intent classifier (CFO/CTO/CMO/CRO/CEO)
+// and return an in-character Alfred line spoken via ElevenLabs TTS.
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import * as THREE from "three";
-
-// ── Design tokens (local to this component) ──────────────────────────────
-const C = {
-  bg: "#05060a",
-  panel: "rgba(255,255,255,0.03)",
-  panelBorder: "rgba(255,255,255,0.08)",
-  cyan: "#38f0ff",
-  indigo: "#4F6BFF",
-  violet: "#8b5cf6",
-  emerald: "#22C55E",
-  amber: "#F5A623",
-  rose: "#EF4444",
-  text: "rgba(255,255,255,0.95)",
-  textMd: "rgba(255,255,255,0.55)",
-  textDim: "rgba(255,255,255,0.30)",
-  F: "'Plus Jakarta Sans','Courier New',monospace",
-};
+import { useEffect, useRef, useState, useCallback } from "react";
+import AgentCore, { useCoreState } from "./command-center/AgentCore";
+import ArrTrajectoryMap from "./command-center/ArrTrajectoryMap";
+import VitalDrilldown from "./command-center/VitalDrilldown";
+import HexPanel from "./command-center/HexPanel";
+import PipelineHex from "./command-center/PipelineHex";
+import TaskDrawer from "./command-center/TaskDrawer";
+import CommandInput from "./command-center/CommandInput";
+import LiveFeed from "./command-center/LiveFeed";
+import ScanlineOverlay from "./command-center/ScanlineOverlay";
+import TypewriterText from "./command-center/TypewriterText";
+import { C } from "./command-center/theme";
+import { useSynthSound } from "../hooks/useSynthSound";
 
 const ARR_CONSERVATIVE_TARGET = 4_020_000;
 
-// ── 3D Agent Core Brain ────────────────────────────────────────────────────
-function fibonacciSphere(count, radius) {
-  const pts = new Float32Array(count * 3);
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / (count - 1)) * 2;
-    const r = Math.sqrt(1 - y * y);
-    const theta = golden * i;
-    const x = Math.cos(theta) * r;
-    const z = Math.sin(theta) * r;
-    pts[i * 3] = x * radius;
-    pts[i * 3 + 1] = y * radius;
-    pts[i * 3 + 2] = z * radius;
-  }
-  return pts;
-}
-
-function AgentCoreParticles({ pulseRef, status }) {
-  const outerRef = useRef();
-  const innerRef = useRef();
-  const nodesRef = useRef();
-
-  const outerGeo = useMemo(() => fibonacciSphere(900, 2.1), []);
-  const innerGeo = useMemo(() => fibonacciSphere(260, 1.3), []);
-  const nodeGeo = useMemo(() => fibonacciSphere(18, 2.4), []);
-
-  useFrame((state, delta) => {
-    const t = state.clock.elapsedTime;
-    const pulse = status === "online" ? pulseRef.current : 0;
-    const breathing = 1 + Math.sin(t * 1.4) * 0.03 + pulse * 0.35;
-
-    if (outerRef.current) {
-      outerRef.current.rotation.y += delta * 0.06;
-      outerRef.current.rotation.x = Math.sin(t * 0.15) * 0.15;
-      outerRef.current.scale.setScalar(breathing);
-      outerRef.current.material.size = 0.028 + pulse * 0.02;
-      outerRef.current.material.opacity = 0.55 + pulse * 0.4;
-    }
-    if (innerRef.current) {
-      innerRef.current.rotation.y -= delta * 0.12;
-      innerRef.current.rotation.z += delta * 0.04;
-      innerRef.current.material.opacity = 0.7 + pulse * 0.3;
-    }
-    if (nodesRef.current) {
-      nodesRef.current.rotation.y += delta * 0.03;
-      nodesRef.current.material.size = 0.09 + pulse * 0.08;
-    }
-  });
-
-  return (
-    <group>
-      <points ref={outerRef}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[outerGeo, 3]} />
-        </bufferGeometry>
-        <pointsMaterial
-          color={status === "online" ? "#38f0ff" : "#3a4050"}
-          size={0.028}
-          sizeAttenuation
-          transparent
-          opacity={0.6}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
-      <points ref={innerRef}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[innerGeo, 3]} />
-        </bufferGeometry>
-        <pointsMaterial
-          color={status === "online" ? "#8b5cf6" : "#2a2d38"}
-          size={0.05}
-          sizeAttenuation
-          transparent
-          opacity={0.75}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
-      {/* Floating "glowing nodes" — the sparse outer markers */}
-      <points ref={nodesRef}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[nodeGeo, 3]} />
-        </bufferGeometry>
-        <pointsMaterial
-          color="#ffffff"
-          size={0.09}
-          sizeAttenuation
-          transparent
-          opacity={0.9}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
-      <ambientLight intensity={0.4} />
-    </group>
-  );
-}
-
-function AgentCoreCanvas({ pulseRef, status }) {
-  return (
-    <Canvas camera={{ position: [0, 0, 6], fov: 45 }} gl={{ antialias: true, alpha: true }}>
-      <AgentCoreParticles pulseRef={pulseRef} status={status} />
-    </Canvas>
-  );
-}
-
 // ── Small UI atoms ─────────────────────────────────────────────────────────
 function PanelLabel({ children, color = C.cyan }) {
+  // Static section chrome, not live data — the decode/typewriter effect is
+  // reserved for values that actually load or update (ARR, core status,
+  // feed entries below). Animating fixed labels on every render both looks
+  // like a bug (a permanently-scrambled tail under WebGL frame contention)
+  // and buys nothing, since the text never changes.
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
       <div style={{ width: 3, height: 12, borderRadius: 2, background: color, boxShadow: `0 0 8px ${color}` }} />
@@ -172,10 +66,14 @@ function PanelLabel({ children, color = C.cyan }) {
   );
 }
 
-function VitalBar({ label, value, max, color, formatValue }) {
+function VitalBar({ label, value, max, color, formatValue, onClick }) {
   const pct = Math.min(100, max ? (value / max) * 100 : 0);
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div
+      onClick={onClick}
+      style={{ marginBottom: 16, cursor: onClick ? "pointer" : "default" }}
+      className={onClick ? "cc-vital-tap" : ""}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
         <span style={{ fontSize: 11, color: C.textMd, fontFamily: C.F }}>{label}</span>
         <span style={{ fontSize: 11, color: C.text, fontFamily: C.F, fontWeight: 700 }}>
@@ -207,7 +105,7 @@ function CommandButton({ label, sub, color, onClick, busy }) {
         textAlign: "left",
         background: C.panel,
         border: `1px solid ${C.panelBorder}`,
-        borderRadius: 10,
+        borderRadius: 3,
         padding: "12px 14px",
         marginBottom: 10,
         cursor: busy ? "default" : "pointer",
@@ -235,14 +133,14 @@ export default function SparkCommandCenter() {
   const [busyAction, setBusyAction] = useState(null);
   const [voiceState, setVoiceState] = useState("idle"); // idle | recording | thinking | speaking
   const [voiceLog, setVoiceLog] = useState(null);
-  // Kept separate from voiceLog so a later failure (e.g. TTS erroring after
-  // a command was already routed successfully) can't wipe out and hide the
-  // good transcript/agent/task data that already rendered. Cleared the
-  // moment any /api/voice call comes back with real data — i.e. the red
-  // error block is bypassed as soon as we have live proof the key works.
   const [voiceError, setVoiceError] = useState(null);
   const [handsFree, setHandsFree] = useState(false);
-  const [hfStatus, setHfStatus] = useState("listening"); // listening | capturing | thinking | speaking | unsupported
+  const [hfStatus, setHfStatus] = useState("listening");
+  const [drawerStatus, setDrawerStatus] = useState(null); // "Pending" | "Needs_Approval" | "Completed" | null
+  const [drilldown, setDrilldown] = useState(null); // "seats" | "tokens" | null
+  const [glitch, setGlitch] = useState(false);
+
+  const sound = useSynthSound();
 
   const pulseRef = useRef(0);
   const mediaRecorderRef = useRef(null);
@@ -255,6 +153,18 @@ export default function SparkCommandCenter() {
   const hfStatusRef = useRef("listening");
   const captureBufferRef = useRef("");
   const silenceTimerRef = useRef(null);
+
+  const { coreState, triggerSuccessFlash } = useCoreState({
+    voiceState,
+    hfStatus,
+    handsFree,
+    hasError: Boolean(voiceError),
+  });
+
+  function flashGlitch() {
+    setGlitch(true);
+    setTimeout(() => setGlitch(false), 400);
+  }
 
   // Boot sequence
   useEffect(() => {
@@ -292,6 +202,7 @@ export default function SparkCommandCenter() {
 
   async function runCommand(title, owner, body) {
     setBusyAction(title);
+    sound.hexClick();
     try {
       const res = await fetch("/api/tasks", {
         method: "POST",
@@ -299,9 +210,15 @@ export default function SparkCommandCenter() {
         body: JSON.stringify({ title, owner, body, source: "command-deck" }),
       });
       const data = await res.json();
-      if (res.ok) await loadData();
+      if (res.ok) {
+        await loadData();
+        triggerSuccessFlash();
+      } else {
+        sound.error();
+      }
       return data;
     } catch (err) {
+      sound.error();
       return { error: err.message };
     } finally {
       setBusyAction(null);
@@ -314,8 +231,6 @@ export default function SparkCommandCenter() {
     pulseRef.current = 0;
   }
 
-  // Manual, audio-independent pulse — used the instant a wake word is
-  // detected, before any TTS audio exists to drive the analyser loop.
   function triggerWakePulse() {
     stopPulseLoop();
     const start = performance.now();
@@ -353,7 +268,7 @@ export default function SparkCommandCenter() {
       tick();
     } catch {
       // Web Audio graph can fail silently cross-origin/blocked contexts —
-      // audio still plays, the brain just won't pulse to it.
+      // audio still plays, the core just won't pulse to it.
     }
   }
 
@@ -367,21 +282,19 @@ export default function SparkCommandCenter() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "TTS failed");
-      // Got real audio back — the ElevenLabs key is demonstrably working.
-      // Clear any stale error (e.g. from an earlier failed call) now rather
-      // than leaving a red "not configured" block up next to a voice that's
-      // actually speaking.
       if (data.audioBase64) setVoiceError(null);
       const audioEl = new Audio(`data:${data.mimeType};base64,${data.audioBase64}`);
       startPulseLoopFromAudioElement(audioEl);
       audioEl.onended = () => {
         stopPulseLoop();
         setVoiceState("idle");
+        triggerSuccessFlash();
       };
       await audioEl.play();
     } catch (err) {
       setVoiceError(err.message);
       setVoiceState("idle");
+      sound.error();
     }
   }
 
@@ -413,6 +326,7 @@ export default function SparkCommandCenter() {
           } catch (err) {
             setVoiceError(err.message);
             setVoiceState("idle");
+            sound.error();
           }
         };
         reader.readAsDataURL(blob);
@@ -477,8 +391,6 @@ export default function SparkCommandCenter() {
       };
 
       rec.onend = () => {
-        // Browsers auto-stop recognition periodically; restart while Hands-Free
-        // Mode is still toggled on (but not mid-dispatch — see dispatchCaptured).
         if (handsFreeRef.current && hfStatusRef.current !== "thinking" && hfStatusRef.current !== "speaking") {
           try {
             rec.start();
@@ -510,7 +422,7 @@ export default function SparkCommandCenter() {
     hfStatusRef.current = "thinking";
     setHfStatus("thinking");
     try {
-      recognitionRef.current?.stop(); // pause while Alfred thinks/speaks — avoids picking up his own voice
+      recognitionRef.current?.stop();
     } catch {
       // no-op
     }
@@ -532,6 +444,7 @@ export default function SparkCommandCenter() {
       await speak(data.spoken);
     } catch (err) {
       setVoiceError(err.message);
+      sound.error();
     } finally {
       hfStatusRef.current = "listening";
       setHfStatus("listening");
@@ -549,6 +462,7 @@ export default function SparkCommandCenter() {
     const next = !handsFree;
     setHandsFree(next);
     handsFreeRef.current = next;
+    sound.hexClick();
 
     if (next) {
       const rec = getRecognition();
@@ -592,10 +506,27 @@ export default function SparkCommandCenter() {
     []
   );
 
+  function openDrawer(statusKey) {
+    sound.hexClick();
+    setDrawerStatus(statusKey);
+  }
+
+  function openDrilldown(kind) {
+    sound.hexClick();
+    setDrilldown(kind);
+  }
+
   const arr = vitals?.financial?.arr ?? 0;
   const soloSeats = vitals?.financial?.soloSeats ?? 0;
   const whiteLabelDeals = vitals?.financial?.whiteLabelDeals ?? 0;
   const target = vitals?.financial?.arrConservativeTarget ?? ARR_CONSERVATIVE_TARGET;
+  const panelPulse = coreState === "thinking" ? 0.7 : coreState === "success" ? 1 : coreState === "error" ? 0.9 : 0.15;
+
+  const DRAWER_META = {
+    Pending: { label: "Pending", color: C.amber },
+    Needs_Approval: { label: "Needs Approval", color: C.rose },
+    Completed: { label: "Completed", color: C.emerald },
+  };
 
   return (
     <div style={{ height: "100vh", background: C.bg, fontFamily: C.F, color: C.text, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
@@ -604,17 +535,15 @@ export default function SparkCommandCenter() {
         .scc-mic:hover { transform: scale(1.06); }
         .scc-hf-toggle:hover span:first-child { color: rgba(255,255,255,0.7) !important; }
         .scc-mic:active { transform: scale(0.96); }
-        @keyframes scc-scan { 0%{transform:translateY(-100%)} 100%{transform:translateY(100%)} }
+        .cc-pipeline-hex:hover { transform: scale(1.04); }
+        .cc-vital-tap:hover { filter: brightness(1.3); }
         @keyframes scc-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-        .scc-feed-item { animation: scc-fadein .4s ease both; }
-        @keyframes scc-fadein { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
       `}</style>
 
-      {/* Scanline overlay for HUD feel */}
-      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,0.012) 3px)" }} />
+      <ScanlineOverlay glitch={glitch} />
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${C.panelBorder}` }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px", borderBottom: `1px solid ${C.panelBorder}`, position: "relative", zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: "50%", background: status === "online" ? C.emerald : C.amber, boxShadow: `0 0 10px ${status === "online" ? C.emerald : C.amber}`, animation: status !== "online" ? "scc-blink 1s infinite" : "none" }} />
           <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: 3 }}>SPARK OS — COMMAND CENTER</span>
@@ -627,64 +556,59 @@ export default function SparkCommandCenter() {
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "280px 1fr 300px", gap: 0, flex: 1, minHeight: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "300px 1fr 320px", gap: 14, flex: 1, minHeight: 0, padding: 14, position: "relative", zIndex: 10 }}>
         {/* LEFT — System Vitals */}
-        <div style={{ borderRight: `1px solid ${C.panelBorder}`, padding: "20px 18px", overflowY: "auto" }}>
+        <HexPanel accent={C.emerald} pulse={panelPulse} contentStyle={{ padding: "20px 18px", overflowY: "auto" }}>
           <PanelLabel color={C.emerald}>SYSTEM VITALS</PanelLabel>
+
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+            <ArrTrajectoryMap arr={arr} target={target} />
+          </div>
+
           <VitalBar
-            label="ARR → Conservative Target"
-            value={arr}
-            max={target}
-            color={C.emerald}
-            formatValue={(v) => `$${(v / 1000).toFixed(0)}K / $${(target / 1_000_000).toFixed(2)}M`}
-          />
-          <VitalBar
-            label="Active Subscriber Seats"
+            label="Active Subscriber Seats (tap for slice)"
             value={soloSeats}
             max={Math.max(soloSeats, 20)}
             color={C.indigo}
             formatValue={(v) => `${v}`}
+            onClick={() => openDrilldown("seats")}
           />
           <VitalBar
-            label="White-Label Deals"
-            value={whiteLabelDeals}
-            max={Math.max(whiteLabelDeals, 5)}
+            label="Agent Token Usage (tap for histogram)"
+            value={0}
+            max={1}
             color={C.violet}
-            formatValue={(v) => `${v}`}
+            formatValue={() => "—"}
+            onClick={() => openDrilldown("tokens")}
           />
-          <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.panelBorder}` }}>
-            <PanelLabel color={C.cyan}>TASK PIPELINE</PanelLabel>
-            {[
-              ["Pending", vitals?.counts?.pending ?? "—", C.amber],
-              ["Needs Approval", vitals?.counts?.needsApproval ?? "—", C.rose],
-              ["Completed", vitals?.counts?.completed ?? "—", C.emerald],
-            ].map(([label, val, color]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 8, color: C.textMd }}>
-                <span>{label}</span>
-                <span style={{ color, fontWeight: 700 }}>{val}</span>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* CENTER — Agent Core Brain. Strict vertical flow, top to bottom:
-            Agent Core Label -> 3D Orb -> Mic control. Nothing here is
-            absolutely positioned against the whole column, so it can never
-            overlap the Live Execution Feed below — that panel is a sibling
-            of this entire grid row, not layered underneath it. */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", overflowY: "auto", padding: "12px 0" }}>
-          {/* Globe container — capped height so the orb never grows to fill
-              all available vertical space and push/overlap neighboring panels. */}
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: `1px solid ${C.panelBorder}` }}>
+            <PanelLabel color={C.cyan}>TASK PIPELINE</PanelLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              <PipelineHex label="Pending" count={vitals?.counts?.pending ?? "—"} color={C.amber} onClick={() => openDrawer("Pending")} />
+              <PipelineHex label="Needs Appr." count={vitals?.counts?.needsApproval ?? "—"} color={C.rose} onClick={() => openDrawer("Needs_Approval")} />
+              <PipelineHex label="Completed" count={vitals?.counts?.completed ?? "—"} color={C.emerald} onClick={() => openDrawer("Completed")} />
+            </div>
+          </div>
+        </HexPanel>
+
+        {/* CENTER — Agent Core. Strict vertical flow: label -> core -> mic. */}
+        <HexPanel accent={coreState === "error" ? C.rose : coreState === "thinking" ? C.violet : C.cyan} pulse={panelPulse} contentStyle={{ display: "flex", flexDirection: "column", alignItems: "center", overflowY: "auto", padding: "12px 0" }}>
           <div style={{ position: "relative", width: "100%", height: "min(50vh, 460px)", flexShrink: 0 }}>
             <div style={{ position: "absolute", inset: 0 }}>
-              <AgentCoreCanvas pulseRef={pulseRef} status={status} />
+              <AgentCore coreState={status === "online" ? coreState : "idle"} pulseRef={pulseRef} />
             </div>
 
-            {/* Agent Core label — pinned to the top of the orb's own container */}
             <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", textAlign: "center" }}>
-              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 4, color: status === "online" ? C.cyan : C.textDim }}>
-                AGENT CORE: {status === "online" ? "ONLINE" : "INITIALIZING"}
-              </div>
+              {/* Plain text, not the decode effect: this line changes on
+                  every state transition (idle/thinking/error/success) right
+                  next to a continuously-rendering WebGL canvas, and under
+                  that render-loop contention the animation was visibly
+                  lagging — a live status readout should never look stuck
+                  mid-glitch. */}
+              <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 4, color: status === "online" ? C.cyan : C.textDim, display: "block" }}>
+                AGENT CORE: {status === "online" ? coreState.toUpperCase() : "INITIALIZING"}
+              </span>
               {status !== "online" && (
                 <div style={{ width: 160, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", margin: "8px auto 0", overflow: "hidden" }}>
                   <div style={{ width: `${Math.min(100, bootPct)}%`, height: "100%", background: C.cyan, transition: "width .15s linear" }} />
@@ -693,8 +617,6 @@ export default function SparkCommandCenter() {
             </div>
           </div>
 
-          {/* Mic control — flows in normal document flow below the globe
-              container, centered, with clear padding above the feed panel. */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, flexShrink: 0, padding: "4px 0 24px" }}>
             <button
               className="scc-mic"
@@ -727,19 +649,10 @@ export default function SparkCommandCenter() {
                 : { idle: "Hold to speak to Alfred", recording: "Listening…", thinking: "Transcribing…", speaking: "Alfred is responding…" }[voiceState]}
             </span>
 
-            {/* Hands-Free Mode toggle */}
             <button
               onClick={toggleHandsFree}
               className="scc-hf-toggle"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "4px 2px",
-              }}
+              style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "4px 2px" }}
               title="Toggle Hands-Free Mode — continuously listen for &quot;Hey Alfred&quot;"
             >
               <span style={{ fontSize: 9, letterSpacing: 1.2, color: handsFree ? C.emerald : C.textDim, textTransform: "uppercase", fontWeight: 700 }}>
@@ -773,11 +686,8 @@ export default function SparkCommandCenter() {
               </span>
             </button>
 
-            {/* Alfred's response log — always addressed to Mr. Bax */}
             {voiceLog?.transcript && (
-              <div style={{ fontSize: 10, color: C.textMd, maxWidth: 280, textAlign: "center" }}>
-                "{voiceLog.transcript}"
-              </div>
+              <div style={{ fontSize: 10, color: C.textMd, maxWidth: 280, textAlign: "center" }}>"{voiceLog.transcript}"</div>
             )}
             {voiceLog?.mode === "task" && voiceLog?.agentLabel && (
               <div style={{ fontSize: 9, color: C.violet, letterSpacing: 1, textTransform: "uppercase", fontWeight: 700 }}>
@@ -785,78 +695,72 @@ export default function SparkCommandCenter() {
               </div>
             )}
             {voiceLog?.spoken && (
-              <div style={{ fontSize: 10, color: C.cyan, maxWidth: 280, textAlign: "center", fontStyle: "italic" }}>
-                Alfred: "{voiceLog.spoken}"
-              </div>
+              <div style={{ fontSize: 10, color: C.cyan, maxWidth: 280, textAlign: "center", fontStyle: "italic" }}>Alfred: "{voiceLog.spoken}"</div>
             )}
-            {voiceError && (
-              <div style={{ fontSize: 10, color: C.rose, maxWidth: 280, textAlign: "center" }}>{voiceError}</div>
-            )}
+            {voiceError && <div style={{ fontSize: 10, color: C.rose, maxWidth: 280, textAlign: "center" }}>{voiceError}</div>}
           </div>
-        </div>
+        </HexPanel>
 
-        {/* RIGHT — Command Deck */}
-        <div style={{ borderLeft: `1px solid ${C.panelBorder}`, padding: "20px 18px", overflowY: "auto" }}>
+        {/* RIGHT — Command Deck + Direct Command Input */}
+        <HexPanel accent={C.indigo} pulse={panelPulse} contentStyle={{ padding: "20px 18px", overflowY: "auto" }}>
           <PanelLabel color={C.indigo}>COMMAND DECK</PanelLabel>
           <CommandButton
             label="Run Daily Briefing"
             sub="CEO Agent — compile status across all agents"
             color={C.indigo}
             busy={busyAction === "Run Daily Briefing"}
-            onClick={() =>
-              runCommand(
-                "Run Daily Briefing",
-                "CEO",
-                "Compile the daily standup: shipped, pending, needs-approval, blocked, and ARR trajectory across all executive agents."
-              )
-            }
+            onClick={() => runCommand("Run Daily Briefing", "CEO", "Compile the daily standup: shipped, pending, needs-approval, blocked, and ARR trajectory across all executive agents.")}
           />
           <CommandButton
             label="Financial Audit"
             sub="CFO Agent — reconcile MRR/ARR vs. target"
             color={C.emerald}
             busy={busyAction === "Financial Audit"}
-            onClick={() =>
-              runCommand(
-                "Financial Audit",
-                "CFO",
-                "Reconcile 04-Memory/Financial_Metrics.md against current Stripe data; flag variance from the $4.02M Conservative ARR target."
-              )
-            }
+            onClick={() => runCommand("Financial Audit", "CFO", "Reconcile 04-Memory/Financial_Metrics.md against current Stripe data; flag variance from the $4.02M Conservative ARR target.")}
           />
           <CommandButton
             label="Audit Multi-Tenancy RLS"
             sub="CTO Agent — verify brokerage_id isolation"
             color={C.violet}
             busy={busyAction === "Audit Multi-Tenancy RLS"}
-            onClick={() =>
-              runCommand(
-                "Audit Multi-Tenancy RLS",
-                "CTO",
-                "Verify Supabase RLS policies isolate all tenant-scoped tables by brokerage_id/team_id; confirm live policy state via dashboard or supabase db pull."
-              )
-            }
+            onClick={() => runCommand("Audit Multi-Tenancy RLS", "CTO", "Verify Supabase RLS policies isolate all tenant-scoped tables by brokerage_id/team_id; confirm live policy state via dashboard or supabase db pull.")}
           />
-        </div>
+
+          <CommandInput onDispatched={loadData} sound={sound} />
+        </HexPanel>
       </div>
 
       {/* BOTTOM — Live Execution Feed */}
-      <div style={{ borderTop: `1px solid ${C.panelBorder}`, padding: "14px 24px", flexShrink: 0 }}>
-        <PanelLabel color={C.amber}>LIVE EXECUTION FEED — SPARK_OS/05-Daily-Briefings/</PanelLabel>
-        <div style={{ maxHeight: 240, overflowY: "auto" }}>
-          {feed.length === 0 && (
-            <div style={{ fontSize: 11, color: C.textDim }}>No briefings loaded yet.</div>
-          )}
-          {feed.map((entry) => (
-            <div key={entry.file} className="scc-feed-item" style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.panelBorder}` }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: C.amber, marginBottom: 4 }}>{entry.date}</div>
-              <div style={{ fontSize: 11, color: C.textMd, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "inherit" }}>
-                {entry.text}
-              </div>
-            </div>
-          ))}
-        </div>
+      <div style={{ padding: "0 14px 14px", position: "relative", zIndex: 10 }}>
+        <HexPanel accent={C.amber} pulse={panelPulse * 0.6} contentStyle={{ padding: "14px 24px" }}>
+          <PanelLabel color={C.amber}>LIVE EXECUTION FEED — SPARK_OS/05-Daily-Briefings/</PanelLabel>
+          <div style={{ maxHeight: 200, overflowY: "auto" }}>
+            <LiveFeed feed={feed} />
+          </div>
+        </HexPanel>
       </div>
+
+      {drawerStatus && DRAWER_META[drawerStatus] && (
+        <TaskDrawer
+          status={drawerStatus}
+          label={DRAWER_META[drawerStatus].label}
+          color={DRAWER_META[drawerStatus].color}
+          onClose={() => setDrawerStatus(null)}
+          onApproved={() => {
+            flashGlitch();
+            triggerSuccessFlash();
+            loadData();
+          }}
+          sound={sound}
+          playGlitch={flashGlitch}
+        />
+      )}
+
+      <VitalDrilldown
+        kind={drilldown}
+        data={{ soloSeats, whiteLabelDeals }}
+        onClose={() => setDrilldown(null)}
+      />
     </div>
   );
 }

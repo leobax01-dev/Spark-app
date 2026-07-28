@@ -64,6 +64,35 @@ export async function listTaskCounts() {
   };
 }
 
+// Returns full task rows for one status, newest first — powers the
+// Command Center's holographic Task Drawer overlay (unlike listTaskCounts,
+// which only returns numbers).
+export async function listTasksByStatus(status, limit = 50) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(TASKS_TABLE)
+    .select("*")
+    .eq("status", status)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Failed to list "${status}" tasks: ${error.message}`);
+  return data;
+}
+
+// Updates a task's status (e.g. approving a Needs_Approval task moves it to
+// Completed). Returns the updated row.
+export async function updateTaskStatus(id, status) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(TASKS_TABLE)
+    .update({ status })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw new Error(`Failed to update task ${id} to "${status}": ${error.message}`);
+  return data;
+}
+
 // Returns the most recent daily briefings as { file, date, text } entries,
 // newest first, for the Command Center's live execution feed. These are
 // static docs committed to the repo, so plain file reads are safe even on
