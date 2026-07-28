@@ -1,15 +1,40 @@
-// api/_lib/tasks.js — shared SPARK_OS filesystem helpers.
+// api/_lib/tasks.js — shared SPARK_OS task + reference-doc helpers.
 // Not a route (Vercel excludes files under api/_lib/). Used by
 // api/tasks.js (Command Deck) and api/voice.js (voice-to-task).
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+//
+// Vercel production functions run on a read-only filesystem — writeFileSync
+// to SPARK_OS/02-Tasks/Pending/ works locally but throws EROFS in
+// production. Task creation and task counts are therefore backed by a
+// Supabase table (`spark_os_tasks`) instead of files.
+//
+// listRecentBriefings() and readFinancialSnapshot() stay filesystem-based:
+// those read the SPARK_OS/05-Daily-Briefings/ and
+// SPARK_OS/04-Memory/Financial_Metrics.md docs that are committed to the
+// repo and shipped with the deployment bundle — read-only access to
+// bundled files is fine on Vercel; only writing at runtime is not.
+import { readdirSync, readFileSync, existsSync } from "fs";
 import path from "path";
+import { createClient } from "@supabase/supabase-js";
 
 const ROOT = path.join(process.cwd(), "SPARK_OS");
-const PENDING_DIR = path.join(ROOT, "02-Tasks", "Pending");
-const COMPLETED_DIR = path.join(ROOT, "02-Tasks", "Completed");
-const NEEDS_APPROVAL_DIR = path.join(ROOT, "02-Tasks", "Needs_Approval");
 const BRIEFINGS_DIR = path.join(ROOT, "05-Daily-Briefings");
 const FINANCIAL_METRICS_FILE = path.join(ROOT, "04-Memory", "Financial_Metrics.md");
+
+const TASKS_TABLE = "spark_os_tasks";
+
+let _supabase = null;
+function getSupabase() {
+  if (_supabase) return _supabase;
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error(
+      "Supabase env vars not configured (SUPABASE_URL and SUPABASE_SERVICE_KEY) — required to read/write SPARK_OS tasks."
+    );
+  }
+  _supabase = createClient(url, serviceKey, { auth: { persistSession: false } });
+  return _supabase;
+}
 
 function listMdFiles(dir) {
   if (!existsSync(dir)) return [];
@@ -18,16 +43,31 @@ function listMdFiles(dir) {
     .sort();
 }
 
-export function listTaskCounts() {
+// Counts rows in spark_os_tasks by status. Replaces the old readdirSync of
+// 02-Tasks/{Pending,Needs_Approval,Completed}/ now that tasks live in
+// Supabase rather than the (read-only in production) filesystem.
+export async function listTaskCounts() {
+  const supabase = getSupabase();
+  const statuses = ["Pending", "Needs_Approval", "Completed"];
+  const results = await Promise.all(
+    statuses.map((status) =>
+      supabase.from(TASKS_TABLE).select("id", { count: "exact", head: true }).eq("status", status)
+    )
+  );
+  results.forEach((r, i) => {
+    if (r.error) throw new Error(`Failed to count "${statuses[i]}" tasks: ${r.error.message}`);
+  });
   return {
-    pending: listMdFiles(PENDING_DIR).length,
-    needsApproval: listMdFiles(NEEDS_APPROVAL_DIR).length,
-    completed: listMdFiles(COMPLETED_DIR).length,
+    pending: results[0].count ?? 0,
+    needsApproval: results[1].count ?? 0,
+    completed: results[2].count ?? 0,
   };
 }
 
 // Returns the most recent daily briefings as { file, date, text } entries,
-// newest first, for the Command Center's live execution feed.
+// newest first, for the Command Center's live execution feed. These are
+// static docs committed to the repo, so plain file reads are safe even on
+// Vercel's read-only production filesystem.
 export function listRecentBriefings(limit = 5) {
   const files = listMdFiles(BRIEFINGS_DIR).sort().reverse().slice(0, limit);
   return files.map((f) => ({
@@ -64,32 +104,46 @@ export function readFinancialSnapshot() {
   }
 }
 
-// Creates a new SPARK_OS task file in 02-Tasks/Pending/, matching the
-// convention used by gtm-launch-day-1.md and the run-autonomous-loop.sh
-// owner-tag routing (an "<Owner>_Agent" token in the body). Filed as
-// [agent]-[timestamp].md, e.g. cfo-2026-07-28t03-15-00-000z.md.
-export function createTask({ title, owner, body, source = "command-center", priority = "Medium", directive }) {
-  if (!existsSync(PENDING_DIR)) mkdirSync(PENDING_DIR, { recursive: true });
+// Creates a new SPARK_OS task as a row in the `spark_os_tasks` Supabase
+// table — not a file. Vercel's production filesystem is read-only, so
+// writeFileSync(SPARK_OS/02-Tasks/Pending/...) throws EROFS there even
+// though it works during local `vite`/`vercel dev`. The table is the single
+// source of truth for task state now; see supabase/migrations/ for schema.
+export async function createTask({ title, owner, body, source = "command-center", priority = "Medium", directive }) {
+  const supabase = getSupabase();
 
   const ownerTag = owner && owner.endsWith("_Agent") ? owner : `${owner || "CEO"}_Agent`;
   const agentSlug = ownerTag.replace(/_Agent$/, "").toLowerCase();
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-").toLowerCase();
-  const fileName = `${agentSlug}-${stamp}.md`;
-  const filePath = path.join(PENDING_DIR, fileName);
+  const directiveText = directive || body || "_No additional detail provided._";
 
-  const content = `# ${title}
+  const { data, error } = await supabase
+    .from(TASKS_TABLE)
+    .insert({
+      title,
+      owner: ownerTag,
+      agent_slug: agentSlug,
+      priority,
+      status: "Pending",
+      source,
+      directive: directiveText,
+    })
+    .select()
+    .single();
 
-**Assigned Agent:** ${ownerTag}
-**Priority:** ${priority}
-**Status:** Pending
-**Source:** ${source}
-**Created:** ${new Date().toISOString()}
+  if (error) throw new Error(`Failed to file task in Supabase: ${error.message}`);
 
-## Directive
+  // Kept for continuity with the old [agent]-[timestamp].md naming so UI
+  // copy referencing "the filed task" still reads sensibly — this is a
+  // display label now, not an actual file on disk.
+  const label = `${agentSlug}-${data.id}`;
 
-${directive || body || "_No additional detail provided._"}
-`;
-
-  writeFileSync(filePath, content, "utf8");
-  return { fileName, filePath: path.relative(process.cwd(), filePath), owner: ownerTag, priority };
+  return {
+    id: data.id,
+    fileName: `${label}.md`,
+    filePath: `SPARK_OS/02-Tasks/Pending/${label}.md (Supabase: ${TASKS_TABLE}#${data.id})`,
+    owner: ownerTag,
+    priority,
+    status: data.status,
+    createdAt: data.created_at,
+  };
 }

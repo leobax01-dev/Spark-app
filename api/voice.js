@@ -117,7 +117,7 @@ async function processCommand(rawTranscript) {
   const agent = AGENTS[intentKey];
   const priority = extractPriority(transcript);
 
-  const task = createTask({
+  const task = await createTask({
     title: transcript.slice(0, 80) || "Voice directive",
     owner: agent.owner,
     priority,

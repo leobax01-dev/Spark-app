@@ -13,6 +13,15 @@
 # decisions — it surfaces work for CEO_Agent (and Claude Code, when run
 # via `claude`) to act on, and keeps the task pipeline moving.
 #
+# Supabase mirroring: every task this script routes or completes is also
+# synced to the `spark_os_tasks` table (the same table api/_lib/tasks.js
+# uses in production, where the filesystem is read-only) via the Supabase
+# REST API, so the Command Center dashboard's counts reflect tasks filed
+# this way too. Requires SUPABASE_URL (or VITE_SUPABASE_URL) and
+# SUPABASE_SERVICE_KEY in the environment or .env.local — if unset, the
+# script logs a warning once and continues working file-only (Supabase
+# sync is additive, never a hard requirement to run this script).
+#
 # Usage:
 #   ./run-autonomous-loop.sh              run one pass over Pending/
 #   ./run-autonomous-loop.sh --watch       re-run every INTERVAL_SECONDS
@@ -21,6 +30,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SPARK_OS_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${SPARK_OS_DIR}/.." && pwd)"
 
 PENDING_DIR="${SPARK_OS_DIR}/02-Tasks/Pending"
 APPROVAL_DIR="${SPARK_OS_DIR}/02-Tasks/Needs_Approval"
@@ -34,6 +44,64 @@ BRIEFING_FILE="${BRIEFINGS_DIR}/${TODAY}.md"
 
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"
+}
+
+# ── Supabase sync (best-effort, never fatal to the file-based pipeline) ──
+ENV_LOCAL="${REPO_ROOT}/.env.local"
+if [ -z "${SUPABASE_URL:-}" ] && [ -f "${ENV_LOCAL}" ]; then
+  SUPABASE_URL="$(grep -E '^(SUPABASE_URL|VITE_SUPABASE_URL)=' "${ENV_LOCAL}" | head -1 | cut -d= -f2- | tr -d '"'"'"'')"
+fi
+if [ -z "${SUPABASE_SERVICE_KEY:-}" ] && [ -f "${ENV_LOCAL}" ]; then
+  SUPABASE_SERVICE_KEY="$(grep -E '^SUPABASE_SERVICE_KEY=' "${ENV_LOCAL}" | head -1 | cut -d= -f2- | tr -d '"'"'"'')"
+fi
+
+SUPABASE_WARNED=0
+supabase_configured() {
+  if [ -n "${SUPABASE_URL:-}" ] && [ -n "${SUPABASE_SERVICE_KEY:-}" ]; then
+    return 0
+  fi
+  if [ "${SUPABASE_WARNED}" -eq 0 ]; then
+    log "SUPABASE_URL/SUPABASE_SERVICE_KEY not set — tasks will be filed as files only, not mirrored to Supabase."
+    SUPABASE_WARNED=1
+  fi
+  return 1
+}
+
+# Inserts a row into spark_os_tasks and prints the new row's id on success
+# (empty output on any failure — callers must treat that as "no id").
+supabase_insert_task() {
+  # Local var names avoid the bare words "status"/"source" — some shell
+  # profiles (notably certain zsh/tcsh-derived setups sourced into bash's
+  # environment) export those as readonly, which breaks `local status=...`
+  # with a cryptic "read-only variable" error at call time.
+  local title="$1" owner="$2" agent_slug="$3" priority="$4" task_status="$5" task_source="$6" directive="$7"
+  local payload
+  payload="$(python3 -c '
+import json, sys
+title, owner, agent_slug, priority, status, source, directive = sys.argv[1:8]
+print(json.dumps({
+  "title": title, "owner": owner, "agent_slug": agent_slug,
+  "priority": priority, "status": status, "source": source, "directive": directive,
+}))
+' "${title}" "${owner}" "${agent_slug}" "${priority}" "${task_status}" "${task_source}" "${directive}" 2>/dev/null)"
+  [ -z "${payload}" ] && return 1
+
+  curl -sf -X POST "${SUPABASE_URL}/rest/v1/spark_os_tasks" \
+    -H "apikey: ${SUPABASE_SERVICE_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=representation" \
+    -d "${payload}" 2>/dev/null | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[0]["id"])' 2>/dev/null
+}
+
+supabase_update_status() {
+  local task_id="$1" new_status="$2"
+  [ -z "${task_id}" ] && return 1
+  curl -sf -X PATCH "${SUPABASE_URL}/rest/v1/spark_os_tasks?id=eq.${task_id}" \
+    -H "apikey: ${SUPABASE_SERVICE_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"status\": \"${new_status}\"}" >/dev/null 2>&1
 }
 
 ensure_briefing_exists() {
@@ -104,13 +172,42 @@ route_task() {
 
   log "Task '${task_name}' owner: ${owner}"
 
+  local needs_approval=0
+  if grep -qi 'needs approval\|requires approval\|NEEDS_APPROVAL' "${task_file}"; then
+    needs_approval=1
+  fi
+  local task_status="Pending"
+  [ "${needs_approval}" -eq 1 ] && task_status="Needs_Approval"
+
+  # Mirror to Supabase (spark_os_tasks) — skip if this file was already
+  # synced on a prior pass (Pending items that haven't moved yet would
+  # otherwise get re-inserted as duplicates every run).
+  if supabase_configured && ! grep -q '\*\*Supabase Task ID:\*\*' "${task_file}"; then
+    local title priority agent_slug directive supa_id
+    title="$(grep -m1 '^# ' "${task_file}" | sed 's/^# //')"
+    [ -z "${title}" ] && title="${task_name}"
+    priority="$(grep -Eom1 '\*\*Priority:\*\*[[:space:]]*[A-Za-z]+' "${task_file}" | sed -E 's/.*\*\*[[:space:]]*//')"
+    [ -z "${priority}" ] && priority="Medium"
+    agent_slug="$(echo "${owner}" | sed 's/_Agent$//' | tr '[:upper:]' '[:lower:]')"
+    directive="$(cat "${task_file}")"
+
+    supa_id="$(supabase_insert_task "${title}" "${owner}" "${agent_slug}" "${priority}" "${task_status}" "run-autonomous-loop:${task_name}" "${directive}" || true)"
+    if [ -n "${supa_id}" ]; then
+      echo "" >> "${task_file}"
+      echo "**Supabase Task ID:** ${supa_id}" >> "${task_file}"
+      log "Task '${task_name}' mirrored to Supabase (id: ${supa_id})"
+    else
+      log "Warning: failed to mirror task '${task_name}' to Supabase — continuing file-only."
+    fi
+  fi
+
   # NOTE: Actual execution (code changes, copy drafts, financial updates,
   # etc.) is performed by the assigned agent via Claude Code, not by this
   # shell script. This loop's job is routing, bookkeeping, and reporting.
   # Requires human-in-the-loop or `claude` CLI invocation to execute the
   # task content itself.
 
-  if grep -qi 'needs approval\|requires approval\|NEEDS_APPROVAL' "${task_file}"; then
+  if [ "${needs_approval}" -eq 1 ]; then
     log "Task '${task_name}' requires approval — moving to Needs_Approval/"
     mv "${task_file}" "${APPROVAL_DIR}/${task_name}"
     append_briefing_line "Needs Approval" "${task_name} (owner: ${owner})"
@@ -126,6 +223,20 @@ complete_task() {
   task_name="$(basename "${task_file}")"
   local timestamp
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+
+  if supabase_configured; then
+    local supa_id
+    supa_id="$(grep -m1 '\*\*Supabase Task ID:\*\*' "${task_file}" | sed -E 's/.*\*\*Supabase Task ID:\*\*[[:space:]]*//')"
+    if [ -n "${supa_id}" ]; then
+      if supabase_update_status "${supa_id}" "Completed"; then
+        log "Task '${task_name}' marked Completed in Supabase (id: ${supa_id})"
+      else
+        log "Warning: failed to update Supabase status for '${task_name}' (id: ${supa_id})"
+      fi
+    else
+      log "Task '${task_name}' has no Supabase Task ID (predates syncing or Supabase was unset when routed) — file-only completion."
+    fi
+  fi
 
   echo "" >> "${task_file}"
   echo "---" >> "${task_file}"

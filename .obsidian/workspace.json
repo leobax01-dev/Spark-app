@@ -185,6 +185,10 @@
   },
   "active": "cd653c2e90c305ba",
   "lastOpenFiles": [
+    "scripts/backfill-spark-os-tasks.mjs",
+    "scripts",
+    "supabase/migrations/20260728000000_create_spark_os_tasks.sql",
+    "supabase/migrations",
     "SPARK_OS/02-Tasks/Pending/ceo-2026-07-28t04-44-25-630z.md",
     "SPARK_OS/02-Tasks/Pending/ceo-2026-07-28t04-32-27-204z.md",
     "SPARK_OS/02-Tasks/Pending/ceo-2026-07-28t04-29-21-458z.md",
@@ -195,10 +199,7 @@
     "api/tasks.js",
     "api/_lib/tasks.js",
     "api/_lib",
-    "node_modules/stats-gl/node_modules/three/examples/jsm/libs/ammo.wasm.wasm",
-    "node_modules/stats-gl/node_modules/three/examples/fonts/droid/README.txt",
     "node_modules/stats-gl/node_modules/three/README.md",
-    "node_modules/stats-gl/node_modules/three/examples/fonts/ttf/kenpixel.ttf",
     "node_modules/stats-gl/node_modules/three/examples/fonts/ttf/README.md",
     "node_modules/stats-gl/node_modules/three/examples/fonts/README.md",
     "node_modules/stats-gl/node_modules/three/src/nodes/materialx/DISCLAIMER.md",
@@ -219,7 +220,6 @@
     "node_modules/glsl-noise/README.md",
     "node_modules/meshline/README.md",
     "node_modules/zustand/README.md",
-    "node_modules/suspend-react/readme.md",
-    "node_modules/utility-types/SUPPORT.md"
+    "node_modules/suspend-react/readme.md"
   ]
 }
