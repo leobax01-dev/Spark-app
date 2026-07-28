@@ -55,3 +55,37 @@ export async function alfredBriefingSummary({ date, briefingText }) {
 export function alfredApology(reason) {
   return `My apologies, Mr. Bax — I wasn't able to complete that. ${reason || "Something interrupted me."}`;
 }
+
+// Conversational answer grounded in real spark_os_tasks rows — Alfred's
+// Neural Cortex. `tasks` is a recent-task context window (see
+// api/_lib/alfredBrain.js), not arbitrary query results, so the prompt
+// explicitly instructs Claude to answer only from what's given rather than
+// speculate beyond it.
+export async function alfredAnswerFromContext({ question, tasks }) {
+  const byOwner = {};
+  for (const t of tasks) {
+    (byOwner[t.owner] ||= []).push(t);
+  }
+  const summaryLines = Object.entries(byOwner).map(([owner, rows]) => {
+    const statusCounts = rows.reduce((acc, r) => {
+      acc[r.status] = (acc[r.status] || 0) + 1;
+      return acc;
+    }, {});
+    const statusStr = Object.entries(statusCounts).map(([s, n]) => `${n} ${s}`).join(", ");
+    const recentTitles = rows.slice(0, 5).map((r) => `"${r.title}" [${r.priority}, ${r.status}]`).join("; ");
+    return `${owner}: ${statusStr}. Recent: ${recentTitles || "none"}`;
+  });
+  const contextBlock = summaryLines.length > 0 ? summaryLines.join("\n") : "No tasks recorded in the system yet.";
+
+  const prompt = `Mr. Bax just asked you, aloud: "${question}"\n\nHere is the current state of SPARK_OS's task table (spark_os_tasks), grouped by agent:\n\n${contextBlock}\n\nAnswer his question conversationally using ONLY this data. If the data doesn't actually answer what he asked (e.g. he asked about financials but the task table has nothing relevant), say so honestly rather than inventing numbers — you may note that a given metric isn't tracked in the task table yet. Two to four sentences, spoken aloud.`;
+
+  const generated = await callClaude(prompt, 320);
+  if (generated) return generated;
+
+  // Deterministic fallback (no ANTHROPIC_API_KEY configured) — still
+  // genuinely grounded in the same data, just templated instead of generated.
+  if (summaryLines.length === 0) {
+    return "I'm afraid there's nothing on the books yet, Mr. Bax — the task table is empty.";
+  }
+  return `Here's where things stand, Mr. Bax: ${summaryLines.join(" ")}`;
+}

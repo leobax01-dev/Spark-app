@@ -79,6 +79,34 @@ export async function listTasksByStatus(status, limit = 50) {
   return data;
 }
 
+// Returns recent tasks for one agent across all statuses — powers the
+// Holographic Dossier that slides out when a C-Suite planet is clicked.
+export async function listTasksByOwner(ownerTag, limit = 25) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(TASKS_TABLE)
+    .select("*")
+    .eq("owner", ownerTag)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Failed to list tasks for ${ownerTag}: ${error.message}`);
+  return data;
+}
+
+// Recent tasks across ALL agents/statuses, for grounding Alfred's
+// conversational answers ("what is the CMO working on today?", "how is our
+// ARR looking?") in real data instead of a hallucinated guess.
+export async function listRecentTasksContext(limit = 40) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from(TASKS_TABLE)
+    .select("title, owner, status, priority, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`Failed to load task context: ${error.message}`);
+  return data;
+}
+
 // Updates a task's status (e.g. approving a Needs_Approval task moves it to
 // Completed). Returns the updated row.
 export async function updateTaskStatus(id, status) {

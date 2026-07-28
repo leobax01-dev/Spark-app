@@ -108,7 +108,7 @@ export default function TaskDrawer({ status, label, color, onClose, onApproved, 
       if (!res.ok) throw new Error(data.error || "Approval failed");
       playGlitch?.();
       setTasks((prev) => (prev || []).filter((t) => t.id !== task.id));
-      onApproved?.();
+      onApproved?.((task.agent_slug || "").toUpperCase());
     } catch (err) {
       setError(err.message);
       sound?.error();

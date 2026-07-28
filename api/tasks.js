@@ -15,6 +15,7 @@ import {
   readFinancialSnapshot,
   createTask,
   listTasksByStatus,
+  listTasksByOwner,
   updateTaskStatus,
 } from "./_lib/tasks.js";
 
@@ -22,12 +23,22 @@ const VALID_STATUSES = new Set(["Pending", "Needs_Approval", "Completed"]);
 
 export default async function handler(req, res) {
   if (req.method === "GET") {
-    const { status } = req.query || {};
+    const { status, owner } = req.query || {};
     if (status) {
       if (!VALID_STATUSES.has(status)) return res.status(400).json({ error: `Invalid status "${status}"` });
       try {
         const tasks = await listTasksByStatus(status);
         return res.status(200).json({ status, tasks });
+      } catch (err) {
+        return res.status(500).json({ error: err.message });
+      }
+    }
+
+    if (owner) {
+      try {
+        const ownerTag = owner.endsWith("_Agent") ? owner : `${owner}_Agent`;
+        const tasks = await listTasksByOwner(ownerTag);
+        return res.status(200).json({ owner: ownerTag, tasks });
       } catch (err) {
         return res.status(500).json({ error: err.message });
       }

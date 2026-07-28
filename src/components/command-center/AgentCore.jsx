@@ -148,6 +148,12 @@ function NebulaCore({ coreState, pulseRef }) {
   );
 }
 
+// Exported so StarSystem.jsx can render this as the Sun/Alfred Core inside
+// its own shared Canvas (a solar system needs one Canvas for the whole
+// scene — camera, planets, tethers, and core all together — not a separate
+// nested Canvas per element).
+export { NebulaCore, STATE_PRESETS };
+
 export default function AgentCore({ coreState = "idle", pulseRef }) {
   return (
     <Canvas camera={{ position: [0, 0, 6], fov: 45 }} gl={{ antialias: true, alpha: true }}>
@@ -157,9 +163,9 @@ export default function AgentCore({ coreState = "idle", pulseRef }) {
 }
 
 // Small helper hook: derive a coreState string ("idle"|"thinking"|"error"|
-// "success") from the various voice/task states the parent already tracks,
-// with "success" auto-reverting to "idle" after a short flash.
-export function useCoreState({ voiceState, hfStatus, handsFree, hasError }) {
+// "success") from the states the parent tracks, with "success"
+// auto-reverting to "idle" after a short flash.
+export function useCoreState({ thinking, hasError }) {
   const [flash, setFlash] = useState(null); // "success" | null
   const flashTimer = useRef(null);
 
@@ -171,12 +177,15 @@ export function useCoreState({ voiceState, hfStatus, handsFree, hasError }) {
 
   useEffect(() => () => flashTimer.current && clearTimeout(flashTimer.current), []);
 
+  // Note: the passive "always listening for Hey Alfred" state deliberately
+  // does NOT change coreState — the core stays in its calm idle swirl the
+  // whole time. Only once a wake word is actually heard does a separate
+  // glowing ring materialize (see StarSystem's ListeningRing), and only
+  // once Alfred is generating a response does the core shift to "thinking".
   let coreState = "idle";
   if (hasError) coreState = "error";
   else if (flash) coreState = "success";
-  else if ((handsFree && (hfStatus === "thinking" || hfStatus === "speaking")) || voiceState === "thinking" || voiceState === "speaking") {
-    coreState = "thinking";
-  }
+  else if (thinking) coreState = "thinking";
 
   return { coreState, triggerSuccessFlash };
 }

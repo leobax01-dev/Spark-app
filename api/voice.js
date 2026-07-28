@@ -1,29 +1,23 @@
-// api/voice.js — "Alfred", the SPARK OS voice engine.
+// api/voice.js — ElevenLabs speech I/O for Alfred.
 //
 // Three actions:
 //   POST { action: "command", audioBase64, mimeType } -> ElevenLabs speech-to-text,
-//     then routes the transcript through processCommand() below.
-//   POST { action: "text-command", text } -> skips STT (used by the client's
-//     Web Speech API wake-word engine, which already has a transcript) and
-//     routes straight through processCommand().
+//     then routes the transcript through the shared brain (see
+//     api/_lib/alfredBrain.js — also used by api/alfred-brain.js, the
+//     text-first endpoint the wake-word listener actually calls).
+//   POST { action: "text-command", text } -> same routing, skipping STT.
+//     Kept for backward compatibility; api/alfred-brain.js is the primary
+//     entry point for text now.
 //   POST { action: "speak", text, voiceId? } -> ElevenLabs text-to-speech,
-//     returns base64 audio for the client to play (and pulse the 3D Agent
-//     Core to).
-//
-// processCommand() either:
-//   - detects a quick "today's brief" style query and reads back a refined
-//     executive summary of the latest SPARK_OS/05-Daily-Briefings/ file, or
-//   - classifies the directive to a C-Suite agent (CFO/CTO/CMO/CRO/CEO),
-//     files it as SPARK_OS/02-Tasks/Pending/[agent]-[timestamp].md, and
-//     returns an in-character Alfred confirmation for the client to speak.
+//     returns base64 audio for the client to play (and pulse the 3D Star
+//     System's core to).
 //
 // Note: VITE_ prefixes only matter for client-bundled env vars (Vite inlines
 // them at build time). This is a server-only Vercel function, so the prefix
 // has no special effect here — it's just the variable's name. Kept as
 // VITE_ELEVENLABS_API_KEY per spec, with a plain ELEVENLABS_API_KEY fallback.
-import { createTask, listRecentBriefings } from "./_lib/tasks.js";
-import { AGENTS, classifyIntent, extractPriority, isBriefingQuery, stripWakePhrase } from "./_lib/agents.js";
-import { alfredConfirmation, alfredBriefingSummary, alfredApology } from "./_lib/alfred.js";
+import { routeUtterance } from "./_lib/alfredBrain.js";
+import { alfredApology } from "./_lib/alfred.js";
 
 // Trimmed + de-quoted: a common cause of "key looks set but the check still
 // fails" is a stray trailing newline/space or accidental wrapping quotes in
@@ -79,7 +73,7 @@ async function handleAudioCommand(req, res) {
     const transcript = (sttData.text || "").trim();
     if (!transcript) return res.status(422).json({ error: "No speech detected in audio" });
 
-    const result = await processCommand(transcript);
+    const result = await routeUtterance(transcript);
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message, spoken: alfredApology(err.message) });
@@ -90,53 +84,11 @@ async function handleTextCommand(req, res) {
   const { text } = req.body || {};
   if (!text || !text.trim()) return res.status(400).json({ error: "text required" });
   try {
-    const result = await processCommand(text.trim());
+    const result = await routeUtterance(text.trim());
     return res.status(200).json(result);
   } catch (err) {
     return res.status(500).json({ error: err.message, spoken: alfredApology(err.message) });
   }
-}
-
-// Shared routing logic for both the audio and text-command entry points.
-async function processCommand(rawTranscript) {
-  const transcript = stripWakePhrase(rawTranscript);
-
-  // Quick Query Direct Response — bypass task filing, read the brief back.
-  if (isBriefingQuery(transcript)) {
-    const [latest] = listRecentBriefings(1);
-    if (!latest) {
-      const spoken = "I'm afraid there's no daily briefing on file yet, Mr. Bax. Shall I have the CEO Agent compile one now?";
-      return { mode: "briefing", transcript, rawTranscript, spoken };
-    }
-    const spoken = await alfredBriefingSummary({ date: latest.date, briefingText: latest.text });
-    return { mode: "briefing", transcript, rawTranscript, briefingDate: latest.date, spoken };
-  }
-
-  // Actionable Command Routing — classify, file, confirm.
-  const intentKey = classifyIntent(transcript);
-  const agent = AGENTS[intentKey];
-  const priority = extractPriority(transcript);
-
-  const task = await createTask({
-    title: transcript.slice(0, 80) || "Voice directive",
-    owner: agent.owner,
-    priority,
-    directive: `**Spoken directive (via Alfred voice engine):**\n\n> ${transcript}`,
-    source: "alfred-voice",
-  });
-
-  const spoken = await alfredConfirmation({ agentLabel: agent.label, transcript, priority });
-
-  return {
-    mode: "task",
-    transcript,
-    rawTranscript,
-    agent: intentKey,
-    agentLabel: agent.label,
-    priority,
-    task,
-    spoken,
-  };
 }
 
 async function handleSpeak(req, res) {
