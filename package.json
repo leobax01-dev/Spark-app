@@ -9,12 +9,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "posthog-js": "^1.205.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@supabase/supabase-js": "^2.45.0",
     "stripe": "^17.0.0",
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "posthog-js": "^1.205.0",
+    "three": "^0.185.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

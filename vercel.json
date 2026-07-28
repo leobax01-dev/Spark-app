@@ -14,6 +14,13 @@
     },
     "api/cron-autopilot.js": {
       "maxDuration": 300
+    },
+    "api/tasks.js": {
+      "includeFiles": "SPARK_OS/**"
+    },
+    "api/voice.js": {
+      "includeFiles": "SPARK_OS/**",
+      "maxDuration": 60
     }
   },
   "crons": [

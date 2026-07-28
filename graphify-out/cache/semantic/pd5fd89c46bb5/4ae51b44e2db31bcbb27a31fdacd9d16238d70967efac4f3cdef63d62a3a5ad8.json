@@ -1,0 +1,1 @@
+{"nodes": [], "edges": [{"source": "public_icon_512_spark_app_icon", "target": "public_icon_512_spark_app_icon", "relation": "references", "confidence": "EXTRACTED", "confidence_score": 1.0, "source_file": "public/icon-96.png", "source_location": null, "weight": 1.0}], "hyperedges": []}
