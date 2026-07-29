@@ -122,6 +122,50 @@ export default async function handler(req, res) {
         return res.status(200).json({ received: true, note: 'No email found' })
       }
 
+      // ── BROKERAGE COMMAND SUITE — tiered annual seat subscription ──────────
+      // Distinguished from the solo-agent plan flow by metadata set in
+      // api/billing/brokerage-checkout.js, not by payment_link/product_id
+      // (this flow uses inline price_data, so there's no fixed Product ID to
+      // map — the metadata IS the source of truth here).
+      if (session.metadata?.brokerage_flow === 'true') {
+        const { tier, seats, brokerage_name, user_id } = session.metadata
+        const seatLimit = Number(seats) || null
+
+        const { data: brokerage, error: brokerageError } = await supabase
+          .from('brokerages')
+          .insert({
+            name: brokerage_name,
+            tier,
+            pilot_seat_limit: seatLimit,
+            active_seats: 1, // the purchasing broker's own row is about to get brokerage_id set below
+            owner_user_id: user_id,
+            stripe_customer_id: session.customer,
+            stripe_subscription_id: session.subscription,
+            billing_status: 'active',
+          })
+          .select('id')
+          .single()
+
+        if (brokerageError) {
+          console.error('Brokerage row creation failed:', brokerageError.message)
+          await alertUnmatchedPayment('Brokerage checkout succeeded but creating the brokerages row failed', { tier, seats, brokerage_name, user_id, error: brokerageError.message })
+          return res.status(200).json({ received: true, note: 'Brokerage creation failed' })
+        }
+
+        const { error: ownerUpdateError } = await supabase
+          .from('users')
+          .update({ role: 'broker', brokerage_id: brokerage.id, stripe_customer_id: session.customer, updated_at: new Date().toISOString() })
+          .eq('id', user_id)
+
+        if (ownerUpdateError) {
+          console.error('Broker owner role update failed:', ownerUpdateError.message)
+          await alertUnmatchedPayment('Brokerage created but promoting the purchasing user to role=broker failed', { user_id, brokerageId: brokerage.id, error: ownerUpdateError.message })
+        }
+
+        console.log(`Brokerage provisioned: ${brokerage_name} (${tier}, ${seatLimit ?? 'custom'} seats) — owner ${user_id}`)
+        return res.status(200).json({ received: true })
+      }
+
       const email = rawEmail.toLowerCase()
       const userData = await findUser(email)
 
@@ -268,6 +312,31 @@ export default async function handler(req, res) {
     if (event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object
       const customerId = subscription.customer
+
+      // A brokerage's seat subscription cancelling is distinct from a solo
+      // agent's — it doesn't touch users.plan/credits, it marks the
+      // brokerage itself past its paid term. Existing member access isn't
+      // yanked automatically here; that's a deliberate choice to avoid
+      // locking out a whole team on a billing hiccup — billing_status is
+      // there for the app to surface a "past due" banner / gate new invites.
+      const { data: brokerageData } = await supabase
+        .from('brokerages')
+        .select('id, name')
+        .eq('stripe_subscription_id', subscription.id)
+        .single()
+
+      if (brokerageData) {
+        const { error: brokerageCancelError } = await supabase
+          .from('brokerages')
+          .update({ billing_status: 'canceled' })
+          .eq('id', brokerageData.id)
+        if (brokerageCancelError) {
+          console.error('Brokerage cancellation update failed:', brokerageData.name, brokerageCancelError.message)
+        } else {
+          console.log(`Brokerage subscription cancelled: ${brokerageData.name}`)
+        }
+        return res.status(200).json({ received: true })
+      }
 
       const { data: userData } = await supabase
         .from('users')

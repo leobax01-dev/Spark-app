@@ -7,6 +7,8 @@ import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHi
 import AutopilotPanel from "./features/AutopilotPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Icon from "./components/Icons";
+import BrokerDashboard from "./components/BrokerDashboard";
+import BrokerTeamSettings from "./components/BrokerTeamSettings";
 import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
 import { Button } from "./components/UI";
 
@@ -4568,7 +4570,8 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
 }
 
 function MainApp({user,onLogout}){
-  const [tab,setTab]        =useState("autopilot");
+  const isBroker = user.role==="broker";
+  const [tab,setTab]        =useState(()=>isBroker?"brokerage":"autopilot");
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits??3));
   const [intendedPlan]=useState(()=>{
@@ -4674,7 +4677,11 @@ function MainApp({user,onLogout}){
   }
   function handleGoSettings(){ setTab("settings"); }
 
-  const NAV=[
+  const NAV=isBroker ? [
+    {id:"brokerage",   icon:"🏢", label:"Command Suite"},
+    {id:"team",        icon:"👔", label:"Team"},
+    {id:"settings",    icon:"⚙",  label:"Settings"},
+  ] : [
     {id:"autopilot",   icon:"🤖", label:"Autopilot"},
     {id:"generate",    icon:"⚡", label:"Generate"},
     {id:"transactions",icon:"📋", label:"Deals"},
@@ -4704,9 +4711,13 @@ function MainApp({user,onLogout}){
     calculator:   <>Commission <Shimmer>Calculator</Shimmer></>,
     affiliate:    <>Affiliate <Shimmer>Program</Shimmer></>,
     settings:     <Shimmer>Settings</Shimmer>,
+    brokerage:    <>Brokerage <Shimmer>Command Suite</Shimmer></>,
+    team:         <>Team & <Shimmer>Seats</Shimmer></>,
   };
   const SUBTITLES={
     autopilot:    "Your team, running your business while you sell — always on",
+    brokerage:    "Macro-pipeline · agent leaderboard · intervention feed",
+    team:         "Seats · invites · access",
     generate:     voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
     transactions: "Timeline generator · Listing presentation · CMA analyzer",
     clients:      "Daily briefing · Pipeline manager · Note analyzer",
@@ -4896,7 +4907,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
       </div>
     </div>
   );
@@ -5053,7 +5064,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
             </div>
           </div>
           <MobileNav/>
@@ -5103,7 +5114,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
             </div>
           </div>
         </div>
@@ -5758,14 +5769,14 @@ function AuthPage({mode,onAuth,onSwitch}){
             } else {
               identifyUser(email, { selected_plan: plan });
               track("signup_completed", { selected_plan: plan, is_trial: true });
-              onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended });
+              onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, role:"agent", brokerageId:null });
             }
           } else {
             const {data,error}=await sb.auth.signInWithPassword({ email, password:pass });
             if(error) throw new Error(error.message);
-            const {data:userData, error:dbError}=await sb.from("users").select("plan,credits,intended_plan").eq("email",email.toLowerCase()).single();
+            const {data:userData, error:dbError}=await sb.from("users").select("plan,credits,intended_plan,role,brokerage_id").eq("email",email.toLowerCase()).single();
 
-            let finalPlan, finalCredits, finalIntended;
+            let finalPlan, finalCredits, finalIntended, finalRole="agent", finalBrokerageId=null;
             if(dbError||!userData){
               // No row found (e.g. pre-fix account) — self-heal by creating one
               console.warn("User row missing on login, self-healing:", dbError?.message);
@@ -5786,6 +5797,29 @@ function AuthPage({mode,onAuth,onSwitch}){
               }
             } else {
               finalPlan=userData.plan; finalCredits=userData.credits; finalIntended=userData.intended_plan||"pro";
+              finalRole=userData.role||"agent"; finalBrokerageId=userData.brokerage_id||null;
+            }
+
+            // Brokerage invite acceptance — `/?invite=TOKEN` in the URL means
+            // this login should also join the inviting brokerage. Runs after
+            // auth so we have a real auth.users id to attach it to.
+            const inviteToken = new URLSearchParams(window.location.search).get("invite");
+            if(inviteToken && data?.user?.id){
+              try{
+                const acceptRes = await fetch("/api/brokerage/accept-invite", {
+                  method:"POST", headers:{"Content-Type":"application/json"},
+                  body: JSON.stringify({ token:inviteToken, userId:data.user.id }),
+                });
+                const acceptData = await acceptRes.json();
+                if(acceptRes.ok){
+                  finalRole="agent"; finalBrokerageId=acceptData.brokerageId;
+                  toast("Joined brokerage ✓","success");
+                } else {
+                  toast(acceptData.error||"Couldn't accept that invite","error");
+                }
+              }catch(e){
+                console.warn("Invite acceptance failed:", e.message);
+              }
             }
 
             const accounts=LS.get("sp_accounts",{});
@@ -5793,7 +5827,7 @@ function AuthPage({mode,onAuth,onSwitch}){
             LS.set("sp_accounts",accounts);
             identifyUser(email, { plan:finalPlan, credits:finalCredits });
             track("login_completed", { plan:finalPlan, credits:finalCredits });
-            onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended });
+            onAuth({ email, plan:finalPlan, credits:finalCredits, intendedPlan:finalIntended, role:finalRole, brokerageId:finalBrokerageId });
           }
         }catch(e){
           // Give a more helpful message for unconfirmed email
@@ -5825,13 +5859,13 @@ function AuthPage({mode,onAuth,onSwitch}){
           if(!isTrialChoice && PLANS[plan].stripeLink){
             goStripe(PLANS[plan].stripeLink, email);
           } else {
-            onAuth({ email, plan:"trial", credits:startCredits, intendedPlan:plan });
+            onAuth({ email, plan:"trial", credits:startCredits, intendedPlan:plan, role:"agent", brokerageId:null });
           }
         } else {
           const account=accounts[key];
           if(!account){ toast("No account found — tap Start Free","error"); setLoading(false); return; }
           if(account.pass!==pass){ toast("Incorrect password","error"); setLoading(false); return; }
-          onAuth({ email, plan:account.plan, credits:account.credits, intendedPlan:account.intendedPlan||"pro" });
+          onAuth({ email, plan:account.plan, credits:account.credits, intendedPlan:account.intendedPlan||"pro", role:"agent", brokerageId:null });
         }
       }catch(e){
         toast("Something went wrong — try again","error");
