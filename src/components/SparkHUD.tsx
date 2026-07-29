@@ -17,10 +17,15 @@
 //    inline `style` objects alongside them, tuned to the same zinc-950 /
 //    indigo-500 / cyan dark-enterprise palette the classNames describe.
 //
-// Backend dependency: POSTs to /api/ai/broker-copilot, which does not exist
-// yet in this repo (it was mid-build in an earlier, interrupted request).
-// Until that endpoint exists, Spark will show a clear "couldn't reach the
-// backend" error in chat rather than hang or crash — see handleSend().
+// Backend: POSTs to /api/ai/broker-copilot (api/ai/broker-copilot.js),
+// authenticated via the signed-in user's Supabase access token, resolved
+// fresh on each send — see getAuthToken() below. If that token is missing
+// or the request fails, Spark shows a clear error in chat rather than
+// hanging or crashing — see handleSend().
+//
+// Mounted globally from src/App.jsx's MainApp, rendered only when
+// user.role === "broker" (it POSTs to a broker-only endpoint — mounting it
+// for agents would just produce 403s from every message).
 import { useState, useRef, useEffect, useCallback } from "react";
 import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 
@@ -58,7 +63,22 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export default function SparkHUD({ authToken }: { authToken?: string | null }) {
+// Resolves the current Supabase access token at call time (same pattern as
+// BrokerTeamSettings.jsx's authedFetch) rather than accepting it as a prop
+// — this lets SparkHUD mount globally in App.jsx without App.jsx having to
+// track/refresh a token on its behalf, and it always uses a fresh one.
+async function getAuthToken(): Promise<string | null> {
+  const sb = (window as any).__supabase;
+  if (!sb) return null;
+  try {
+    const { data } = await sb.auth.getSession();
+    return data?.session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
+export default function SparkHUD() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -170,11 +190,14 @@ export default function SparkHUD({ authToken }: { authToken?: string | null }) {
       setLoading(true);
 
       try {
+        const authToken = await getAuthToken();
+        if (!authToken) throw new Error("Your session expired — please sign in again.");
+
         const res = await fetch(COPILOT_ENDPOINT, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({ query: text }),
         });
@@ -200,7 +223,7 @@ export default function SparkHUD({ authToken }: { authToken?: string | null }) {
         setLoading(false);
       }
     },
-    [authToken, loading]
+    [loading]
   );
 
   function onSubmit(e: React.FormEvent) {

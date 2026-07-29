@@ -9,6 +9,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Icon from "./components/Icons";
 import BrokerDashboard from "./components/BrokerDashboard";
 import BrokerTeamSettings from "./components/BrokerTeamSettings";
+import SparkHUD from "./components/SparkHUD.tsx";
 import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
 import { Button } from "./components/UI";
 
@@ -5023,6 +5024,7 @@ function MainApp({user,onLogout}){
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
       <OrbBg/>
       <ToastContainer/>
+      {isBroker&&<SparkHUD/>}
       {showOnboard&&<OnboardingModal planKey={planKey} onClose={handleOnboardClose}/>}
       {showUpgradeModal&&(
         <UpgradeModal
