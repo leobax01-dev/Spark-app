@@ -65,10 +65,16 @@ async function getDeals(brokerageId) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from("deals")
-    .select("id, agent_id, client_name, deal_volume, gci, stage, status, probability, closing_date, war_room_active, last_activity_at")
+    .select("id, agent_id, client_name, address, deal_volume, gci, commission_split_pct, stage, status, probability, closing_date, war_room_active, last_activity_at")
     .eq("brokerage_id", brokerageId);
   if (error) throw new Error(`getDeals failed: ${error.message}`);
-  return data;
+  // commission payout is derived, not stored (see migration comment) — computed
+  // once here so every caller (ledger UI, Spark's prompt context) uses the
+  // same number instead of each re-deriving it slightly differently.
+  return data.map((d) => ({
+    ...d,
+    commissionPayout: (Number(d.gci) || 0) * ((Number(d.commission_split_pct) || 0) / 100),
+  }));
 }
 
 async function getAgents(brokerageId) {

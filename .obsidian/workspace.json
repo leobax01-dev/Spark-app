@@ -185,6 +185,8 @@
   },
   "active": "cd653c2e90c305ba",
   "lastOpenFiles": [
+    "supabase/migrations/20260802000000_deals_commission_split.sql",
+    "supabase/migrations/20260801000000_seed_luxury_demo_deals.sql",
     "api/spark.js",
     "supabase/migrations/20260731000000_deals_probability_closing_date.sql",
     "api/ai/broker-copilot.js",
@@ -194,8 +196,6 @@
     "src/components/SparkHUD.tsx",
     "node_modules/react-speech-recognition/package.json",
     "node_modules/lodash.debounce/index.js",
-    "node_modules/react-speech-recognition/dist/index.js",
-    "node_modules/react-speech-recognition/dist/index.cjs",
     "node_modules/lodash.debounce/README.md",
     "node_modules/react-speech-recognition/README.md",
     "SPARK_OS/02-Tasks/Pending/ceo-2026-07-28t04-44-25-630z.md",
