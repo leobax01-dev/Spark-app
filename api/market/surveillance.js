@@ -129,7 +129,7 @@ export default async function handler(req, res) {
   const { zipCode, cityState } = req.query || {};
   if (!zipCode && !cityState) return emptyResponse(res, 400, "zipCode or cityState query parameter required");
 
-  const url = new URL("https://api.rentcast.io/v1/listings/active");
+  const url = new URL("https://api.rentcast.io/v1/listings/sale");
   if (zipCode) {
     url.searchParams.set("zipCode", String(zipCode));
   } else {
