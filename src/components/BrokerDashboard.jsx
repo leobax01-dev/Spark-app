@@ -12,6 +12,7 @@
 // the UI.
 import { useEffect, useMemo, useState } from "react";
 import { Card, Label } from "./UI";
+import SurveillanceRadar from "./SurveillanceRadar";
 
 const C = {
   bg: "#0a0a0d", surface: "#0d0e12", surfaceUp: "#131519",
@@ -368,6 +369,13 @@ export default function BrokerDashboard({ user }) {
           </div>
         )}
       </Card>
+
+      {/* Surveillance Radar — live RentCast market map, independent of the
+          deals/commission data above (its own data source, api/market/surveillance.js) */}
+      <div style={{ marginTop: 18 }}>
+        <Label color={C.cyan} C={C}>SURVEILLANCE RADAR</Label>
+        <SurveillanceRadar user={user} />
+      </div>
     </div>
   );
 }
