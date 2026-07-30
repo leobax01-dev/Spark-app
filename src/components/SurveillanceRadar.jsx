@@ -363,8 +363,8 @@ Return ONLY this JSON: {"pitch":"the 3-sentence pitch"}`,
 
   return (
     <div
-      className="w-screen h-screen m-0 p-0 absolute top-0 left-0 z-0 overflow-hidden"
-      style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden", zIndex: 0 }}
+      className="w-full h-full m-0 p-0 absolute top-0 left-0 z-0 overflow-hidden"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", margin: 0, padding: 0, overflow: "hidden", zIndex: 0 }}
     >
       {/* Deploy success/error toast — top-center overlay, self-dismisses */}
       {toast && (

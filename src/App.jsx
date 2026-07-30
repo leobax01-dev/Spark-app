@@ -4681,6 +4681,7 @@ function MainApp({user,onLogout}){
 
   const NAV=isBroker ? [
     {id:"brokerage",   icon:"🏢", label:"Command Suite"},
+    {id:"radar",       icon:"📡", label:"Surveillance"},
     {id:"team",        icon:"👔", label:"Team"},
     {id:"settings",    icon:"⚙",  label:"Settings"},
   ] : [
@@ -4714,11 +4715,13 @@ function MainApp({user,onLogout}){
     affiliate:    <>Affiliate <Shimmer>Program</Shimmer></>,
     settings:     <Shimmer>Settings</Shimmer>,
     brokerage:    <>Brokerage <Shimmer>Command Suite</Shimmer></>,
+    radar:        <>Surveillance <Shimmer>Radar</Shimmer></>,
     team:         <>Team & <Shimmer>Seats</Shimmer></>,
   };
   const SUBTITLES={
     autopilot:    "Your team, running your business while you sell — always on",
     brokerage:    "Macro-pipeline · agent leaderboard · intervention feed",
+    radar:        "Live market map · brokerage footprint · VIP whisper pitches",
     team:         "Seats · invites · access",
     generate:     voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
     transactions: "Timeline generator · Listing presentation · CMA analyzer",
@@ -4740,6 +4743,7 @@ function MainApp({user,onLogout}){
     calculator: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg>,
     affiliate: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
     settings: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+    radar: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>,
   };
 
   const MobileNav = ()=>(
@@ -4909,7 +4913,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user} onOpenRadar={()=>setTab("radar")}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
       </div>
     </div>
   );
@@ -5021,13 +5025,6 @@ function MainApp({user,onLogout}){
     </div>
   );
 
-  // Surveillance Radar is a dedicated full-screen view, not a tab within the
-  // standard dashboard chrome — bypass the sidebar/header layout entirely
-  // rather than trying to squeeze an edge-to-edge map inside it.
-  if(tab==="radar"){
-    return <SurveillanceRadar user={user} onExit={()=>setTab("brokerage")}/>;
-  }
-
   return(
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
       <OrbBg/>
@@ -5054,79 +5051,96 @@ function MainApp({user,onLogout}){
         // ── MOBILE LAYOUT ──
         <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
           <MobileHeader/>
-          <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
-            padding:"16px 14px 90px",position:"relative",zIndex:1}}>
-            <div style={{maxWidth:"100%"}}>
-              <div style={{marginBottom:18}}>
-                <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:22,
-                  margin:"0 0 5px",lineHeight:1.2,letterSpacing:"-0.02em"}}>
-                  {TITLES[tab]}
-                </h1>
-                <p style={{fontSize:11,color:C.textDim,margin:0,
-                  letterSpacing:.3,fontFamily:C.F,fontWeight:500}}>
-                  {SUBTITLES[tab]}
-                </p>
-              </div>
-
-              <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
-
-              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
-              
-              {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user} onOpenRadar={()=>setTab("radar")}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+          {tab==="radar"?(
+            // Viewport breakout: no padding/maxWidth wrapper, no title block —
+            // the map fills the full area between the header and bottom nav.
+            <div style={{flex:1,position:"relative",overflow:"hidden"}}>
+              <ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>
             </div>
-          </div>
+          ):(
+            <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
+              padding:"16px 14px 90px",position:"relative",zIndex:1}}>
+              <div style={{maxWidth:"100%"}}>
+                <div style={{marginBottom:18}}>
+                  <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:22,
+                    margin:"0 0 5px",lineHeight:1.2,letterSpacing:"-0.02em"}}>
+                    {TITLES[tab]}
+                  </h1>
+                  <p style={{fontSize:11,color:C.textDim,margin:0,
+                    letterSpacing:.3,fontFamily:C.F,fontWeight:500}}>
+                    {SUBTITLES[tab]}
+                  </p>
+                </div>
+
+                <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
+
+                {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
+
+                {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
+                {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
+                {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+              </div>
+            </div>
+          )}
           <MobileNav/>
         </div>
       ):(
         // ── DESKTOP LAYOUT ──
         <div style={{display:"flex",flex:1,overflow:"hidden"}}>
           <DesktopSidebar/>
-          <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
-            <div style={{maxWidth:840,margin:"0 auto"}}>
-              <div style={{marginBottom:26}}>
-                {tab==="autopilot"?(
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <div>
-                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
-                        <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:30,letterSpacing:"-0.02em",margin:0,lineHeight:1.15}}>{TITLES[tab]}</h1>
-                        {planKey==="premium"&&(
-                          <span style={{fontSize:9,color:"#4257DB",fontFamily:C.F,fontWeight:700,
-                            background:"rgba(66, 87, 219,.1)",border:"1px solid rgba(66, 87, 219,.25)",
-                            borderRadius:8,padding:"2px 9px",letterSpacing:1.5}}>✦ PREMIUM</span>
-                        )}
-                      </div>
-                      <p style={{fontSize:10,color:"rgba(255,255,255,.35)",margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
-                    </div>
-                    {planKey==="premium"&&(()=>{ try{ return localStorage.getItem("spark_autopilot_last_run"); }catch(e){ return null; } })()&&(
-                      <div style={{display:"flex",alignItems:"center",gap:6,
-                        background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",
-                        borderRadius:10,padding:"6px 12px"}}>
-                        <div style={{width:6,height:6,borderRadius:"50%",
-                          background:"#22C55E",boxShadow:"0 0 6px #22C55E"}}/>
-                        <span style={{fontSize:10,color:"#22C55E",fontFamily:C.F,fontWeight:700}}>
-                          Active · Monitoring
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                ):(
-                  <>
-                    <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:30,letterSpacing:"-0.02em",margin:"0 0 5px",lineHeight:1.15}}>{TITLES[tab]}</h1>
-                    <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
-                  </>
-                )}
-              </div>
-
-              <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
-              {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
-              
-              {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-              {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user} onOpenRadar={()=>setTab("radar")}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+          {tab==="radar"?(
+            // Viewport breakout: no padding, no maxWidth container, no title
+            // block — the map stretches from the sidebar's right edge to the
+            // window's top/bottom/right edges.
+            <div style={{flex:1,position:"relative",overflow:"hidden"}}>
+              <ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>
             </div>
-          </div>
+          ):(
+            <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
+              <div style={{maxWidth:840,margin:"0 auto"}}>
+                <div style={{marginBottom:26}}>
+                  {tab==="autopilot"?(
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <div>
+                        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
+                          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:30,letterSpacing:"-0.02em",margin:0,lineHeight:1.15}}>{TITLES[tab]}</h1>
+                          {planKey==="premium"&&(
+                            <span style={{fontSize:9,color:"#4257DB",fontFamily:C.F,fontWeight:700,
+                              background:"rgba(66, 87, 219,.1)",border:"1px solid rgba(66, 87, 219,.25)",
+                              borderRadius:8,padding:"2px 9px",letterSpacing:1.5}}>✦ PREMIUM</span>
+                          )}
+                        </div>
+                        <p style={{fontSize:10,color:"rgba(255,255,255,.35)",margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
+                      </div>
+                      {planKey==="premium"&&(()=>{ try{ return localStorage.getItem("spark_autopilot_last_run"); }catch(e){ return null; } })()&&(
+                        <div style={{display:"flex",alignItems:"center",gap:6,
+                          background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",
+                          borderRadius:10,padding:"6px 12px"}}>
+                          <div style={{width:6,height:6,borderRadius:"50%",
+                            background:"#22C55E",boxShadow:"0 0 6px #22C55E"}}/>
+                          <span style={{fontSize:10,color:"#22C55E",fontFamily:C.F,fontWeight:700}}>
+                            Active · Monitoring
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ):(
+                    <>
+                      <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:30,letterSpacing:"-0.02em",margin:"0 0 5px",lineHeight:1.15}}>{TITLES[tab]}</h1>
+                      <p style={{fontSize:10,color:C.textDim,margin:0,letterSpacing:1.2,fontFamily:C.F,fontWeight:600}}>{SUBTITLES[tab]}</p>
+                    </>
+                  )}
+                </div>
+
+                <NotificationBar credits={credits} planKey={planKey} onNavigate={setTab}/>
+                {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
+
+                {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
+                {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
+                {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
