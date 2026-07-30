@@ -7,9 +7,12 @@ import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHi
 import AutopilotPanel from "./features/AutopilotPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Icon from "./components/Icons";
-import BrokerDashboard from "./components/BrokerDashboard";
 import BrokerTeamSettings from "./components/BrokerTeamSettings";
 import SurveillanceRadar from "./components/SurveillanceRadar";
+import ExecutiveOverview from "./components/ExecutiveOverview";
+import InterventionEngine from "./components/InterventionEngine";
+import PerformanceMatrix from "./components/PerformanceMatrix";
+import CommissionLedger from "./components/CommissionLedger";
 import SparkHUD from "./components/SparkHUD.tsx";
 import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
 import { Button } from "./components/UI";
@@ -4573,7 +4576,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
 
 function MainApp({user,onLogout}){
   const isBroker = user.role==="broker";
-  const [tab,setTab]        =useState(()=>isBroker?"brokerage":"autopilot");
+  const [tab,setTab]        =useState(()=>isBroker?"overview":"autopilot");
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits??3));
   const [intendedPlan]=useState(()=>{
@@ -4679,11 +4682,15 @@ function MainApp({user,onLogout}){
   }
   function handleGoSettings(){ setTab("settings"); }
 
+  const OPERATIONS_TAB_IDS = ["overview","radar","intervention","performance","commission"];
   const NAV=isBroker ? [
-    {id:"brokerage",   icon:"🏢", label:"Command Suite"},
-    {id:"radar",       icon:"📡", label:"Surveillance"},
-    {id:"team",        icon:"👔", label:"Team"},
-    {id:"settings",    icon:"⚙",  label:"Settings"},
+    {id:"overview",     icon:"📊", label:"Executive Overview",   section:"OPERATIONS"},
+    {id:"radar",        icon:"📡", label:"Surveillance Radar",   section:"OPERATIONS"},
+    {id:"intervention", icon:"⚠",  label:"Intervention Engine",  section:"OPERATIONS"},
+    {id:"performance",  icon:"📈", label:"Performance Matrix",   section:"OPERATIONS"},
+    {id:"commission",   icon:"💲", label:"Commission Ledger",    section:"OPERATIONS"},
+    {id:"team",         icon:"👔", label:"Team"},
+    {id:"settings",     icon:"⚙",  label:"Settings"},
   ] : [
     {id:"autopilot",   icon:"🤖", label:"Autopilot"},
     {id:"generate",    icon:"⚡", label:"Generate"},
@@ -4714,14 +4721,20 @@ function MainApp({user,onLogout}){
     calculator:   <>Commission <Shimmer>Calculator</Shimmer></>,
     affiliate:    <>Affiliate <Shimmer>Program</Shimmer></>,
     settings:     <Shimmer>Settings</Shimmer>,
-    brokerage:    <>Brokerage <Shimmer>Command Suite</Shimmer></>,
+    overview:     <>Executive <Shimmer>Overview</Shimmer></>,
     radar:        <>Surveillance <Shimmer>Radar</Shimmer></>,
+    intervention: <>Intervention <Shimmer>Engine</Shimmer></>,
+    performance:  <>Performance <Shimmer>Matrix</Shimmer></>,
+    commission:   <>Commission <Shimmer>Ledger</Shimmer></>,
     team:         <>Team & <Shimmer>Seats</Shimmer></>,
   };
   const SUBTITLES={
     autopilot:    "Your team, running your business while you sell — always on",
-    brokerage:    "Macro-pipeline · agent leaderboard · intervention feed",
+    overview:     "Macro-pipeline · agent leaderboard · intervention feed",
     radar:        "Live market map · brokerage footprint · VIP whisper pitches",
+    intervention: "Stalled and at-risk deal intervention",
+    performance:  "Agent performance analytics",
+    commission:   "Brokerage-wide commission ledger",
     team:         "Seats · invites · access",
     generate:     voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
     transactions: "Timeline generator · Listing presentation · CMA analyzer",
@@ -4744,6 +4757,10 @@ function MainApp({user,onLogout}){
     affiliate: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
     settings: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
     radar: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>,
+    overview: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>,
+    intervention: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    performance: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+    commission: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
   };
 
   const MobileNav = ()=>(
@@ -4897,27 +4914,6 @@ function MainApp({user,onLogout}){
     </div>
   );
 
-  // ── CONTENT ────────────────────────────────────────────────────────────────
-  const Content = ()=>(
-    <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
-      padding:isMobile?"16px 14px 90px":"32px 36px",
-      position:"relative",zIndex:1}}>
-      <div style={{maxWidth:isMobile?"100%":840,margin:"0 auto"}}>
-        <div style={{marginBottom:isMobile?16:26}}>
-          <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?24:30,letterSpacing:"-0.02em",margin:"0 0 4px",lineHeight:1.15}}>{TITLES[tab]}</h1>
-          <p style={{fontSize:isMobile?11:10,color:C.textDim,margin:0,letterSpacing:.5,fontFamily:C.F,fontWeight:500}}>{SUBTITLES[tab]}</p>
-        </div>
-
-        {tab==="generate"&&<GeneratePanel planKey={planKey} voice={voice} credits={credits} setCredits={setCredits} apiKeys={apiKeys} onGoUpgrade={handleGoUpgrade} onGoSettings={handleGoSettings} user={user}/>}
-
-        
-        {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
-        {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
-      </div>
-    </div>
-  );
-
   // ── DESKTOP SIDEBAR ────────────────────────────────────────────────────────
   const DesktopSidebar = ()=>(
     <div style={{width:224,
@@ -4933,10 +4929,18 @@ function MainApp({user,onLogout}){
       </div>
       {/* Nav items */}
       <div style={{flex:1,padding:"10px 8px",overflowY:"auto"}}>
-        {NAV.map((item)=>{
+        {NAV.map((item,i)=>{
           const active=tab===item.id;
+          const showSectionLabel = item.section && NAV[i-1]?.section!==item.section;
           return(
-            <button key={item.id} className={`nav-item${active?" active":""}`}
+            <div key={item.id}>
+              {showSectionLabel&&(
+                <div style={{padding:"12px 12px 6px",fontSize:9,fontWeight:700,letterSpacing:1.5,
+                  color:C.textDim,fontFamily:C.F,textTransform:"uppercase"}}>
+                  {item.section}
+                </div>
+              )}
+            <button className={`nav-item${active?" active":""}`}
               onClick={()=>setTab(item.id)}
               style={{width:"100%",display:"flex",alignItems:"center",gap:10,
                 padding:"9px 12px",borderRadius:9,marginBottom:2,
@@ -4969,6 +4973,7 @@ function MainApp({user,onLogout}){
                   padding:"1px 5px",borderRadius:4}}>EARN</span>
               )}
             </button>
+            </div>
           );
         })}
       </div>
@@ -5051,11 +5056,16 @@ function MainApp({user,onLogout}){
         // ── MOBILE LAYOUT ──
         <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
           <MobileHeader/>
-          {tab==="radar"?(
+          {OPERATIONS_TAB_IDS.includes(tab)?(
             // Viewport breakout: no padding/maxWidth wrapper, no title block —
-            // the map fills the full area between the header and bottom nav.
-            <div style={{flex:1,position:"relative",overflow:"hidden"}}>
-              <ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>
+            // the Operations tab fills the full area between the header and
+            // bottom nav, edge-to-edge.
+            <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
+              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user}/></ErrorBoundary>}
+              {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
+              {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user}/></ErrorBoundary>}
+              {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
+              {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
@@ -5078,7 +5088,7 @@ function MainApp({user,onLogout}){
 
                 {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
                 {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-                {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+                {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
               </div>
             </div>
           )}
@@ -5088,12 +5098,16 @@ function MainApp({user,onLogout}){
         // ── DESKTOP LAYOUT ──
         <div style={{display:"flex",flex:1,overflow:"hidden"}}>
           <DesktopSidebar/>
-          {tab==="radar"?(
+          {OPERATIONS_TAB_IDS.includes(tab)?(
             // Viewport breakout: no padding, no maxWidth container, no title
-            // block — the map stretches from the sidebar's right edge to the
-            // window's top/bottom/right edges.
-            <div style={{flex:1,position:"relative",overflow:"hidden"}}>
-              <ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>
+            // block — the Operations tab stretches from the sidebar's right
+            // edge to the window's top/bottom/right edges.
+            <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
+              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user}/></ErrorBoundary>}
+              {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
+              {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user}/></ErrorBoundary>}
+              {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
+              {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
@@ -5137,7 +5151,7 @@ function MainApp({user,onLogout}){
 
                 {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
                 {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-                {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+                {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
               </div>
             </div>
           )}
