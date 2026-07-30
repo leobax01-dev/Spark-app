@@ -9,6 +9,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Icon from "./components/Icons";
 import BrokerDashboard from "./components/BrokerDashboard";
 import BrokerTeamSettings from "./components/BrokerTeamSettings";
+import SurveillanceRadar from "./components/SurveillanceRadar";
 import SparkHUD from "./components/SparkHUD.tsx";
 import { runComplianceCheck, extractTextForReview, RISK_LABELS } from "./utils/compliance";
 import { Button } from "./components/UI";
@@ -4908,7 +4909,7 @@ function MainApp({user,onLogout}){
         
         {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
         {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user} onOpenRadar={()=>setTab("radar")}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
       </div>
     </div>
   );
@@ -5020,6 +5021,13 @@ function MainApp({user,onLogout}){
     </div>
   );
 
+  // Surveillance Radar is a dedicated full-screen view, not a tab within the
+  // standard dashboard chrome — bypass the sidebar/header layout entirely
+  // rather than trying to squeeze an edge-to-edge map inside it.
+  if(tab==="radar"){
+    return <SurveillanceRadar user={user} onExit={()=>setTab("brokerage")}/>;
+  }
+
   return(
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
       <OrbBg/>
@@ -5066,7 +5074,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user} onOpenRadar={()=>setTab("radar")}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
             </div>
           </div>
           <MobileNav/>
@@ -5116,7 +5124,7 @@ function MainApp({user,onLogout}){
               
               {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
               {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+              {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}{tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="brokerage"&&<ErrorBoundary label="Brokerage Command Suite"><BrokerDashboard user={user} onOpenRadar={()=>setTab("radar")}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
             </div>
           </div>
         </div>

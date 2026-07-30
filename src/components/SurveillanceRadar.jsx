@@ -92,7 +92,7 @@ async function geocodeAddress(address, token) {
   return typeof lng === "number" && typeof lat === "number" ? [lng, lat] : null;
 }
 
-export default function SurveillanceRadar({ user }) {
+export default function SurveillanceRadar({ user, onExit }) {
   const [query, setQuery] = useState("Miami, FL");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
@@ -105,7 +105,16 @@ export default function SurveillanceRadar({ user }) {
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [deploying, setDeploying] = useState(false);
   const [toast, setToast] = useState(null);
+  const [whisperPitch, setWhisperPitch] = useState(null);
+  const [whisperLoading, setWhisperLoading] = useState(false);
   const mapRef = useRef(null);
+
+  // Clear any generated pitch when the selected node changes so a stale
+  // pitch from a previously-selected property never lingers under a new one.
+  useEffect(() => {
+    setWhisperPitch(null);
+    setWhisperLoading(false);
+  }, [selectedFeature]);
 
   // Agent Selector — team members to deploy a dossier's target to. Same
   // brokerage-scoped users query as BrokerDashboard.jsx.
@@ -172,6 +181,55 @@ export default function SurveillanceRadar({ user }) {
       setDeploying(false);
     }
   }, [selectedAgentId, agents, user?.brokerageId]);
+
+  // AI Whisper Campaign — a short, discreet outreach pitch for the selected
+  // node, generated via the same api/claude.js proxy every other AI feature
+  // in this app uses (see AutopilotPanel.jsx/TransactionPanel.jsx for the
+  // identical system+messages+max_tokens shape).
+  const generateWhisperPitch = useCallback(async (feature) => {
+    const p = feature.properties;
+    const isBrokerage = p.__source === "brokerage";
+    const price = isBrokerage ? Number(p.deal_volume) || null : Number(p.price) || null;
+    const pricePerSqft = price && p.squareFootage ? Math.round(price / p.squareFootage) : null;
+
+    setWhisperLoading(true);
+    setWhisperPitch(null);
+    try {
+      const r = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system: "You write short, discreet off-market outreach pitches for real estate brokers to send to VIP investor clients. Tone: insider, low-key, urgent but not salesy. Exactly 3 sentences. Return ONLY valid JSON.",
+          messages: [{
+            role: "user",
+            content: `Write a 3-sentence discreet VIP whisper pitch for this property:
+Address: ${p.address || "Address unavailable"}
+Price: ${fmtCompact(price)}
+Price/sqft: ${pricePerSqft ? `$${pricePerSqft}` : "unknown"}
+Days on market: ${p.daysOnMarket ?? "unknown"}
+
+Follow this shape: "Off-market alert. Looking at a prime asset at [address] trading at [price/sqft]—well below sector median. Seller leverage is dropping at [DOM] days on market. Let me know if you want the private financials."
+
+Return ONLY this JSON: {"pitch":"the 3-sentence pitch"}`,
+          }],
+          max_tokens: 300,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok || d?.error || d?.type === "error") {
+        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
+      }
+      const raw = d.content?.[0]?.text || "";
+      const parsed = JSON.parse(raw);
+      if (!parsed.pitch) throw new Error("No pitch in response");
+      setWhisperPitch(parsed.pitch);
+    } catch (err) {
+      setWhisperPitch(null);
+      setToast(`Whisper pitch failed: ${err.message}`);
+    } finally {
+      setWhisperLoading(false);
+    }
+  }, []);
 
   // Brokerage Footprint layer — the brokerage's own active deals, geocoded
   // client-side since `deals.address` has no lat/lng (see comment on
@@ -305,8 +363,8 @@ export default function SurveillanceRadar({ user }) {
 
   return (
     <div
-      className="relative w-full h-[800px] rounded-xl overflow-hidden border border-blue-900/30"
-      style={{ position: "relative", width: "100%", height: 800, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(30,64,175,0.3)" }}
+      className="w-screen h-screen m-0 p-0 absolute top-0 left-0 z-0 overflow-hidden"
+      style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", margin: 0, padding: 0, overflow: "hidden", zIndex: 0 }}
     >
       {/* Deploy success/error toast — top-center overlay, self-dismisses */}
       {toast && (
@@ -473,12 +531,34 @@ export default function SurveillanceRadar({ user }) {
         </Map>
       )}
 
+      {/* Exit Strategy — minimalist glowing button back to the standard CRM view.
+          Only rendered when a parent (App.jsx) hands down onExit; standalone
+          previews of this component with no exit handler just omit it. */}
+      {onExit && (
+        <button
+          onClick={onExit}
+          className="absolute top-4 left-4 z-10"
+          style={{
+            position: "absolute", top: 16, left: 16, zIndex: 20,
+            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
+            border: `1px solid ${C.blueBorder}`, color: C.blue, fontFamily: C.F, fontSize: 10, fontWeight: 800,
+            letterSpacing: 1, textTransform: "uppercase", borderRadius: 10, padding: "8px 14px",
+            cursor: "pointer", boxShadow: `0 0 10px ${C.blueBorder}`, display: "flex", alignItems: "center", gap: 6,
+            transition: "box-shadow 0.15s ease, background 0.15s ease",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 18px rgba(59,130,246,0.6)`; e.currentTarget.style.background = "rgba(59,130,246,0.15)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `0 0 10px ${C.blueBorder}`; e.currentTarget.style.background = "rgba(0,0,0,0.55)"; }}
+        >
+          ← Exit Radar
+        </button>
+      )}
+
       {/* Floating Search HUD — top left */}
       <form
         onSubmit={runScan}
-        className="absolute top-4 left-4 z-10 bg-black/50 backdrop-blur-md border border-blue-500/30 text-white rounded-xl p-2 flex gap-2"
+        className="absolute top-16 left-4 z-10 bg-black/50 backdrop-blur-md border border-blue-500/30 text-white rounded-xl p-2 flex gap-2"
         style={{
-          position: "absolute", top: 16, left: 16, zIndex: 10,
+          position: "absolute", top: onExit ? 62 : 16, left: 16, zIndex: 10,
           background: C.hudBg, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
           border: `1px solid ${C.blueBorder}`, color: "#fff", borderRadius: 12, padding: 8,
           display: "flex", gap: 8, alignItems: "center",
@@ -545,6 +625,10 @@ export default function SurveillanceRadar({ user }) {
             onAgentChange={setSelectedAgentId}
             onDeploy={() => deployToWarRoom(selectedFeature)}
             deploying={deploying}
+            onGenerateWhisper={() => generateWhisperPitch(selectedFeature)}
+            whisperLoading={whisperLoading}
+            whisperPitch={whisperPitch}
+            onWhisperCopied={() => setToast("Whisper pitch copied to clipboard.")}
           />
         ) : (
           <div style={{ fontFamily: C.F, fontSize: 10, color: C.slateDim, border: `1px dashed ${C.blueBorderDim}`, borderRadius: 10, padding: 12, marginBottom: 20, textAlign: "center" }}>
@@ -653,7 +737,10 @@ function domBadgeColor(dom) {
   return LAYER_COLOR.price_cut;
 }
 
-function PropertyDossier({ feature, onClose, agents, selectedAgentId, onAgentChange, onDeploy, deploying }) {
+function PropertyDossier({
+  feature, onClose, agents, selectedAgentId, onAgentChange, onDeploy, deploying,
+  onGenerateWhisper, whisperLoading, whisperPitch, onWhisperCopied,
+}) {
   const p = feature.properties;
   const isBrokerage = p.__source === "brokerage";
   const accent = isBrokerage ? LAYER_COLOR.brokerage : (CATEGORY_COLOR[p.category] || C.blue);
@@ -776,7 +863,67 @@ function PropertyDossier({ feature, onClose, agents, selectedAgentId, onAgentCha
         >
           {deploying ? "Deploying…" : "Deploy to Agent War Room"}
         </button>
+
+        {/* AI Whisper Campaign — discreet VIP outreach pitch, generated via api/claude.js */}
+        <button
+          onClick={onGenerateWhisper}
+          disabled={whisperLoading}
+          className="border-purple-500/50 hover:border-purple-400 text-purple-300"
+          style={{
+            width: "100%", marginTop: 8, background: "rgba(168,85,247,0.08)", color: "#d8b4fe",
+            border: "1px solid rgba(168,85,247,0.5)", borderRadius: 8, padding: "10px 12px",
+            fontFamily: C.F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
+            cursor: whisperLoading ? "default" : "pointer", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+            boxShadow: "none",
+          }}
+          onMouseEnter={(e) => { if (!whisperLoading) { e.currentTarget.style.borderColor = "rgba(192,132,252,0.9)"; e.currentTarget.style.boxShadow = "0 0 14px rgba(168,85,247,0.35)"; } }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(168,85,247,0.5)"; e.currentTarget.style.boxShadow = "none"; }}
+        >
+          {whisperLoading ? "AI synthesizing asset telemetry…" : "Generate VIP Whisper Pitch"}
+        </button>
+
+        {whisperPitch && (
+          <WhisperPitchOutput pitch={whisperPitch} onCopied={onWhisperCopied} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function WhisperPitchOutput({ pitch, onCopied }) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(pitch);
+      onCopied?.();
+    } catch {
+      // clipboard permission denied or unavailable — nothing more we can do here
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 10, position: "relative" }}>
+      <div
+        className="bg-black/80 font-mono text-xs text-purple-200 p-3 rounded-md"
+        style={{
+          background: "rgba(0,0,0,0.8)", fontFamily: "'JetBrains Mono','Courier New',monospace",
+          fontSize: 11.5, lineHeight: 1.6, color: "#e9d5ff", padding: 12, borderRadius: 8,
+          border: "1px solid rgba(168,85,247,0.35)", paddingRight: 36,
+        }}
+      >
+        {pitch}
+      </div>
+      <button
+        onClick={copy}
+        title="Copy to clipboard"
+        style={{
+          position: "absolute", top: 8, right: 8, background: "rgba(168,85,247,0.15)",
+          border: "1px solid rgba(168,85,247,0.4)", borderRadius: 6, width: 24, height: 24,
+          color: "#d8b4fe", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, lineHeight: 1, padding: 0,
+        }}
+      >
+        ⧉
+      </button>
     </div>
   );
 }

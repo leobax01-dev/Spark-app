@@ -12,7 +12,6 @@
 // the UI.
 import { useEffect, useMemo, useState } from "react";
 import { Card, Label } from "./UI";
-import SurveillanceRadar from "./SurveillanceRadar";
 
 const C = {
   bg: "#0a0a0d", surface: "#0d0e12", surfaceUp: "#131519",
@@ -120,7 +119,7 @@ function Select({ value, onChange, options, style = {} }) {
   );
 }
 
-export default function BrokerDashboard({ user }) {
+export default function BrokerDashboard({ user, onOpenRadar }) {
   const [deals, setDeals] = useState(null);
   const [members, setMembers] = useState([]);
   const [error, setError] = useState(null);
@@ -370,12 +369,31 @@ export default function BrokerDashboard({ user }) {
         )}
       </Card>
 
-      {/* Surveillance Radar — live RentCast market map, independent of the
-          deals/commission data above (its own data source, api/market/surveillance.js) */}
-      <div style={{ marginTop: 18 }}>
-        <Label color={C.cyan} C={C}>SURVEILLANCE RADAR</Label>
-        <SurveillanceRadar user={user} />
-      </div>
+      {/* Surveillance Radar — now a dedicated full-screen view (see App.jsx's
+          tab==="radar" early return), not mounted inline here. This launches
+          it rather than embedding the map in the scrollable dashboard. */}
+      <Card accent={C.cyan} C={C} style={{ marginTop: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <Label color={C.cyan} C={C}>SURVEILLANCE RADAR</Label>
+            <div style={{ fontFamily: C.F, fontSize: 12, color: C.textMd, marginTop: 4 }}>
+              Live RentCast market map + brokerage footprint, full-screen tactical view.
+            </div>
+          </div>
+          <button
+            onClick={onOpenRadar}
+            disabled={!onOpenRadar}
+            style={{
+              background: "rgba(56,189,248,0.15)", border: `1px solid ${C.cyan}66`, color: C.cyan,
+              fontFamily: C.F, fontSize: 11, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase",
+              borderRadius: 8, padding: "10px 18px", cursor: onOpenRadar ? "pointer" : "default",
+              boxShadow: `0 0 12px ${C.cyan}33`, whiteSpace: "nowrap",
+            }}
+          >
+            Launch Radar
+          </button>
+        </div>
+      </Card>
     </div>
   );
 }
