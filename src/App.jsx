@@ -5130,7 +5130,7 @@ function MainApp({user,onLogout}){
               {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
-              {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
+              {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
             </div>
           ):(
@@ -5172,7 +5172,7 @@ function MainApp({user,onLogout}){
               {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
-              {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
+              {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
             </div>
           ):(
