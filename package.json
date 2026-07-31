@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@mapbox/mapbox-gl-draw": "^1.5.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
     "@supabase/supabase-js": "^2.45.0",
+    "@turf/turf": "^7.3.5",
     "lucide-react": "^1.28.0",
     "mapbox-gl": "^3.27.0",
     "posthog-js": "^1.205.0",

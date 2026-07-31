@@ -1,10 +1,12 @@
-// src/components/SurveillanceRadar.jsx — SPARK OS Surveillance Radar: a
-// full-screen market intelligence terminal. Live RentCast listings flow in
-// through the secure server-side proxy at api/market/surveillance.js (the
-// RentCast X-Api-Key only ever exists in that Vercel function's env — the
-// frontend just calls /api/market/surveillance), rendered on a 3D Mapbox
-// scene with switchable intelligence layers, and any target can be pushed
-// straight into an agent's pipeline via a Supabase `deals` insert.
+// src/components/SurveillanceRadar.jsx — SPARK OS Surveillance Radar: an
+// institutional quant terminal. Live listings flow in through the secure
+// server-side proxy at api/market/surveillance.js (the upstream data
+// vendor's API key only ever exists in that Vercel function's env — the
+// frontend just calls /api/market/surveillance), rendered on a rotating 3D
+// globe with atmospheric fog, cinematic scan fly-ins, switchable
+// intelligence layers (including a turf-built 3D hex-grid), and a
+// mapbox-gl-draw polygon lasso that re-aggregates the entire telemetry
+// suite for any hand-drawn micro-market.
 //
 // Standing adaptations, same rationale as every other Operations-suite file
 // (see InterventionEngine.jsx for the full write-up):
@@ -22,15 +24,21 @@
 //    value. The deploy inserts a `deals` row with stage='prospect'.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Map, Source, Layer } from "react-map-gl/mapbox";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import * as turf from "@turf/turf";
 import "mapbox-gl/dist/mapbox-gl.css";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import {
-  Zap, Radar as RadarIcon, Layers, Search, Crosshair, MapPin, Loader2, Send, X,
+  Zap, Radar as RadarIcon, Layers, Search, Crosshair, MapPin, Loader2, Send, X, Hexagon, PenTool, Eraser,
 } from "lucide-react";
 
 const MAPBOX_TOKEN = import.meta.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-const MIAMI_CENTER = { longitude: -80.1918, latitude: 25.7617, zoom: 13, pitch: 50, bearing: -15 };
+const PANEL_W = 384;
+
+// Idle state: pulled back to a slow-rotating globe; SCAN SECTOR dives in.
+const GLOBE_IDLE = { longitude: -60, latitude: 22, zoom: 1.6, pitch: 0, bearing: 0 };
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -55,14 +63,22 @@ const CATEGORY_LABEL = {
 const INTEL_LAYERS = [
   { id: "default", label: "Default Radar" },
   { id: "heatmap", label: "Liquidity Heatmap" },
+  { id: "hexgrid", label: "3D Hex-Grid" },
   { id: "accumulation", label: "Institutional Accumulation" },
 ];
 
 function fmtMoney(n) {
-  if (n == null) return "—";
+  if (n == null || Number.isNaN(n)) return "—";
   if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (Math.abs(n) >= 1_000) return `$${(n / 1000).toFixed(0)}K`;
   return `$${Math.round(n).toLocaleString()}`;
+}
+
+function median(nums) {
+  if (!nums.length) return null;
+  const s = [...nums].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
 
 function firstName(email) {
@@ -84,9 +100,9 @@ function buildAcquisitionScript(p) {
     `TARGET: ${p.address || "Unknown asset"} (${p.propertyType || "Residential"})`,
     `LIST: ${price} · DOM: ${dom ?? "—"}`,
     ``,
-    `OPENING POSITION: ${leverage}`,
-    `TERMS LEVER: Offer a 14-day inspection-light close in exchange for the price concession — speed is the currency here.`,
-    `CLOSE LINE: "We're prepared to wire earnest money today. What number makes this done by Friday?"`,
+    `1. OPENING POSITION: ${leverage}`,
+    `2. TERMS LEVER: Offer a 14-day inspection-light close in exchange for the price concession — speed is the currency here.`,
+    `3. CLOSE LINE: "We're prepared to wire earnest money today. What number makes this done by Friday?"`,
   ].join("\n");
 }
 
@@ -98,7 +114,7 @@ function StatTile({ label, value, accent = "#fff" }) {
       <div style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 3, whiteSpace: "nowrap" }}>
         {label}
       </div>
-      <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 800, color: accent, textShadow: accent !== "#fff" ? `0 0 12px ${accent}66` : "none", whiteSpace: "nowrap" }}>
+      <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 800, color: accent, textShadow: accent !== "#fff" ? `0 0 12px ${accent}66` : "none", whiteSpace: "nowrap" }}>
         {value}
       </div>
     </div>
@@ -125,6 +141,33 @@ function Directive({ color, label, text }) {
   );
 }
 
+// Awaiting-scan idle visual: faint mono grid with a sweeping laser line
+function AwaitingScan() {
+  return (
+    <div
+      style={{
+        position: "relative", height: 110, borderRadius: 10, overflow: "hidden", marginBottom: 4,
+        border: "1px dashed rgba(255,255,255,0.12)",
+        backgroundImage:
+          "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)",
+        backgroundSize: "18px 18px",
+      }}
+    >
+      <div
+        style={{
+          position: "absolute", left: 0, right: 0, height: 2, top: 0,
+          background: `linear-gradient(90deg, transparent, ${PURPLE}cc, transparent)`,
+          boxShadow: `0 0 12px ${PURPLE}`,
+          animation: "srLaser 2.6s ease-in-out infinite",
+        }}
+      />
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: 9.5, letterSpacing: 2, color: SLATE_DIM }}>
+        AWAITING SECTOR SCAN
+      </div>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function SurveillanceRadar({ user }) {
@@ -132,12 +175,12 @@ export default function SurveillanceRadar({ user }) {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
   const [geojson, setGeojson] = useState({ type: "FeatureCollection", features: [] });
-  const [stats, setStats] = useState({ avgDom: null, medianPrice: null, activeCount: 0 });
   const [selected, setSelected] = useState(null);
   const [intelLayer, setIntelLayer] = useState("default");
   const [layerMenuOpen, setLayerMenuOpen] = useState(false);
   const [hovering, setHovering] = useState(false);
-  const [buildingsReady, setBuildingsReady] = useState(false);
+  const [sectorPolygon, setSectorPolygon] = useState(null);
+  const [drawing, setDrawing] = useState(false);
 
   // Micro-mode state
   const [scriptText, setScriptText] = useState(null);
@@ -148,7 +191,10 @@ export default function SurveillanceRadar({ user }) {
   const [toast, setToast] = useState(null);
 
   const mapRef = useRef(null);
+  const drawRef = useRef(null);
   const decryptTimer = useRef(null);
+  const spinEnabled = useRef(true);
+  const spinFrame = useRef(null);
 
   // Reset micro-mode artifacts whenever the target changes
   useEffect(() => {
@@ -162,6 +208,8 @@ export default function SurveillanceRadar({ user }) {
     const t = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  useEffect(() => () => { if (spinFrame.current) cancelAnimationFrame(spinFrame.current); }, []);
 
   // Field agents for the delegation dropdown — `users` scoped by brokerage
   useEffect(() => {
@@ -181,10 +229,96 @@ export default function SurveillanceRadar({ user }) {
     return () => { cancelled = true; };
   }, [user?.brokerageId]);
 
+  // ── Map init: fog, 3D buildings, draw control, resize, idle spin ───────
+  // Wired to BOTH onLoad and onStyleData (idempotent via setupDone) — the
+  // full `load` event waits on every tile/sprite fetch, which background
+  // throttling can stall indefinitely; styledata fires as soon as the style
+  // arrives, which is all this setup actually needs.
+  const setupDone = useRef(false);
+  const handleMapLoad = useCallback((e) => {
+    if (setupDone.current) return;
+    setupDone.current = true;
+    const map = e.target;
+
+    // Viewport alignment — the canvas container is sized to
+    // calc(100% - 384px); force Mapbox to re-measure so the globe centers
+    // in the visible viewport instead of hiding under the HUD.
+    map.resize();
+    const onWinResize = () => map.resize();
+    window.addEventListener("resize", onWinResize);
+    map.once("remove", () => window.removeEventListener("resize", onWinResize));
+
+    // Atmospheric fog — outer-space look at globe zooms
+    try {
+      map.setFog({
+        color: "#050505",
+        "high-color": "#0b0b1a",
+        "horizon-blend": 0.04,
+        "space-color": "#020204",
+        "star-intensity": 0.15,
+      });
+    } catch { /* fog unsupported on this style version — cosmetic only */ }
+
+    // 3D buildings
+    if (!map.getLayer("sr-3d-buildings")) {
+      try {
+        map.addLayer({
+          id: "sr-3d-buildings",
+          source: "composite",
+          "source-layer": "building",
+          filter: ["==", "extrude", "true"],
+          type: "fill-extrusion",
+          minzoom: 13,
+          paint: {
+            "fill-extrusion-color": "#1a1a24",
+            "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["get", "height"]],
+            "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["get", "min_height"]],
+            "fill-extrusion-opacity": 0.75,
+          },
+        });
+      } catch { /* style variant without a building layer — map stays flat */ }
+    }
+
+    // Polygon lasso (mapbox-gl-draw) — controls hidden, driven by our button
+    if (!drawRef.current) {
+      const draw = new MapboxDraw({ displayControlsDefault: false });
+      map.addControl(draw);
+      drawRef.current = draw;
+      const syncPolygon = () => {
+        const feats = draw.getAll().features.filter((f) => f.geometry.type === "Polygon");
+        setSectorPolygon(feats.length ? feats[feats.length - 1] : null);
+        setDrawing(false);
+      };
+      map.on("draw.create", syncPolygon);
+      map.on("draw.update", syncPolygon);
+      map.on("draw.delete", syncPolygon);
+    }
+
+    // Cinematic idle: slow globe rotation below zoom 3, paused on
+    // interaction (and permanently once a scan dives in).
+    const spin = () => {
+      if (spinEnabled.current && map.getZoom() < 3 && !map.isMoving()) {
+        const center = map.getCenter();
+        center.lng -= 0.03;
+        map.easeTo({ center, duration: 50, easing: (t) => t });
+      }
+      spinFrame.current = requestAnimationFrame(spin);
+    };
+    ["mousedown", "touchstart", "wheel"].forEach((ev) => map.on(ev, () => { spinEnabled.current = false; }));
+    spin();
+  }, []);
+
   // ── Scans ──────────────────────────────────────────────────────────────
+  const cinematicDive = useCallback((lng, lat) => {
+    spinEnabled.current = false;
+    mapRef.current?.flyTo({
+      center: [lng, lat], zoom: 13.6, pitch: 60, bearing: -18,
+      duration: 4200, essential: true, curve: 1.6,
+    });
+  }, []);
+
   const applyScanResult = useCallback((data) => {
     setGeojson(data.geojson || { type: "FeatureCollection", features: [] });
-    setStats(data.aggregateStats || { avgDom: null, medianPrice: null, activeCount: 0 });
     if (!data.success) setError(data.error || "Scan returned no data.");
   }, []);
 
@@ -202,19 +336,14 @@ export default function SurveillanceRadar({ user }) {
       const data = await res.json();
       applyScanResult(data);
       const first = data.geojson?.features?.[0];
-      if (first && mapRef.current) {
-        const [lng, lat] = first.geometry.coordinates;
-        mapRef.current.flyTo({ center: [lng, lat], zoom: 13, pitch: 50, duration: 900 });
-      }
+      if (first) cinematicDive(first.geometry.coordinates[0], first.geometry.coordinates[1]);
     } catch (err) {
       setError(err.message || "Scan failed — try again.");
     } finally {
       setScanning(false);
     }
-  }, [query, scanning, applyScanResult]);
+  }, [query, scanning, applyScanResult, cinematicDive]);
 
-  // Viewport scan — collapses the current map bounding box to center+radius
-  // (miles), which is the shape RentCast's API accepts server-side.
   const scanViewport = useCallback(async () => {
     const map = mapRef.current?.getMap?.();
     if (!map || scanning) return;
@@ -243,39 +372,74 @@ export default function SurveillanceRadar({ user }) {
     }
   }, [scanning, applyScanResult]);
 
-  // ── Macro aggregates ───────────────────────────────────────────────────
-  const macro = useMemo(() => {
+  // ── Polygon lasso controls ─────────────────────────────────────────────
+  const startLasso = useCallback(() => {
+    const draw = drawRef.current;
+    if (!draw) return;
+    draw.deleteAll();
+    setSectorPolygon(null);
+    setDrawing(true);
+    draw.changeMode("draw_polygon");
+  }, []);
+
+  const clearSector = useCallback(() => {
+    drawRef.current?.deleteAll();
+    setSectorPolygon(null);
+    setDrawing(false);
+  }, []);
+
+  // ── Telemetry: full suite over the (optionally lassoed) feature set ────
+  const sectorFeatures = useMemo(() => {
     const feats = geojson.features;
+    if (!sectorPolygon) return feats;
+    return feats.filter((f) => {
+      try { return turf.booleanPointInPolygon(turf.point(f.geometry.coordinates), sectorPolygon); }
+      catch { return false; }
+    });
+  }, [geojson, sectorPolygon]);
+
+  const macro = useMemo(() => {
+    const feats = sectorFeatures;
     const total = feats.length;
-    const totalVolume = feats.reduce((sum, f) => sum + (Number(f.properties.price) || 0), 0);
+    const prices = feats.map((f) => Number(f.properties.price)).filter((p) => p > 0);
+    const doms = feats.map((f) => f.properties.daysOnMarket).filter((d) => typeof d === "number");
+    const ppsf = feats
+      .map((f) => {
+        const p = Number(f.properties.price);
+        const s = Number(f.properties.squareFootage);
+        return p > 0 && s > 0 ? p / s : null;
+      })
+      .filter((v) => v != null);
     const priceCuts = feats.filter((f) => f.properties.category === "price_cut").length;
     return {
       total,
-      totalVolume,
+      totalVolume: prices.reduce((s, p) => s + p, 0),
+      medianPrice: median(prices),
+      avgDom: doms.length ? doms.reduce((s, d) => s + d, 0) / doms.length : null,
       priceCutVelocity: total ? (priceCuts / total) * 100 : 0,
+      avgPpsf: ppsf.length ? ppsf.reduce((s, v) => s + v, 0) / ppsf.length : null,
       stalePct: total ? (feats.filter((f) => f.properties.category === "stale").length / total) * 100 : 0,
       freshCount: feats.filter((f) => f.properties.category === "fresh").length,
     };
-  }, [geojson]);
+  }, [sectorFeatures]);
 
-  // Sparkline: listing density binned by days-on-market (momentum profile)
   const sparkData = useMemo(() => {
-    const feats = geojson.features;
+    const feats = sectorFeatures;
     if (!feats.length) return [];
     const bins = Array.from({ length: 12 }, (_, i) => ({ bin: i, count: 0 }));
     feats.forEach((f) => {
       const dom = f.properties.daysOnMarket;
       if (dom == null) return;
-      const idx = Math.min(11, Math.floor(dom / 10));
-      bins[idx].count += 1;
+      bins[Math.min(11, Math.floor(dom / 10))].count += 1;
     });
     return bins;
-  }, [geojson]);
+  }, [sectorFeatures]);
 
   const directives = useMemo(() => {
+    const scope = sectorPolygon ? "isolated sector" : "sector";
     if (!macro.total) {
       return [
-        { color: RED, label: "Danger", text: "Awaiting sector scan — no threat telemetry." },
+        { color: RED, label: "Danger", text: sectorPolygon ? "No listings inside the drawn perimeter." : "Awaiting sector scan — no threat telemetry." },
         { color: GREEN, label: "Opportunity", text: "Run a scan to surface acquisition targets." },
         { color: CYAN, label: "Action", text: "Position the map and scan the viewport for live inventory." },
       ];
@@ -284,8 +448,8 @@ export default function SurveillanceRadar({ user }) {
       {
         color: RED, label: "Danger",
         text: macro.stalePct >= 20
-          ? `Stale density at ${macro.stalePct.toFixed(0)}% of sector — buyer leverage elevated, expect drawn-out negotiations.`
-          : "Stale density nominal — no elevated sector risk detected.",
+          ? `Stale density at ${macro.stalePct.toFixed(0)}% of ${scope} — buyer leverage elevated, expect drawn-out negotiations.`
+          : `Stale density nominal — no elevated ${scope} risk detected.`,
       },
       {
         color: GREEN, label: "Opportunity",
@@ -296,11 +460,44 @@ export default function SurveillanceRadar({ user }) {
       {
         color: CYAN, label: "Action",
         text: macro.freshCount > 0
-          ? `${macro.freshCount} fresh listing${macro.freshCount === 1 ? "" : "s"} (<7d) detected — deploy field agents before competing offers land.`
+          ? `${macro.freshCount} fresh listing${macro.freshCount === 1 ? "" : "s"} (<7d) in ${scope} — deploy field agents before competing offers land.`
           : "No fresh inventory this cycle — monitor and rescan.",
       },
     ];
-  }, [macro]);
+  }, [macro, sectorPolygon]);
+
+  // ── 3D Hex-Grid: turf hexbins → fill-extrusion columns ─────────────────
+  const hexgrid = useMemo(() => {
+    if (intelLayer !== "hexgrid" || geojson.features.length === 0) {
+      return { type: "FeatureCollection", features: [] };
+    }
+    try {
+      const pts = turf.featureCollection(geojson.features.map((f) => turf.point(f.geometry.coordinates, f.properties)));
+      const bbox = turf.bbox(pts);
+      const pad = 0.01;
+      const grid = turf.hexGrid([bbox[0] - pad, bbox[1] - pad, bbox[2] + pad, bbox[3] + pad], 0.45, { units: "kilometers" });
+      const cells = [];
+      grid.features.forEach((cell) => {
+        const inside = geojson.features.filter((f) => {
+          try { return turf.booleanPointInPolygon(turf.point(f.geometry.coordinates), cell); }
+          catch { return false; }
+        });
+        if (!inside.length) return;
+        const volume = inside.reduce((s, f) => s + (Number(f.properties.price) || 0), 0);
+        const cuts = inside.filter((f) => f.properties.category === "price_cut" || f.properties.category === "stale").length;
+        cell.properties = {
+          count: inside.length,
+          volume,
+          height: 120 + Math.min(2400, volume / 12000),
+          risk: inside.length ? cuts / inside.length : 0,
+        };
+        cells.push(cell);
+      });
+      return turf.featureCollection(cells);
+    } catch {
+      return { type: "FeatureCollection", features: [] };
+    }
+  }, [intelLayer, geojson]);
 
   // ── Micro mode actions ─────────────────────────────────────────────────
   const generateScript = useCallback(() => {
@@ -353,32 +550,6 @@ export default function SurveillanceRadar({ user }) {
     }
   }, [selected, selectedAgentId, deploying, agents, user?.brokerageId]);
 
-  // 3D buildings — dark-v11's composite source carries a `building` layer;
-  // extrude it once the style loads for physical depth under pitch/zoom.
-  const handleMapLoad = useCallback((e) => {
-    const map = e.target;
-    if (map.getLayer("sr-3d-buildings")) return;
-    try {
-      map.addLayer({
-        id: "sr-3d-buildings",
-        source: "composite",
-        "source-layer": "building",
-        filter: ["==", "extrude", "true"],
-        type: "fill-extrusion",
-        minzoom: 13,
-        paint: {
-          "fill-extrusion-color": "#1a1a24",
-          "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["get", "height"]],
-          "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["get", "min_height"]],
-          "fill-extrusion-opacity": 0.75,
-        },
-      });
-      setBuildingsReady(true);
-    } catch {
-      // style variant without a building layer — map still fully usable flat
-    }
-  }, []);
-
   const selCat = selected?.properties?.category;
   const selColor = CATEGORY_COLOR[selCat] || PURPLE_LT;
 
@@ -389,13 +560,15 @@ export default function SurveillanceRadar({ user }) {
     >
       <style>{`
         @keyframes srBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
-        @keyframes srPulse { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(2.4); opacity: 0; } }
+        @keyframes srSpin { to { transform: rotate(360deg); } }
         @keyframes srScan { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+        @keyframes srLaser { 0% { top: 0; } 50% { top: calc(100% - 2px); } 100% { top: 0; } }
         .sr-scanline {
           background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
           background-size: 200px 100%; background-repeat: no-repeat;
           animation: srScan 2.8s linear infinite;
         }
+        .mapboxgl-ctrl-attrib { background: rgba(0,0,0,0.4) !important; }
       `}</style>
 
       {/* Toast */}
@@ -415,100 +588,128 @@ export default function SurveillanceRadar({ user }) {
 
       {!MAPBOX_TOKEN ? (
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: RED, fontFamily: F, fontSize: 13, padding: 24, textAlign: "center" }}>
-          Mapbox access token not configured — set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN (or VITE_MAPBOX_ACCESS_TOKEN) in .env.local.
+          Map access token not configured — set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN (or VITE_MAPBOX_ACCESS_TOKEN) in .env.local.
         </div>
       ) : (
-        <Map
-          ref={mapRef}
-          mapboxAccessToken={MAPBOX_TOKEN}
-          initialViewState={MIAMI_CENTER}
-          mapStyle="mapbox://styles/mapbox/dark-v11"
-          style={{ position: "absolute", inset: 0, right: 384 }}
-          cursor={hovering ? "pointer" : "grab"}
-          interactiveLayerIds={intelLayer === "heatmap" ? [] : ["sr-nodes"]}
-          onLoad={handleMapLoad}
-          onMouseEnter={() => setHovering(true)}
-          onMouseLeave={() => setHovering(false)}
-          onClick={(e) => setSelected(e.features?.[0] || null)}
-        >
-          <Source id="sr-source" type="geojson" data={geojson}>
-            {intelLayer === "default" && (
-              <>
+        /* Map fills exactly the viewport left of the HUD so the globe
+           centers in visible space rather than under the glass panel. */
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: `calc(100% - ${PANEL_W}px)` }}>
+          <Map
+            ref={mapRef}
+            mapboxAccessToken={MAPBOX_TOKEN}
+            initialViewState={GLOBE_IDLE}
+            mapStyle="mapbox://styles/mapbox/dark-v11"
+            projection="globe"
+            style={{ position: "absolute", inset: 0 }}
+            cursor={drawing ? "crosshair" : hovering ? "pointer" : "grab"}
+            interactiveLayerIds={intelLayer === "default" || intelLayer === "accumulation" ? ["sr-nodes"] : []}
+            onLoad={handleMapLoad}
+            onStyleData={handleMapLoad}
+            onMouseEnter={() => setHovering(true)}
+            onMouseLeave={() => setHovering(false)}
+            onClick={(e) => { if (!drawing) setSelected(e.features?.[0] || null); }}
+          >
+            <Source id="sr-source" type="geojson" data={geojson}>
+              {intelLayer === "default" && (
+                <>
+                  <Layer
+                    id="sr-glow"
+                    source="sr-source"
+                    type="circle"
+                    paint={{
+                      "circle-radius": 15,
+                      "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
+                      "circle-blur": 1.1,
+                      "circle-opacity": 0.4,
+                    }}
+                  />
+                  <Layer
+                    id="sr-nodes"
+                    source="sr-source"
+                    type="circle"
+                    paint={{
+                      "circle-radius": 6,
+                      "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
+                      "circle-stroke-width": 1.5,
+                      "circle-stroke-color": "rgba(0,0,0,0.7)",
+                      "circle-opacity": 0.95,
+                    }}
+                  />
+                </>
+              )}
+              {intelLayer === "heatmap" && (
                 <Layer
-                  id="sr-glow"
+                  id="sr-heat"
                   source="sr-source"
-                  type="circle"
+                  type="heatmap"
                   paint={{
-                    "circle-radius": 15,
-                    "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
-                    "circle-blur": 1.1,
-                    "circle-opacity": 0.4,
+                    "heatmap-weight": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 0, 0.2, 5000000, 1],
+                    "heatmap-intensity": 1.1,
+                    "heatmap-radius": 42,
+                    "heatmap-opacity": 0.85,
+                    "heatmap-color": [
+                      "interpolate", ["linear"], ["heatmap-density"],
+                      0, "rgba(0,0,0,0)",
+                      0.25, "rgba(34,211,238,0.35)",
+                      0.5, "rgba(168,85,247,0.55)",
+                      0.8, "rgba(255,59,92,0.75)",
+                      1, "rgba(255,176,32,0.95)",
+                    ],
                   }}
                 />
+              )}
+              {intelLayer === "accumulation" && (
+                <>
+                  <Layer
+                    id="sr-acc-glow"
+                    source="sr-source"
+                    type="circle"
+                    paint={{
+                      "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 500000, 10, 25000000, 42],
+                      "circle-color": PURPLE,
+                      "circle-blur": 1.2,
+                      "circle-opacity": 0.35,
+                    }}
+                  />
+                  <Layer
+                    id="sr-nodes"
+                    source="sr-source"
+                    type="circle"
+                    paint={{
+                      "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 500000, 4, 25000000, 16],
+                      "circle-color": PURPLE_LT,
+                      "circle-stroke-width": 1.5,
+                      "circle-stroke-color": "rgba(255,255,255,0.85)",
+                      "circle-opacity": 0.9,
+                    }}
+                  />
+                </>
+              )}
+            </Source>
+
+            {/* 3D Hex-Grid — column height = volume, color = risk velocity */}
+            <Source id="sr-hex-source" type="geojson" data={hexgrid}>
+              {intelLayer === "hexgrid" && (
                 <Layer
-                  id="sr-nodes"
-                  source="sr-source"
-                  type="circle"
+                  id="sr-hex"
+                  source="sr-hex-source"
+                  type="fill-extrusion"
                   paint={{
-                    "circle-radius": 6,
-                    "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
-                    "circle-stroke-width": 1.5,
-                    "circle-stroke-color": "rgba(0,0,0,0.7)",
-                    "circle-opacity": 0.95,
+                    "fill-extrusion-height": ["get", "height"],
+                    "fill-extrusion-base": 0,
+                    "fill-extrusion-opacity": 0.72,
+                    "fill-extrusion-color": [
+                      "interpolate", ["linear"], ["get", "risk"],
+                      0, CYAN,
+                      0.4, PURPLE,
+                      1, RED,
+                    ],
                   }}
                 />
-              </>
-            )}
-            {intelLayer === "heatmap" && (
-              <Layer
-                id="sr-heat"
-                source="sr-source"
-                type="heatmap"
-                paint={{
-                  "heatmap-weight": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 0, 0.2, 5000000, 1],
-                  "heatmap-intensity": 1.1,
-                  "heatmap-radius": 42,
-                  "heatmap-opacity": 0.85,
-                  "heatmap-color": [
-                    "interpolate", ["linear"], ["heatmap-density"],
-                    0, "rgba(0,0,0,0)",
-                    0.25, "rgba(34,211,238,0.35)",
-                    0.5, "rgba(168,85,247,0.55)",
-                    0.8, "rgba(255,59,92,0.75)",
-                    1, "rgba(255,176,32,0.95)",
-                  ],
-                }}
-              />
-            )}
-            {intelLayer === "accumulation" && (
-              <>
-                <Layer
-                  id="sr-acc-glow"
-                  source="sr-source"
-                  type="circle"
-                  paint={{
-                    "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 500000, 10, 25000000, 42],
-                    "circle-color": PURPLE,
-                    "circle-blur": 1.2,
-                    "circle-opacity": 0.35,
-                  }}
-                />
-                <Layer
-                  id="sr-nodes"
-                  source="sr-source"
-                  type="circle"
-                  paint={{
-                    "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 500000, 4, 25000000, 16],
-                    "circle-color": PURPLE_LT,
-                    "circle-stroke-width": 1.5,
-                    "circle-stroke-color": "rgba(255,255,255,0.85)",
-                    "circle-opacity": 0.9,
-                  }}
-                />
-              </>
-            )}
-          </Source>
-        </Map>
+              )}
+            </Source>
+          </Map>
+        </div>
       )}
 
       {/* Brand chip — SPARK OS */}
@@ -551,7 +752,7 @@ export default function SurveillanceRadar({ user }) {
           placeholder="City, ST or ZIP…"
           style={{
             background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
-            color: "#fff", fontFamily: F, fontSize: 12, padding: "8px 10px", outline: "none", width: 170,
+            color: "#fff", fontFamily: F, fontSize: 12, padding: "8px 10px", outline: "none", width: 160,
           }}
         />
         <button
@@ -583,52 +784,71 @@ export default function SurveillanceRadar({ user }) {
         </button>
       </form>
 
-      {/* Intelligence Layers toggle */}
-      <div style={{ position: "absolute", top: 136, left: 16, zIndex: 10 }}>
-        <button
-          onClick={() => setLayerMenuOpen((o) => !o)}
-          className="bg-black/50 backdrop-blur-md border border-white/10"
-          style={{
-            display: "flex", alignItems: "center", gap: 8, background: "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "9px 13px",
-            color: "#fff", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8,
-            textTransform: "uppercase", cursor: "pointer",
-          }}
-        >
-          <Layers size={13} color={PURPLE_LT} />
-          {INTEL_LAYERS.find((l) => l.id === intelLayer)?.label}
-        </button>
-        {layerMenuOpen && (
-          <div
+      {/* Control bar: Intelligence Layers + Polygon Lasso */}
+      <div style={{ position: "absolute", top: 136, left: 16, zIndex: 10, display: "flex", gap: 8, alignItems: "flex-start" }}>
+        <div>
+          <button
+            onClick={() => setLayerMenuOpen((o) => !o)}
+            className="bg-black/50 backdrop-blur-md border border-white/10"
             style={{
-              marginTop: 6, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden", width: 230,
+              display: "flex", alignItems: "center", gap: 8, background: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "9px 13px",
+              color: "#fff", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8,
+              textTransform: "uppercase", cursor: "pointer",
             }}
           >
-            {INTEL_LAYERS.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => { setIntelLayer(l.id); setLayerMenuOpen(false); }}
-                style={{
-                  display: "block", width: "100%", textAlign: "left", background: intelLayer === l.id ? "rgba(168,85,247,0.18)" : "transparent",
-                  border: "none", borderLeft: `2px solid ${intelLayer === l.id ? PURPLE : "transparent"}`,
-                  color: intelLayer === l.id ? PURPLE_LT : SLATE, fontFamily: F, fontSize: 11, fontWeight: 700,
-                  padding: "10px 14px", cursor: "pointer",
-                }}
-              >
-                {l.label}
-              </button>
-            ))}
-          </div>
-        )}
+            {intelLayer === "hexgrid" ? <Hexagon size={13} color={PURPLE_LT} /> : <Layers size={13} color={PURPLE_LT} />}
+            {INTEL_LAYERS.find((l) => l.id === intelLayer)?.label}
+          </button>
+          {layerMenuOpen && (
+            <div
+              style={{
+                marginTop: 6, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+                border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden", width: 230,
+              }}
+            >
+              {INTEL_LAYERS.map((l) => (
+                <button
+                  key={l.id}
+                  onClick={() => { setIntelLayer(l.id); setLayerMenuOpen(false); }}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left", background: intelLayer === l.id ? "rgba(168,85,247,0.18)" : "transparent",
+                    border: "none", borderLeft: `2px solid ${intelLayer === l.id ? PURPLE : "transparent"}`,
+                    color: intelLayer === l.id ? PURPLE_LT : SLATE, fontFamily: F, fontSize: 11, fontWeight: 700,
+                    padding: "10px 14px", cursor: "pointer",
+                  }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={sectorPolygon || drawing ? clearSector : startLasso}
+          title={sectorPolygon ? "Clear drawn sector" : "Draw a polygon to isolate a micro-market"}
+          style={{
+            display: "flex", alignItems: "center", gap: 7, background: sectorPolygon ? "rgba(255,59,92,0.18)" : drawing ? "rgba(168,85,247,0.25)" : "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            border: `1px solid ${sectorPolygon ? RED : drawing ? PURPLE : "rgba(255,255,255,0.12)"}88`,
+            borderRadius: 10, padding: "9px 13px",
+            color: sectorPolygon ? RED : drawing ? PURPLE_LT : "#fff", fontFamily: F, fontSize: 10.5, fontWeight: 800,
+            letterSpacing: 0.8, textTransform: "uppercase", cursor: "pointer",
+            boxShadow: sectorPolygon ? `0 0 14px ${RED}44` : drawing ? `0 0 14px ${PURPLE}55` : "none",
+          }}
+        >
+          {sectorPolygon ? <Eraser size={13} /> : <PenTool size={13} />}
+          {sectorPolygon ? "Clear Sector" : drawing ? "Drawing… (dbl-click to close)" : "Sector Lasso"}
+        </button>
       </div>
 
-      {/* ── Intelligence HUD (right panel) ── */}
+      {/* ── Intelligence HUD (right panel — glass at all times) ── */}
       <div
         className="w-96 backdrop-blur-2xl bg-black/60 border-l border-white/10 flex flex-col h-full z-10"
         style={{
-          position: "absolute", right: 0, top: 0, bottom: 0, width: 384, zIndex: 10,
+          position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL_W, zIndex: 10,
           background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
           borderLeft: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column",
           padding: 18, boxSizing: "border-box", overflowY: "auto",
@@ -646,9 +866,16 @@ export default function SurveillanceRadar({ user }) {
             </button>
           )}
         </div>
-        <div style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 2.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 16 }}>
-          {selected ? "Micro Mode · Asset Analysis" : "Macro Mode · Live RentCast Feed"}
+        <div className="tracking-wider" style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 2.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 6 }}>
+          {selected ? "MICRO MODE — ASSET ANALYSIS" : "MACRO MODE — PROPRIETARY MARKET TELEMETRY"}
         </div>
+        {!selected && sectorPolygon && (
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 1, color: PURPLE_LT, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: PURPLE, boxShadow: `0 0 6px ${PURPLE}`, animation: "srBlink 1.4s infinite" }} />
+            MICRO-MARKET ISOLATED · {sectorFeatures.length} OF {geojson.features.length} NODES
+          </div>
+        )}
+        {!selected && !sectorPolygon && <div style={{ marginBottom: 10 }} />}
 
         {error && (
           <div style={{ fontFamily: MONO, fontSize: 10.5, color: RED, background: "rgba(255,59,92,0.08)", border: `1px solid ${RED}44`, borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
@@ -659,36 +886,40 @@ export default function SurveillanceRadar({ user }) {
         {!selected ? (
           /* ── MACRO MODE ── */
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
-              <StatTile label="Active Listings" value={stats.activeCount ?? "—"} accent={CYAN} />
-              <StatTile label="Total Active Volume" value={fmtMoney(macro.totalVolume)} accent={PURPLE_LT} />
-              <StatTile label="Avg Days on Market" value={stats.avgDom != null ? `${stats.avgDom}d` : "—"} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 13, marginBottom: 14 }}>
+              <StatTile label="Active Listings" value={macro.total || "—"} accent={CYAN} />
+              <StatTile label="Total Active Volume" value={macro.total ? fmtMoney(macro.totalVolume) : "—"} accent={PURPLE_LT} />
+              <StatTile label="Median List Price" value={macro.total ? fmtMoney(macro.medianPrice) : "—"} accent={GREEN} />
+              <StatTile label="Avg Days on Market" value={macro.avgDom != null ? `${macro.avgDom.toFixed(0)}d` : "—"} />
               <StatTile label="Price-Cut Velocity" value={macro.total ? `${macro.priceCutVelocity.toFixed(0)}%` : "—"} accent={macro.priceCutVelocity > 15 ? RED : "#fff"} />
+              <StatTile label="Avg Price / SqFt" value={macro.avgPpsf != null ? `$${Math.round(macro.avgPpsf).toLocaleString()}` : "—"} accent={AMBER} />
             </div>
 
-            {/* Momentum sparkline — listing density by DOM decile */}
-            <div style={{ height: 54, marginBottom: 4 }}>
-              {sparkData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={sparkData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="srSpark" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={PURPLE} stopOpacity={0.6} />
-                        <stop offset="100%" stopColor={PURPLE} stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="count" stroke={PURPLE_LT} strokeWidth={1.5} fill="url(#srSpark)" isAnimationActive={false} dot={false} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: 9.5, color: SLATE_DIM, border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 8 }}>
-                  DENSITY PROFILE — AWAITING SCAN
+            {/* Density sparkline / awaiting-scan laser grid */}
+            {sparkData.length > 0 ? (
+              <>
+                <div style={{ height: 54, marginBottom: 4 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={sparkData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                      <defs>
+                        <linearGradient id="srSpark" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={PURPLE} stopOpacity={0.6} />
+                          <stop offset="100%" stopColor={PURPLE} stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="count" stroke={PURPLE_LT} strokeWidth={1.5} fill="url(#srSpark)" isAnimationActive={false} dot={false} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
-              )}
-            </div>
-            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 1, color: SLATE_DIM, marginBottom: 16, textAlign: "center" }}>
-              LISTING DENSITY BY DOM DECILE (0 → 120d+)
-            </div>
+                <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 1, color: SLATE_DIM, marginBottom: 16, textAlign: "center" }}>
+                  LISTING DENSITY BY DOM DECILE (0 → 120d+)
+                </div>
+              </>
+            ) : (
+              <div style={{ marginBottom: 16 }}>
+                <AwaitingScan />
+              </div>
+            )}
 
             <div style={{ fontFamily: F, fontSize: 9, letterSpacing: 1.5, color: SLATE_DIM, marginBottom: 8, textTransform: "uppercase" }}>
               Tactical Directives
@@ -707,8 +938,8 @@ export default function SurveillanceRadar({ user }) {
 
             <div style={{ marginTop: "auto", paddingTop: 14, fontFamily: MONO, fontSize: 9, color: SLATE_DIM, letterSpacing: 0.5 }}>
               {geojson.features.length > 0
-                ? `${geojson.features.length} nodes plotted · click a node to lock target`
-                : buildingsReady ? "3D terrain online · run a scan to populate the radar" : "Run a scan to populate the radar"}
+                ? `${geojson.features.length} nodes plotted · click a node to lock target · lasso to isolate`
+                : "Run a scan to populate the radar"}
             </div>
           </>
         ) : (
@@ -753,7 +984,6 @@ export default function SurveillanceRadar({ user }) {
               {decrypting ? <Loader2 size={13} style={{ animation: "srSpin 1s linear infinite" }} /> : <Zap size={13} />}
               {decrypting ? "Decrypting…" : "Generate AI Acquisition Script"}
             </button>
-            <style>{`@keyframes srSpin { to { transform: rotate(360deg); } }`}</style>
 
             {scriptText != null && (
               <pre
