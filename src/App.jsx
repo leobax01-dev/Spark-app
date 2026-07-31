@@ -10,6 +10,7 @@ import Icon from "./components/Icons";
 import { Zap } from "lucide-react";
 import BrokerTeamSettings from "./components/BrokerTeamSettings";
 import SurveillanceRadar from "./components/SurveillanceRadar";
+import AgentSurveillance from "./components/AgentSurveillance";
 import ExecutiveOverview from "./components/ExecutiveOverview";
 import InterventionEngine from "./components/InterventionEngine";
 import PerformanceMatrix from "./components/PerformanceMatrix";
@@ -4748,7 +4749,7 @@ function MainApp({user,onLogout}){
   }
   function handleGoSettings(){ setTab("settings"); }
 
-  const OPERATIONS_TAB_IDS = ["overview","radar","intervention","performance","commission"];
+  const OPERATIONS_TAB_IDS = ["overview","radar","intervention","performance","commission","acqgrid"];
   const NAV=isBroker ? [
     {id:"overview",     icon:"📊", label:"Executive Overview",   section:"OPERATIONS"},
     {id:"radar",        icon:"📡", label:"Surveillance Radar",   section:"OPERATIONS"},
@@ -4762,6 +4763,7 @@ function MainApp({user,onLogout}){
     {id:"generate",    icon:"⚡", label:"Generate"},
     {id:"transactions",icon:"📋", label:"Deals"},
     {id:"clients",     icon:"👥", label:"Clients"},
+    {id:"acqgrid",     icon:"🎯", label:"Surveillance"},
     {id:"market",      icon:"📈", label:"Market"},
     {id:"calculator",  icon:"🧮", label:"Calc"},
     {id:"affiliate",   icon:"🔗", label:"Affiliate"},
@@ -4792,6 +4794,7 @@ function MainApp({user,onLogout}){
     intervention: <>Intervention <Shimmer>Engine</Shimmer></>,
     performance:  <>Performance <Shimmer>Matrix</Shimmer></>,
     commission:   <>Commission <Shimmer>Ledger</Shimmer></>,
+    acqgrid:      <>Acquisition <Shimmer>Grid</Shimmer></>,
     team:         <>Team & <Shimmer>Seats</Shimmer></>,
   };
   const SUBTITLES={
@@ -4801,6 +4804,7 @@ function MainApp({user,onLogout}){
     intervention: "Stalled and at-risk deal intervention",
     performance:  "Agent performance analytics",
     commission:   "Brokerage-wide commission ledger",
+    acqgrid:      "Tactical acquisition map · expiring inventory · predicted sellers",
     team:         "Seats · invites · access",
     generate:     voice.saved&&plan.voiceMemory?`✓ ${voice.name||""} · ${voice.market||""}`:`${plan.name} · ${plan.contentTypes.length} types · ${plan.maxPhotos} photos`,
     transactions: "Timeline generator · Listing presentation · CMA analyzer",
@@ -4827,6 +4831,7 @@ function MainApp({user,onLogout}){
     intervention: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
     performance: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
     commission: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    acqgrid: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>,
   };
 
   const MobileNav = ()=>(
@@ -5132,6 +5137,7 @@ function MainApp({user,onLogout}){
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
               {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
+              {tab==="acqgrid"&&<ErrorBoundary label="Acquisition Grid"><AgentSurveillance user={user}/></ErrorBoundary>}
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
@@ -5174,6 +5180,7 @@ function MainApp({user,onLogout}){
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
               {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
+              {tab==="acqgrid"&&<ErrorBoundary label="Acquisition Grid"><AgentSurveillance user={user}/></ErrorBoundary>}
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
