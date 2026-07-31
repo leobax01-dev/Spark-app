@@ -126,11 +126,20 @@ export default async function handler(req, res) {
   const apiKey = process.env.RENTCAST_API_KEY;
   if (!apiKey) return emptyResponse(res, 500, "RentCast API key not configured");
 
-  const { zipCode, cityState } = req.query || {};
-  if (!zipCode && !cityState) return emptyResponse(res, 400, "zipCode or cityState query parameter required");
+  const { zipCode, cityState, latitude, longitude, radius } = req.query || {};
+  if (!zipCode && !cityState && !(latitude && longitude)) {
+    return emptyResponse(res, 400, "zipCode, cityState, or latitude+longitude query parameters required");
+  }
 
   const url = new URL("https://api.rentcast.io/v1/listings/sale");
-  if (zipCode) {
+  if (latitude && longitude) {
+    // Map-viewport scans: the frontend collapses its bounding box to a
+    // center + radius, since RentCast's API takes lat/long/radius (miles)
+    // rather than literal bbox corners.
+    url.searchParams.set("latitude", String(latitude));
+    url.searchParams.set("longitude", String(longitude));
+    url.searchParams.set("radius", String(Math.min(Number(radius) || 5, 50)));
+  } else if (zipCode) {
     url.searchParams.set("zipCode", String(zipCode));
   } else {
     const [city, state] = String(cityState).split(",").map((s) => s.trim());

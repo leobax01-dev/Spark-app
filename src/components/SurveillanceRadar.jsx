@@ -1,137 +1,161 @@
-// src/components/SurveillanceRadar.jsx — Spark Surveillance Radar: a live
-// Mapbox market map for the Brokerage Command Suite, backed by
-// api/market/surveillance.js (RentCast active listings -> GeoJSON).
+// src/components/SurveillanceRadar.jsx — SPARK OS Surveillance Radar: a
+// full-screen market intelligence terminal. Live RentCast listings flow in
+// through the secure server-side proxy at api/market/surveillance.js (the
+// RentCast X-Api-Key only ever exists in that Vercel function's env — the
+// frontend just calls /api/market/surveillance), rendered on a 3D Mapbox
+// scene with switchable intelligence layers, and any target can be pushed
+// straight into an agent's pipeline via a Supabase `deals` insert.
 //
-// Two adaptations from the literal spec, same reasoning as everywhere else
-// in this codebase:
+// Standing adaptations, same rationale as every other Operations-suite file
+// (see InterventionEngine.jsx for the full write-up):
 //
-// 1. Styling: no Tailwind anywhere in this app. The requested className
-//    strings are kept on every element (harmless now, free upgrade if
-//    Tailwind is ever added), backed by inline `style` objects tuned to
-//    the same dark-glass/neon-blue look they describe.
+// 1. Styling: no Tailwind is configured in this app — requested className
+//    strings are kept (free upgrade if Tailwind ever lands) and backed by
+//    equivalent inline styles.
 //
-// 2. Env var: the spec's NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is a Next.js
-//    naming convention; this is Vite, which only inlines VITE_-prefixed
-//    vars into import.meta.env by default. Rather than duplicate the
-//    token under a second name, vite.config.js now also whitelists
-//    NEXT_PUBLIC_-prefixed vars (see the comment there) — access tokens
-//    are meant to be public/client-side, so this isn't a secrets leak.
+// 2. Supabase client: this app's working client is `window.__supabase`
+//    (lazily CDN-created in App.jsx); there is no lib/supabaseClient module.
+//
+// 3. Schema: there is no `profiles`/`agents`/`pipeline` table — agents live
+//    in `users` (scoped by brokerage_id) and pipeline rows live in `deals`,
+//    whose `stage` column already has exactly the requested 'prospect'
+//    value. The deploy inserts a `deals` row with stage='prospect'.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Map, Source, Layer, Popup } from "react-map-gl/mapbox";
+import { Map, Source, Layer } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { ResponsiveContainer, AreaChart, Area } from "recharts";
+import {
+  Zap, Radar as RadarIcon, Layers, Search, Crosshair, MapPin, Loader2, Send, X,
+} from "lucide-react";
 
 const MAPBOX_TOKEN = import.meta.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-const MIAMI_CENTER = { longitude: -80.1918, latitude: 25.7617, zoom: 12 };
+const MIAMI_CENTER = { longitude: -80.1918, latitude: 25.7617, zoom: 13, pitch: 50, bearing: -15 };
 
-const C = {
-  panelBg: "rgba(0,0,0,0.6)",
-  hudBg: "rgba(0,0,0,0.5)",
-  blue: "#38BDF8",
-  blueBorder: "rgba(59,130,246,0.3)",
-  blueBorderDim: "rgba(59,130,246,0.2)",
-  emerald: "#22C55E",
-  rose: "#F43F5E",
-  amber: "#F59E0B",
-  slate: "rgba(226,232,240,0.9)",
-  slateDim: "rgba(148,163,184,0.7)",
-  F: "'Plus Jakarta Sans',sans-serif",
-};
+const F = "'Plus Jakarta Sans',sans-serif";
+const MONO = "'JetBrains Mono','Courier New',monospace";
 
-// Palette for the RentCast market layers + the brokerage's own footprint.
-// Kept distinct from the earlier CATEGORY_COLOR map (still used for the
-// legend/stats) so "fresh"/"stale"/"price_cut" get the exact hexes specified
-// for the glow layers, while "standard" RentCast listings keep the older blue.
-const LAYER_COLOR = {
-  fresh: "#06b6d4",
-  stale: "#f59e0b",
-  price_cut: "#ef4444",
-  standard: C.blue,
-  brokerage: "#3b82f6",
-};
+const PURPLE = "#a855f7";
+const PURPLE_LT = "#c084fc";
+const CYAN = "#22d3ee";
+const GREEN = "#22C55E";
+const AMBER = "#ffb020";
+const RED = "#ff3b5c";
+const SLATE = "rgba(226,232,240,0.9)";
+const SLATE_DIM = "rgba(148,163,184,0.65)";
 
-const CATEGORY_COLOR = {
-  fresh: LAYER_COLOR.fresh,
-  price_cut: LAYER_COLOR.price_cut,
-  stale: LAYER_COLOR.stale,
-  standard: LAYER_COLOR.standard,
-  brokerage: LAYER_COLOR.brokerage,
-};
-
+const CATEGORY_COLOR = { fresh: CYAN, price_cut: RED, stale: AMBER, standard: "#8CA0FF" };
 const CATEGORY_LABEL = {
   fresh: "Fresh Capital (< 7 days)",
-  price_cut: "Distressed Assets (price cut)",
-  stale: "Stagnant Assets (> 60 days)",
+  price_cut: "Distressed (price cut)",
+  stale: "Stagnant (> 60 days)",
   standard: "Standard",
-  brokerage: "Brokerage Footprint",
 };
 
-const INTERACTIVE_LAYER_IDS = [
-  "fresh-capital",
-  "stagnant-assets",
-  "distressed-assets",
-  "standard-assets",
-  "brokerage-footprint",
+const INTEL_LAYERS = [
+  { id: "default", label: "Default Radar" },
+  { id: "heatmap", label: "Liquidity Heatmap" },
+  { id: "accumulation", label: "Institutional Accumulation" },
 ];
 
-function fmtCompact(n) {
+function fmtMoney(n) {
   if (n == null) return "—";
+  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (Math.abs(n) >= 1_000) return `$${(n / 1000).toFixed(0)}K`;
   return `$${Math.round(n).toLocaleString()}`;
 }
 
-// The `deals` table (see BrokerDashboard.jsx) has an `address` column but no
-// lat/lng — geocode it client-side against Mapbox's Geocoding API using the
-// same public token already on the page, rather than adding a new backend
-// route or a geocoding dependency just for this.
-async function geocodeAddress(address, token) {
-  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${token}&limit=1`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const [lng, lat] = data.features?.[0]?.center || [];
-  return typeof lng === "number" && typeof lat === "number" ? [lng, lat] : null;
+function firstName(email) {
+  if (!email) return "Unassigned";
+  const local = email.split("@")[0];
+  return local.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function SurveillanceRadar({ user, onExit }) {
+// ── AI Acquisition Script (rule-based, decrypted char-by-char) ────────────
+function buildAcquisitionScript(p) {
+  const price = p.price != null ? fmtMoney(p.price) : "the current ask";
+  const dom = p.daysOnMarket;
+  const leverage = dom != null && dom > 45
+    ? `The asset has sat ${dom} days — seller leverage is materially eroded. Open 6-8% under ask.`
+    : dom != null && dom < 7
+      ? `Only ${dom} days on market — move fast, anchor near ask with clean terms to pre-empt competition.`
+      : `At ${dom ?? "unknown"} days on market, pressure is balanced — anchor 3-4% under ask with a short close window.`;
+  return [
+    `TARGET: ${p.address || "Unknown asset"} (${p.propertyType || "Residential"})`,
+    `LIST: ${price} · DOM: ${dom ?? "—"}`,
+    ``,
+    `OPENING POSITION: ${leverage}`,
+    `TERMS LEVER: Offer a 14-day inspection-light close in exchange for the price concession — speed is the currency here.`,
+    `CLOSE LINE: "We're prepared to wire earnest money today. What number makes this done by Friday?"`,
+  ].join("\n");
+}
+
+// ── UI atoms ──────────────────────────────────────────────────────────────
+
+function StatTile({ label, value, accent = "#fff" }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 3, whiteSpace: "nowrap" }}>
+        {label}
+      </div>
+      <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 800, color: accent, textShadow: accent !== "#fff" ? `0 0 12px ${accent}66` : "none", whiteSpace: "nowrap" }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Directive({ color, label, text }) {
+  return (
+    <div
+      style={{
+        border: `1px solid ${color}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 10,
+        background: `linear-gradient(135deg, ${color}10, rgba(0,0,0,0.3))`,
+        boxShadow: `inset 0 0 22px ${color}0d, 0 0 12px ${color}1a`,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}`, animation: "srBlink 1.6s ease-in-out infinite" }} />
+        <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 800, letterSpacing: 2, color, textTransform: "uppercase" }}>{label}</span>
+      </div>
+      <div className="sr-scanline" style={{ fontFamily: MONO, fontSize: 10.5, lineHeight: 1.55, color: SLATE }}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// ── Component ─────────────────────────────────────────────────────────────
+
+export default function SurveillanceRadar({ user }) {
   const [query, setQuery] = useState("Miami, FL");
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
   const [geojson, setGeojson] = useState({ type: "FeatureCollection", features: [] });
   const [stats, setStats] = useState({ avgDom: null, medianPrice: null, activeCount: 0 });
-  const [selectedFeature, setSelectedFeature] = useState(null);
-  const [brokerageGeojson, setBrokerageGeojson] = useState({ type: "FeatureCollection", features: [] });
+  const [selected, setSelected] = useState(null);
+  const [intelLayer, setIntelLayer] = useState("default");
+  const [layerMenuOpen, setLayerMenuOpen] = useState(false);
   const [hovering, setHovering] = useState(false);
+  const [buildingsReady, setBuildingsReady] = useState(false);
+
+  // Micro-mode state
+  const [scriptText, setScriptText] = useState(null);
+  const [decrypting, setDecrypting] = useState(false);
   const [agents, setAgents] = useState([]);
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [deploying, setDeploying] = useState(false);
   const [toast, setToast] = useState(null);
-  const [whisperPitch, setWhisperPitch] = useState(null);
-  const [whisperLoading, setWhisperLoading] = useState(false);
+
   const mapRef = useRef(null);
+  const decryptTimer = useRef(null);
 
-  // Clear any generated pitch when the selected node changes so a stale
-  // pitch from a previously-selected property never lingers under a new one.
+  // Reset micro-mode artifacts whenever the target changes
   useEffect(() => {
-    setWhisperPitch(null);
-    setWhisperLoading(false);
-  }, [selectedFeature]);
-
-  // Agent Selector — team members to deploy a dossier's target to. Same
-  // brokerage-scoped users query as BrokerDashboard.jsx.
-  useEffect(() => {
-    if (!user?.brokerageId) return;
-    let cancelled = false;
-    (async () => {
-      const sb = window.__supabase;
-      if (!sb) return;
-      const { data } = await sb.from("users").select("id, email").eq("brokerage_id", user.brokerageId);
-      if (!cancelled && data) {
-        setAgents(data);
-        setSelectedAgentId((prev) => prev || data[0]?.id || "");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [user?.brokerageId]);
+    setScriptText(null);
+    setDecrypting(false);
+    if (decryptTimer.current) clearInterval(decryptTimer.current);
+  }, [selected]);
 
   useEffect(() => {
     if (!toast) return;
@@ -139,243 +163,250 @@ export default function SurveillanceRadar({ user, onExit }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // Deploy to Agent War Room — targets public.war_room_deals (the org-wide
-  // deal telemetry table, see 20260730000000_brokerage_multitenancy_rls.sql)
-  // rather than `deals`: `deals.status` is a closed enum
-  // (on_track/stalled/at_risk) with no "targeted" value, while
-  // war_room_deals has a free-form `details` jsonb column that's the right
-  // shape for property/scan metadata that doesn't map to a real deal yet.
-  // Note: RLS on war_room_deals only allows inserting rows where
-  // user_id = auth.uid(), so a broker deploying to a *different* agent will
-  // get an RLS error back here (surfaced via the toast) until that policy
-  // is extended — not silently worked around.
-  const deployToWarRoom = useCallback(async (feature) => {
-    const sb = window.__supabase;
-    if (!sb || !selectedAgentId) return;
-    const p = feature.properties;
-    const isBrokerage = p.__source === "brokerage";
-    const price = isBrokerage ? Number(p.deal_volume) || null : Number(p.price) || null;
-    const agent = agents.find((a) => a.id === selectedAgentId);
-
-    setDeploying(true);
-    try {
-      const { error: insertError } = await sb.from("war_room_deals").insert({
-        brokerage_id: user?.brokerageId,
-        user_id: selectedAgentId,
-        deal_name: p.address || "Untitled target",
-        negotiation_stage: "open",
-        details: {
-          address: p.address,
-          price,
-          status: "targeted",
-          category: p.category || (isBrokerage ? "brokerage" : "standard"),
-          source: isBrokerage ? "brokerage" : "rentcast",
-          coordinates: feature.geometry.coordinates,
-        },
-      });
-      if (insertError) throw new Error(insertError.message);
-      setToast(`Target Deployed to ${agent?.email || "Agent"}'s Spark Workspace.`);
-    } catch (err) {
-      setToast(`Deploy failed: ${err.message}`);
-    } finally {
-      setDeploying(false);
-    }
-  }, [selectedAgentId, agents, user?.brokerageId]);
-
-  // AI Whisper Campaign — a short, discreet outreach pitch for the selected
-  // node, generated via the same api/claude.js proxy every other AI feature
-  // in this app uses (see AutopilotPanel.jsx/TransactionPanel.jsx for the
-  // identical system+messages+max_tokens shape).
-  const generateWhisperPitch = useCallback(async (feature) => {
-    const p = feature.properties;
-    const isBrokerage = p.__source === "brokerage";
-    const price = isBrokerage ? Number(p.deal_volume) || null : Number(p.price) || null;
-    const pricePerSqft = price && p.squareFootage ? Math.round(price / p.squareFootage) : null;
-
-    setWhisperLoading(true);
-    setWhisperPitch(null);
-    try {
-      const r = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: "You write short, discreet off-market outreach pitches for real estate brokers to send to VIP investor clients. Tone: insider, low-key, urgent but not salesy. Exactly 3 sentences. Return ONLY valid JSON.",
-          messages: [{
-            role: "user",
-            content: `Write a 3-sentence discreet VIP whisper pitch for this property:
-Address: ${p.address || "Address unavailable"}
-Price: ${fmtCompact(price)}
-Price/sqft: ${pricePerSqft ? `$${pricePerSqft}` : "unknown"}
-Days on market: ${p.daysOnMarket ?? "unknown"}
-
-Follow this shape: "Off-market alert. Looking at a prime asset at [address] trading at [price/sqft]—well below sector median. Seller leverage is dropping at [DOM] days on market. Let me know if you want the private financials."
-
-Return ONLY this JSON: {"pitch":"the 3-sentence pitch"}`,
-          }],
-          max_tokens: 300,
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok || d?.error || d?.type === "error") {
-        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
-      }
-      const raw = d.content?.[0]?.text || "";
-      const parsed = JSON.parse(raw);
-      if (!parsed.pitch) throw new Error("No pitch in response");
-      setWhisperPitch(parsed.pitch);
-    } catch (err) {
-      setWhisperPitch(null);
-      setToast(`Whisper pitch failed: ${err.message}`);
-    } finally {
-      setWhisperLoading(false);
-    }
-  }, []);
-
-  // Brokerage Footprint layer — the brokerage's own active deals, geocoded
-  // client-side since `deals.address` has no lat/lng (see comment on
-  // geocodeAddress above). RLS scopes this to the signed-in broker's own
-  // brokerage_id, same as the query in BrokerDashboard.jsx.
+  // Field agents for the delegation dropdown — `users` scoped by brokerage
   useEffect(() => {
-    if (!MAPBOX_TOKEN) return;
+    if (!user?.brokerageId) return;
     let cancelled = false;
-
     (async () => {
       const sb = window.__supabase;
       if (!sb) return;
-      const { data, error: dealsError } = await sb
-        .from("deals")
-        .select("id, client_name, address, stage, deal_volume, gci, closing_date, commission_split_pct")
-        .neq("stage", "closed")
-        .not("address", "is", null);
-      if (cancelled || dealsError || !data) return;
-
-      const geocoded = await Promise.all(
-        data.map(async (deal) => {
-          const coords = await geocodeAddress(deal.address, MAPBOX_TOKEN);
-          if (!coords) return null;
-          return {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: coords },
-            properties: { ...deal, __source: "brokerage" },
-          };
-        })
-      );
-      if (!cancelled) {
-        setBrokerageGeojson({ type: "FeatureCollection", features: geocoded.filter(Boolean) });
+      const { data } = await sb.from("users").select("id, email, role").eq("brokerage_id", user.brokerageId);
+      if (!cancelled && data) {
+        const list = data.filter((u) => u.role !== "broker");
+        const finalList = list.length ? list : data;
+        setAgents(finalList);
+        setSelectedAgentId((prev) => prev || finalList[0]?.id || "");
       }
     })();
-
     return () => { cancelled = true; };
+  }, [user?.brokerageId]);
+
+  // ── Scans ──────────────────────────────────────────────────────────────
+  const applyScanResult = useCallback((data) => {
+    setGeojson(data.geojson || { type: "FeatureCollection", features: [] });
+    setStats(data.aggregateStats || { avgDom: null, medianPrice: null, activeCount: 0 });
+    if (!data.success) setError(data.error || "Scan returned no data.");
   }, []);
-
-  // Sector Telemetry — aggregate metrics derived from the current RentCast
-  // scan's plotted features (aggregateStats from the API only gives us
-  // avgDom/medianPrice/activeCount; total volume and price-cut velocity are
-  // cheap to derive client-side from the same geojson rather than adding
-  // more fields to the API response).
-  const sectorMetrics = useMemo(() => {
-    const feats = geojson.features;
-    const total = feats.length;
-    const staleCount = feats.filter((f) => f.properties.category === "stale").length;
-    const priceCutCount = feats.filter((f) => f.properties.category === "price_cut").length;
-    const totalVolume = feats.reduce((sum, f) => sum + (Number(f.properties.price) || 0), 0);
-    return {
-      total,
-      staleCount,
-      priceCutCount,
-      totalVolume,
-      stalePct: total ? (staleCount / total) * 100 : 0,
-      priceCutVelocity: total ? (priceCutCount / total) * 100 : 0,
-    };
-  }, [geojson]);
-
-  // Tactical Directives — simple rule-based read of the sector data, not a
-  // model call. Danger flags an elevated stale-listing density (buyer
-  // leverage), Opportunity flags price-cut clusters (conversion targets),
-  // Action compares the brokerage's own listings against the sector's
-  // median comp price to suggest a pricing lean.
-  const directives = useMemo(() => {
-    const { total, staleCount, stalePct, priceCutCount } = sectorMetrics;
-
-    const danger = stalePct >= 20
-      ? { text: `${staleCount} stale listing${staleCount === 1 ? "" : "s"} detected (${stalePct.toFixed(0)}% of sector) — buyer leverage is elevated, expect longer negotiation cycles.`, elevated: true }
-      : { text: total ? "Stale density nominal — no elevated risk detected in this sector." : "Run a scan to assess stale-listing risk.", elevated: false };
-
-    const opportunity = priceCutCount > 0
-      ? { text: `${priceCutCount} price-cut listing${priceCutCount === 1 ? "" : "s"} flagged — prime targets for expired-listing and price-cut conversion outreach.`, elevated: true }
-      : { text: total ? "No price-cut clusters detected this scan." : "Run a scan to surface conversion targets.", elevated: false };
-
-    const brokerageAvg = brokerageGeojson.features.length
-      ? brokerageGeojson.features.reduce((sum, f) => sum + (Number(f.properties.deal_volume) || 0), 0) / brokerageGeojson.features.length
-      : null;
-    let action;
-    if (brokerageAvg && sectorMetrics.total && stats.medianPrice) {
-      const deltaPct = ((brokerageAvg - stats.medianPrice) / stats.medianPrice) * 100;
-      if (deltaPct > 8) {
-        action = { text: `Nearby brokerage listings price ${deltaPct.toFixed(0)}% above sector median (${fmtCompact(stats.medianPrice)}) — consider a pricing adjustment to stay competitive.`, elevated: true };
-      } else if (deltaPct < -8) {
-        action = { text: `Nearby brokerage listings price ${Math.abs(deltaPct).toFixed(0)}% below sector median (${fmtCompact(stats.medianPrice)}) — room to hold or raise ask.`, elevated: true };
-      } else {
-        action = { text: `Nearby brokerage listings are within range of the sector median (${fmtCompact(stats.medianPrice)}) — pricing strategy is on target.`, elevated: false };
-      }
-    } else {
-      action = { text: "Run a scan and geocode brokerage listings to generate pricing guidance.", elevated: false };
-    }
-
-    return [
-      { key: "danger", label: "Danger", color: LAYER_COLOR.price_cut, ...danger },
-      { key: "opportunity", label: "Opportunity", color: "#22C55E", ...opportunity },
-      { key: "action", label: "Action", color: C.blue, ...action },
-    ];
-  }, [sectorMetrics, brokerageGeojson, stats.medianPrice]);
 
   const runScan = useCallback(async (e) => {
     e?.preventDefault?.();
     const trimmed = query.trim();
     if (!trimmed || scanning) return;
-
     setScanning(true);
     setError(null);
+    setSelected(null);
     try {
       const isZip = /^\d{5}$/.test(trimmed);
       const params = new URLSearchParams(isZip ? { zipCode: trimmed } : { cityState: trimmed });
       const res = await fetch(`/api/market/surveillance?${params.toString()}`);
       const data = await res.json();
-
-      setGeojson(data.geojson || { type: "FeatureCollection", features: [] });
-      setStats(data.aggregateStats || { avgDom: null, medianPrice: null, activeCount: 0 });
-      if (!data.success) setError(data.error || "Scan returned no data.");
-
-      // Recenter on the first result if we got coordinates back — the
-      // location search box doesn't do its own geocoding, so this is the
-      // only signal we have for "where did this search actually land."
+      applyScanResult(data);
       const first = data.geojson?.features?.[0];
       if (first && mapRef.current) {
         const [lng, lat] = first.geometry.coordinates;
-        mapRef.current.flyTo({ center: [lng, lat], zoom: 12, duration: 800 });
+        mapRef.current.flyTo({ center: [lng, lat], zoom: 13, pitch: 50, duration: 900 });
       }
     } catch (err) {
       setError(err.message || "Scan failed — try again.");
     } finally {
       setScanning(false);
     }
-  }, [query, scanning]);
+  }, [query, scanning, applyScanResult]);
+
+  // Viewport scan — collapses the current map bounding box to center+radius
+  // (miles), which is the shape RentCast's API accepts server-side.
+  const scanViewport = useCallback(async () => {
+    const map = mapRef.current?.getMap?.();
+    if (!map || scanning) return;
+    setScanning(true);
+    setError(null);
+    setSelected(null);
+    try {
+      const bounds = map.getBounds();
+      const center = bounds.getCenter();
+      const ne = bounds.getNorthEast();
+      const latMiles = Math.abs(ne.lat - center.lat) * 69;
+      const lngMiles = Math.abs(ne.lng - center.lng) * 69 * Math.cos((center.lat * Math.PI) / 180);
+      const radius = Math.max(1, Math.min(50, Math.sqrt(latMiles ** 2 + lngMiles ** 2)));
+      const params = new URLSearchParams({
+        latitude: center.lat.toFixed(5),
+        longitude: center.lng.toFixed(5),
+        radius: radius.toFixed(1),
+      });
+      const res = await fetch(`/api/market/surveillance?${params.toString()}`);
+      const data = await res.json();
+      applyScanResult(data);
+    } catch (err) {
+      setError(err.message || "Viewport scan failed — try again.");
+    } finally {
+      setScanning(false);
+    }
+  }, [scanning, applyScanResult]);
+
+  // ── Macro aggregates ───────────────────────────────────────────────────
+  const macro = useMemo(() => {
+    const feats = geojson.features;
+    const total = feats.length;
+    const totalVolume = feats.reduce((sum, f) => sum + (Number(f.properties.price) || 0), 0);
+    const priceCuts = feats.filter((f) => f.properties.category === "price_cut").length;
+    return {
+      total,
+      totalVolume,
+      priceCutVelocity: total ? (priceCuts / total) * 100 : 0,
+      stalePct: total ? (feats.filter((f) => f.properties.category === "stale").length / total) * 100 : 0,
+      freshCount: feats.filter((f) => f.properties.category === "fresh").length,
+    };
+  }, [geojson]);
+
+  // Sparkline: listing density binned by days-on-market (momentum profile)
+  const sparkData = useMemo(() => {
+    const feats = geojson.features;
+    if (!feats.length) return [];
+    const bins = Array.from({ length: 12 }, (_, i) => ({ bin: i, count: 0 }));
+    feats.forEach((f) => {
+      const dom = f.properties.daysOnMarket;
+      if (dom == null) return;
+      const idx = Math.min(11, Math.floor(dom / 10));
+      bins[idx].count += 1;
+    });
+    return bins;
+  }, [geojson]);
+
+  const directives = useMemo(() => {
+    if (!macro.total) {
+      return [
+        { color: RED, label: "Danger", text: "Awaiting sector scan — no threat telemetry." },
+        { color: GREEN, label: "Opportunity", text: "Run a scan to surface acquisition targets." },
+        { color: CYAN, label: "Action", text: "Position the map and scan the viewport for live inventory." },
+      ];
+    }
+    return [
+      {
+        color: RED, label: "Danger",
+        text: macro.stalePct >= 20
+          ? `Stale density at ${macro.stalePct.toFixed(0)}% of sector — buyer leverage elevated, expect drawn-out negotiations.`
+          : "Stale density nominal — no elevated sector risk detected.",
+      },
+      {
+        color: GREEN, label: "Opportunity",
+        text: macro.priceCutVelocity > 0
+          ? `Price-cut velocity at ${macro.priceCutVelocity.toFixed(0)}% — distressed cluster forming. Prime for below-ask acquisition sweeps.`
+          : "No distressed clusters detected this scan.",
+      },
+      {
+        color: CYAN, label: "Action",
+        text: macro.freshCount > 0
+          ? `${macro.freshCount} fresh listing${macro.freshCount === 1 ? "" : "s"} (<7d) detected — deploy field agents before competing offers land.`
+          : "No fresh inventory this cycle — monitor and rescan.",
+      },
+    ];
+  }, [macro]);
+
+  // ── Micro mode actions ─────────────────────────────────────────────────
+  const generateScript = useCallback(() => {
+    if (!selected || decrypting) return;
+    const full = buildAcquisitionScript(selected.properties);
+    setDecrypting(true);
+    setScriptText("");
+    const chars = "!<>-_\\/[]{}—=+*^?#________";
+    let frame = 0;
+    const totalFrames = 30;
+    decryptTimer.current = setInterval(() => {
+      frame += 1;
+      const reveal = Math.floor((frame / totalFrames) * full.length);
+      let out = full.slice(0, reveal);
+      for (let i = 0; i < Math.min(14, full.length - reveal); i++) {
+        out += chars[Math.floor(Math.random() * chars.length)];
+      }
+      setScriptText(out);
+      if (frame >= totalFrames) {
+        clearInterval(decryptTimer.current);
+        setScriptText(full);
+        setDecrypting(false);
+      }
+    }, 40);
+  }, [selected, decrypting]);
+
+  const deployToPipeline = useCallback(async () => {
+    if (!selected || !selectedAgentId || deploying) return;
+    const sb = window.__supabase;
+    if (!sb) { setToast("Deploy failed: Supabase isn't initialized yet."); return; }
+    const p = selected.properties;
+    const agent = agents.find((a) => a.id === selectedAgentId);
+    setDeploying(true);
+    try {
+      const { error: insertError } = await sb.from("deals").insert({
+        brokerage_id: user?.brokerageId,
+        agent_id: selectedAgentId,
+        address: p.address || "Unknown address",
+        stage: "prospect",
+        status: "on_track",
+        deal_volume: Number(p.price) || 0,
+        gci: Math.round((Number(p.price) || 0) * 0.03),
+      });
+      if (insertError) throw new Error(insertError.message);
+      setToast(`Target deployed to ${firstName(agent?.email)}'s pipeline as PROSPECT.`);
+    } catch (err) {
+      setToast(`Deploy failed: ${err.message}`);
+    } finally {
+      setDeploying(false);
+    }
+  }, [selected, selectedAgentId, deploying, agents, user?.brokerageId]);
+
+  // 3D buildings — dark-v11's composite source carries a `building` layer;
+  // extrude it once the style loads for physical depth under pitch/zoom.
+  const handleMapLoad = useCallback((e) => {
+    const map = e.target;
+    if (map.getLayer("sr-3d-buildings")) return;
+    try {
+      map.addLayer({
+        id: "sr-3d-buildings",
+        source: "composite",
+        "source-layer": "building",
+        filter: ["==", "extrude", "true"],
+        type: "fill-extrusion",
+        minzoom: 13,
+        paint: {
+          "fill-extrusion-color": "#1a1a24",
+          "fill-extrusion-height": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["get", "height"]],
+          "fill-extrusion-base": ["interpolate", ["linear"], ["zoom"], 13, 0, 14.5, ["get", "min_height"]],
+          "fill-extrusion-opacity": 0.75,
+        },
+      });
+      setBuildingsReady(true);
+    } catch {
+      // style variant without a building layer — map still fully usable flat
+    }
+  }, []);
+
+  const selCat = selected?.properties?.category;
+  const selColor = CATEGORY_COLOR[selCat] || PURPLE_LT;
 
   return (
     <div
-      className="w-full h-full m-0 p-0 absolute top-0 left-0 z-0 overflow-hidden"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", margin: 0, padding: 0, overflow: "hidden", zIndex: 0 }}
+      className="w-full h-full relative bg-[#050505] overflow-hidden"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden", background: "#050505" }}
     >
-      {/* Deploy success/error toast — top-center overlay, self-dismisses */}
+      <style>{`
+        @keyframes srBlink { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+        @keyframes srPulse { 0% { transform: scale(0.7); opacity: 0.9; } 100% { transform: scale(2.4); opacity: 0; } }
+        @keyframes srScan { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+        .sr-scanline {
+          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+          background-size: 200px 100%; background-repeat: no-repeat;
+          animation: srScan 2.8s linear infinite;
+        }
+      `}</style>
+
+      {/* Toast */}
       {toast && (
         <div
           style={{
-            position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 30,
-            background: "rgba(10,15,25,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            border: `1px solid ${toast.startsWith("Deploy failed") ? "rgba(244,63,94,0.5)" : "rgba(59,130,246,0.5)"}`,
-            borderRadius: 10, padding: "10px 18px", color: "#fff", fontFamily: C.F, fontSize: 12, fontWeight: 700,
-            boxShadow: `0 0 20px ${toast.startsWith("Deploy failed") ? "rgba(244,63,94,0.25)" : "rgba(59,130,246,0.35)"}`,
-            whiteSpace: "nowrap",
+            position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 40,
+            background: "rgba(8,8,14,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            border: `1px solid ${toast.startsWith("Deploy failed") ? RED : PURPLE}88`,
+            borderRadius: 10, padding: "10px 18px", color: "#fff", fontFamily: F, fontSize: 12, fontWeight: 700,
+            boxShadow: `0 0 22px ${toast.startsWith("Deploy failed") ? RED : PURPLE}55`, whiteSpace: "nowrap",
           }}
         >
           {toast}
@@ -383,7 +414,7 @@ Return ONLY this JSON: {"pitch":"the 3-sentence pitch"}`,
       )}
 
       {!MAPBOX_TOKEN ? (
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#050810", color: C.rose, fontFamily: C.F, fontSize: 13, padding: 24, textAlign: "center" }}>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: RED, fontFamily: F, fontSize: 13, padding: 24, textAlign: "center" }}>
           Mapbox access token not configured — set NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN (or VITE_MAPBOX_ACCESS_TOKEN) in .env.local.
         </div>
       ) : (
@@ -392,549 +423,394 @@ Return ONLY this JSON: {"pitch":"the 3-sentence pitch"}`,
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={MIAMI_CENTER}
           mapStyle="mapbox://styles/mapbox/dark-v11"
-          style={{ position: "absolute", inset: 0 }}
+          style={{ position: "absolute", inset: 0, right: 384 }}
           cursor={hovering ? "pointer" : "grab"}
-          interactiveLayerIds={INTERACTIVE_LAYER_IDS}
+          interactiveLayerIds={intelLayer === "heatmap" ? [] : ["sr-nodes"]}
+          onLoad={handleMapLoad}
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
-          onClick={(e) => {
-            const feature = e.features?.[0];
-            setSelectedFeature(feature || null);
-          }}
+          onClick={(e) => setSelected(e.features?.[0] || null)}
         >
-          <Source id="surveillance-nodes" type="geojson" data={geojson}>
-            {/* Fresh Capital — cyan, with a soft blurred glow ring under the solid dot */}
-            <Layer
-              id="fresh-capital-glow"
-              type="circle"
-              filter={["==", ["get", "category"], "fresh"]}
-              paint={{
-                "circle-radius": 14,
-                "circle-color": LAYER_COLOR.fresh,
-                "circle-blur": 1,
-                "circle-opacity": 0.45,
-              }}
-            />
-            <Layer
-              id="fresh-capital"
-              type="circle"
-              filter={["==", ["get", "category"], "fresh"]}
-              paint={{
-                "circle-radius": 6,
-                "circle-color": LAYER_COLOR.fresh,
-                "circle-stroke-width": 1.5,
-                "circle-stroke-color": "rgba(0,0,0,0.6)",
-                "circle-opacity": 0.95,
-              }}
-            />
-
-            {/* Stagnant Assets — amber markers, no glow */}
-            <Layer
-              id="stagnant-assets"
-              type="circle"
-              filter={["==", ["get", "category"], "stale"]}
-              paint={{
-                "circle-radius": 6,
-                "circle-color": LAYER_COLOR.stale,
-                "circle-stroke-width": 1.5,
-                "circle-stroke-color": "rgba(0,0,0,0.6)",
-                "circle-opacity": 0.9,
-              }}
-            />
-
-            {/* Distressed Assets — sharp red glowing beacons */}
-            <Layer
-              id="distressed-glow"
-              type="circle"
-              filter={["==", ["get", "category"], "price_cut"]}
-              paint={{
-                "circle-radius": 16,
-                "circle-color": LAYER_COLOR.price_cut,
-                "circle-blur": 1.2,
-                "circle-opacity": 0.5,
-              }}
-            />
-            <Layer
-              id="distressed-assets"
-              type="circle"
-              filter={["==", ["get", "category"], "price_cut"]}
-              paint={{
-                "circle-radius": 6,
-                "circle-color": LAYER_COLOR.price_cut,
-                "circle-stroke-width": 1.5,
-                "circle-stroke-color": "rgba(0,0,0,0.6)",
-                "circle-opacity": 1,
-              }}
-            />
-
-            {/* Everything else (standard listings) */}
-            <Layer
-              id="standard-assets"
-              type="circle"
-              filter={["==", ["get", "category"], "standard"]}
-              paint={{
-                "circle-radius": 5,
-                "circle-color": LAYER_COLOR.standard,
-                "circle-stroke-width": 1.5,
-                "circle-stroke-color": "rgba(0,0,0,0.6)",
-                "circle-opacity": 0.85,
-              }}
-            />
+          <Source id="sr-source" type="geojson" data={geojson}>
+            {intelLayer === "default" && (
+              <>
+                <Layer
+                  id="sr-glow"
+                  source="sr-source"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 15,
+                    "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
+                    "circle-blur": 1.1,
+                    "circle-opacity": 0.4,
+                  }}
+                />
+                <Layer
+                  id="sr-nodes"
+                  source="sr-source"
+                  type="circle"
+                  paint={{
+                    "circle-radius": 6,
+                    "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
+                    "circle-stroke-width": 1.5,
+                    "circle-stroke-color": "rgba(0,0,0,0.7)",
+                    "circle-opacity": 0.95,
+                  }}
+                />
+              </>
+            )}
+            {intelLayer === "heatmap" && (
+              <Layer
+                id="sr-heat"
+                source="sr-source"
+                type="heatmap"
+                paint={{
+                  "heatmap-weight": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 0, 0.2, 5000000, 1],
+                  "heatmap-intensity": 1.1,
+                  "heatmap-radius": 42,
+                  "heatmap-opacity": 0.85,
+                  "heatmap-color": [
+                    "interpolate", ["linear"], ["heatmap-density"],
+                    0, "rgba(0,0,0,0)",
+                    0.25, "rgba(34,211,238,0.35)",
+                    0.5, "rgba(168,85,247,0.55)",
+                    0.8, "rgba(255,59,92,0.75)",
+                    1, "rgba(255,176,32,0.95)",
+                  ],
+                }}
+              />
+            )}
+            {intelLayer === "accumulation" && (
+              <>
+                <Layer
+                  id="sr-acc-glow"
+                  source="sr-source"
+                  type="circle"
+                  paint={{
+                    "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 500000, 10, 25000000, 42],
+                    "circle-color": PURPLE,
+                    "circle-blur": 1.2,
+                    "circle-opacity": 0.35,
+                  }}
+                />
+                <Layer
+                  id="sr-nodes"
+                  source="sr-source"
+                  type="circle"
+                  paint={{
+                    "circle-radius": ["interpolate", ["linear"], ["coalesce", ["get", "price"], 0], 500000, 4, 25000000, 16],
+                    "circle-color": PURPLE_LT,
+                    "circle-stroke-width": 1.5,
+                    "circle-stroke-color": "rgba(255,255,255,0.85)",
+                    "circle-opacity": 0.9,
+                  }}
+                />
+              </>
+            )}
           </Source>
-
-          {/* Brokerage Footprint — the brokerage's own active deals, solid electric blue */}
-          <Source id="brokerage-footprint-source" type="geojson" data={brokerageGeojson}>
-            <Layer
-              id="brokerage-footprint"
-              type="circle"
-              paint={{
-                "circle-radius": 7,
-                "circle-color": LAYER_COLOR.brokerage,
-                "circle-stroke-width": 2,
-                "circle-stroke-color": "#ffffff",
-                "circle-opacity": 1,
-              }}
-            />
-          </Source>
-
-          {selectedFeature && (
-            <Popup
-              longitude={selectedFeature.geometry.coordinates[0]}
-              latitude={selectedFeature.geometry.coordinates[1]}
-              onClose={() => setSelectedFeature(null)}
-              closeOnClick={false}
-              anchor="bottom"
-            >
-              {selectedFeature.properties.__source === "brokerage" ? (
-                <div style={{ fontFamily: C.F, fontSize: 12, color: "#0a0a0d", minWidth: 160 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 4 }}>{fmtCompact(selectedFeature.properties.deal_volume)}</div>
-                  <div style={{ marginBottom: 4 }}>{selectedFeature.properties.address || "Address unavailable"}</div>
-                  <div style={{ fontSize: 11, opacity: 0.7 }}>{selectedFeature.properties.client_name || "Unnamed client"}</div>
-                  <div style={{ fontSize: 10, marginTop: 4, fontWeight: 700, color: LAYER_COLOR.brokerage }}>
-                    {CATEGORY_LABEL.brokerage} · {selectedFeature.properties.stage}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ fontFamily: C.F, fontSize: 12, color: "#0a0a0d", minWidth: 160 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 4 }}>{selectedFeature.properties.formattedPrice || fmtCompact(selectedFeature.properties.price)}</div>
-                  <div style={{ marginBottom: 4 }}>{selectedFeature.properties.address || "Address unavailable"}</div>
-                  <div style={{ fontSize: 11, opacity: 0.7 }}>
-                    {selectedFeature.properties.bedrooms ?? "—"}bd / {selectedFeature.properties.bathrooms ?? "—"}ba · {selectedFeature.properties.daysOnMarket ?? "—"} DOM
-                  </div>
-                  <div style={{ fontSize: 10, marginTop: 4, fontWeight: 700, color: CATEGORY_COLOR[selectedFeature.properties.category] || C.blue }}>
-                    {CATEGORY_LABEL[selectedFeature.properties.category] || "Standard"}
-                  </div>
-                </div>
-              )}
-            </Popup>
-          )}
         </Map>
       )}
 
-      {/* Exit Strategy — minimalist glowing button back to the standard CRM view.
-          Only rendered when a parent (App.jsx) hands down onExit; standalone
-          previews of this component with no exit handler just omit it. */}
-      {onExit && (
-        <button
-          onClick={onExit}
-          className="absolute top-4 left-4 z-10"
-          style={{
-            position: "absolute", top: 16, left: 16, zIndex: 20,
-            background: "rgba(0,0,0,0.55)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-            border: `1px solid ${C.blueBorder}`, color: C.blue, fontFamily: C.F, fontSize: 10, fontWeight: 800,
-            letterSpacing: 1, textTransform: "uppercase", borderRadius: 10, padding: "8px 14px",
-            cursor: "pointer", boxShadow: `0 0 10px ${C.blueBorder}`, display: "flex", alignItems: "center", gap: 6,
-            transition: "box-shadow 0.15s ease, background 0.15s ease",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = `0 0 18px rgba(59,130,246,0.6)`; e.currentTarget.style.background = "rgba(59,130,246,0.15)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = `0 0 10px ${C.blueBorder}`; e.currentTarget.style.background = "rgba(0,0,0,0.55)"; }}
-        >
-          ← Exit Radar
-        </button>
-      )}
+      {/* Brand chip — SPARK OS */}
+      <div
+        style={{
+          position: "absolute", top: 16, left: 16, zIndex: 20, display: "flex", alignItems: "center", gap: 9,
+          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          border: "1px solid rgba(168,85,247,0.35)", borderRadius: 12, padding: "9px 14px",
+          boxShadow: "0 0 18px rgba(168,85,247,0.25)",
+        }}
+      >
+        <Zap
+          size={17}
+          className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)] animate-pulse"
+          color={PURPLE_LT}
+          fill={PURPLE_LT}
+          style={{ filter: "drop-shadow(0 0 10px rgba(168,85,247,0.8))", animation: "srBlink 2.2s ease-in-out infinite" }}
+        />
+        <div>
+          <div style={{ fontFamily: F, fontSize: 13, fontWeight: 800, letterSpacing: 2, color: "#fff", lineHeight: 1.1 }}>SPARK OS</div>
+          <div style={{ fontFamily: F, fontSize: 7.5, fontWeight: 700, letterSpacing: 2.5, color: SLATE_DIM, textTransform: "uppercase" }}>Surveillance Radar</div>
+        </div>
+      </div>
 
-      {/* Floating Search HUD — top left */}
+      {/* Search HUD */}
       <form
         onSubmit={runScan}
-        className="absolute top-16 left-4 z-10 bg-black/50 backdrop-blur-md border border-blue-500/30 text-white rounded-xl p-2 flex gap-2"
+        className="absolute z-10 bg-black/50 backdrop-blur-md border border-white/10 rounded-xl p-2 flex gap-2"
         style={{
-          position: "absolute", top: onExit ? 62 : 16, left: 16, zIndex: 10,
-          background: C.hudBg, backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${C.blueBorder}`, color: "#fff", borderRadius: 12, padding: 8,
+          position: "absolute", top: 76, left: 16, zIndex: 10,
+          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+          border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 8,
           display: "flex", gap: 8, alignItems: "center",
         }}
       >
+        <Search size={13} color={SLATE_DIM} style={{ marginLeft: 4, flexShrink: 0 }} />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="City, ST or ZIP…"
           style={{
-            background: "rgba(255,255,255,0.06)", border: `1px solid ${C.blueBorderDim}`, borderRadius: 8,
-            color: "#fff", fontFamily: C.F, fontSize: 12, padding: "8px 10px", outline: "none", width: 190,
+            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+            color: "#fff", fontFamily: F, fontSize: 12, padding: "8px 10px", outline: "none", width: 170,
           }}
         />
         <button
           type="submit"
           disabled={scanning}
           style={{
-            background: scanning ? "rgba(59,130,246,0.15)" : "rgba(59,130,246,0.25)",
-            border: `1px solid ${C.blueBorder}`, color: C.blue, fontFamily: C.F, fontSize: 11, fontWeight: 800,
-            letterSpacing: 0.8, borderRadius: 8, padding: "0 14px", cursor: scanning ? "default" : "pointer",
-            textTransform: "uppercase", whiteSpace: "nowrap",
+            background: scanning ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.3)",
+            border: `1px solid ${PURPLE}66`, color: PURPLE_LT, fontFamily: F, fontSize: 10.5, fontWeight: 800,
+            letterSpacing: 1, borderRadius: 8, padding: "8px 12px", cursor: scanning ? "default" : "pointer",
+            textTransform: "uppercase", whiteSpace: "nowrap", boxShadow: scanning ? "none" : "0 0 15px rgba(168,85,247,0.5)",
           }}
         >
           {scanning ? "Scanning…" : "Scan Sector"}
         </button>
-      </form>
-
-      {/* Floating Intelligence Panel — right side */}
-      <div
-        className="absolute right-0 top-0 h-full z-10 bg-black/60 backdrop-blur-xl border-l border-blue-500/20 p-4 text-slate-200 flex flex-col"
-        style={{
-          position: "absolute", right: 0, top: 0, height: "100%", width: 380, zIndex: 10,
-          background: C.panelBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-          borderLeft: `1px solid ${C.blueBorderDim}`, padding: 16, color: C.slate,
-          display: "flex", flexDirection: "column", overflowY: "auto", boxSizing: "border-box",
-        }}
-      >
-        <div
+        <button
+          type="button"
+          onClick={scanViewport}
+          disabled={scanning}
+          title="Scan current map viewport"
           style={{
-            fontFamily: C.F, fontSize: 12, fontWeight: 800, letterSpacing: 1.5, color: C.blue,
-            textShadow: `0 0 12px ${C.blue}88`, marginBottom: 4, textTransform: "uppercase",
+            background: "rgba(34,211,238,0.12)", border: `1px solid ${CYAN}55`, color: CYAN,
+            borderRadius: 8, padding: "8px 10px", cursor: scanning ? "default" : "pointer",
+            display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 10.5, fontWeight: 800,
+            letterSpacing: 0.8, textTransform: "uppercase", whiteSpace: "nowrap",
           }}
         >
-          SPARK SURVEILLANCE RADAR
+          <Crosshair size={12} />
+          Viewport
+        </button>
+      </form>
+
+      {/* Intelligence Layers toggle */}
+      <div style={{ position: "absolute", top: 136, left: 16, zIndex: 10 }}>
+        <button
+          onClick={() => setLayerMenuOpen((o) => !o)}
+          className="bg-black/50 backdrop-blur-md border border-white/10"
+          style={{
+            display: "flex", alignItems: "center", gap: 8, background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "9px 13px",
+            color: "#fff", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8,
+            textTransform: "uppercase", cursor: "pointer",
+          }}
+        >
+          <Layers size={13} color={PURPLE_LT} />
+          {INTEL_LAYERS.find((l) => l.id === intelLayer)?.label}
+        </button>
+        {layerMenuOpen && (
+          <div
+            style={{
+              marginTop: 6, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden", width: 230,
+            }}
+          >
+            {INTEL_LAYERS.map((l) => (
+              <button
+                key={l.id}
+                onClick={() => { setIntelLayer(l.id); setLayerMenuOpen(false); }}
+                style={{
+                  display: "block", width: "100%", textAlign: "left", background: intelLayer === l.id ? "rgba(168,85,247,0.18)" : "transparent",
+                  border: "none", borderLeft: `2px solid ${intelLayer === l.id ? PURPLE : "transparent"}`,
+                  color: intelLayer === l.id ? PURPLE_LT : SLATE, fontFamily: F, fontSize: 11, fontWeight: 700,
+                  padding: "10px 14px", cursor: "pointer",
+                }}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Intelligence HUD (right panel) ── */}
+      <div
+        className="w-96 backdrop-blur-2xl bg-black/60 border-l border-white/10 flex flex-col h-full z-10"
+        style={{
+          position: "absolute", right: 0, top: 0, bottom: 0, width: 384, zIndex: 10,
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+          borderLeft: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column",
+          padding: 18, boxSizing: "border-box", overflowY: "auto",
+        }}
+      >
+        {/* Panel header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <RadarIcon size={14} color={PURPLE_LT} style={{ filter: `drop-shadow(0 0 6px ${PURPLE}aa)` }} />
+          <span style={{ fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.8, color: "#fff" }}>
+            {selected ? "TARGET LOCK DOSSIER" : "SECTOR TELEMETRY"}
+          </span>
+          {selected && (
+            <button onClick={() => setSelected(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}>
+              <X size={15} />
+            </button>
+          )}
         </div>
-        <div style={{ fontFamily: C.F, fontSize: 9, letterSpacing: 2, color: C.slateDim, marginBottom: 18, textTransform: "uppercase" }}>
-          Market Telemetry
+        <div style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 2.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 16 }}>
+          {selected ? "Micro Mode · Asset Analysis" : "Macro Mode · Live RentCast Feed"}
         </div>
 
         {error && (
-          <div style={{ fontSize: 11, color: C.rose, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
+          <div style={{ fontFamily: MONO, fontSize: 10.5, color: RED, background: "rgba(255,59,92,0.08)", border: `1px solid ${RED}44`, borderRadius: 8, padding: "8px 10px", marginBottom: 14 }}>
             {error}
           </div>
         )}
 
-        {/* Property Dossier — top section, populated on node click */}
-        {selectedFeature ? (
-          <PropertyDossier
-            feature={selectedFeature}
-            onClose={() => setSelectedFeature(null)}
-            agents={agents}
-            selectedAgentId={selectedAgentId}
-            onAgentChange={setSelectedAgentId}
-            onDeploy={() => deployToWarRoom(selectedFeature)}
-            deploying={deploying}
-            onGenerateWhisper={() => generateWhisperPitch(selectedFeature)}
-            whisperLoading={whisperLoading}
-            whisperPitch={whisperPitch}
-            onWhisperCopied={() => setToast("Whisper pitch copied to clipboard.")}
-          />
+        {!selected ? (
+          /* ── MACRO MODE ── */
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+              <StatTile label="Active Listings" value={stats.activeCount ?? "—"} accent={CYAN} />
+              <StatTile label="Total Active Volume" value={fmtMoney(macro.totalVolume)} accent={PURPLE_LT} />
+              <StatTile label="Avg Days on Market" value={stats.avgDom != null ? `${stats.avgDom}d` : "—"} />
+              <StatTile label="Price-Cut Velocity" value={macro.total ? `${macro.priceCutVelocity.toFixed(0)}%` : "—"} accent={macro.priceCutVelocity > 15 ? RED : "#fff"} />
+            </div>
+
+            {/* Momentum sparkline — listing density by DOM decile */}
+            <div style={{ height: 54, marginBottom: 4 }}>
+              {sparkData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={sparkData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="srSpark" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={PURPLE} stopOpacity={0.6} />
+                        <stop offset="100%" stopColor={PURPLE} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="count" stroke={PURPLE_LT} strokeWidth={1.5} fill="url(#srSpark)" isAnimationActive={false} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: 9.5, color: SLATE_DIM, border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 8 }}>
+                  DENSITY PROFILE — AWAITING SCAN
+                </div>
+              )}
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: 8, letterSpacing: 1, color: SLATE_DIM, marginBottom: 16, textAlign: "center" }}>
+              LISTING DENSITY BY DOM DECILE (0 → 120d+)
+            </div>
+
+            <div style={{ fontFamily: F, fontSize: 9, letterSpacing: 1.5, color: SLATE_DIM, marginBottom: 8, textTransform: "uppercase" }}>
+              Tactical Directives
+            </div>
+            {directives.map((d) => <Directive key={d.label} {...d} />)}
+
+            <div style={{ fontFamily: F, fontSize: 9, letterSpacing: 1.5, color: SLATE_DIM, margin: "10px 0 8px", textTransform: "uppercase" }}>
+              Category Legend
+            </div>
+            {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
+              <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 10.5, fontFamily: F, color: SLATE }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: CATEGORY_COLOR[key], boxShadow: `0 0 6px ${CATEGORY_COLOR[key]}` }} />
+                {label}
+              </div>
+            ))}
+
+            <div style={{ marginTop: "auto", paddingTop: 14, fontFamily: MONO, fontSize: 9, color: SLATE_DIM, letterSpacing: 0.5 }}>
+              {geojson.features.length > 0
+                ? `${geojson.features.length} nodes plotted · click a node to lock target`
+                : buildingsReady ? "3D terrain online · run a scan to populate the radar" : "Run a scan to populate the radar"}
+            </div>
+          </>
         ) : (
-          <div style={{ fontFamily: C.F, fontSize: 10, color: C.slateDim, border: `1px dashed ${C.blueBorderDim}`, borderRadius: 10, padding: 12, marginBottom: 20, textAlign: "center" }}>
-            Click a map node to load its dossier.
-          </div>
-        )}
+          /* ── MICRO MODE ── */
+          <>
+            <div
+              style={{
+                border: `1px solid ${selColor}55`, borderRadius: 12, padding: 14, marginBottom: 14,
+                background: "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 26px ${selColor}0d`,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+                <MapPin size={14} color={selColor} style={{ marginTop: 2, flexShrink: 0 }} />
+                <div style={{ fontFamily: F, fontSize: 13.5, fontWeight: 800, color: "#fff", lineHeight: 1.35 }}>
+                  {selected.properties.address || "Address unavailable"}
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 10 }}>
+                <StatTile label="List Price" value={selected.properties.formattedPrice || fmtMoney(selected.properties.price)} accent={PURPLE_LT} />
+                <StatTile label="Days on Market" value={selected.properties.daysOnMarket != null ? `${selected.properties.daysOnMarket}d` : "—"} accent={selColor} />
+                <StatTile label="Type" value={selected.properties.propertyType || "—"} />
+                <StatTile label="Beds / Baths" value={`${selected.properties.bedrooms ?? "—"} / ${selected.properties.bathrooms ?? "—"}`} />
+              </div>
+              <div style={{ fontFamily: MONO, fontSize: 9, fontWeight: 800, letterSpacing: 1.5, color: selColor, textTransform: "uppercase" }}>
+                {CATEGORY_LABEL[selCat] || "Standard"}
+              </div>
+            </div>
 
-        {/* Sector Telemetry — middle section, live aggregates from the scan */}
-        <div style={{ fontFamily: C.F, fontSize: 9, letterSpacing: 1.5, color: C.slateDim, marginBottom: 10, textTransform: "uppercase" }}>
-          Sector Telemetry
-        </div>
-        <DomGauge avgDom={stats.avgDom} />
-        <div style={{ display: "flex", gap: 14, marginBottom: 20, flexWrap: "wrap" }}>
-          <StatTile label="Active Listings" value={stats.activeCount ?? "—"} />
-          <StatTile label="Total Active Volume" value={fmtCompact(sectorMetrics.totalVolume)} />
-          <StatTile label="Price-Cut Velocity" value={sectorMetrics.total ? `${sectorMetrics.priceCutVelocity.toFixed(0)}%` : "—"} />
-        </div>
+            <button
+              onClick={generateScript}
+              disabled={decrypting}
+              className="shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+              style={{
+                width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "12px 14px",
+                fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
+                color: "#fff", cursor: decrypting ? "default" : "pointer",
+                boxShadow: decrypting ? "none" : "0 0 15px rgba(168,85,247,0.5)",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12,
+              }}
+            >
+              {decrypting ? <Loader2 size={13} style={{ animation: "srSpin 1s linear infinite" }} /> : <Zap size={13} />}
+              {decrypting ? "Decrypting…" : "Generate AI Acquisition Script"}
+            </button>
+            <style>{`@keyframes srSpin { to { transform: rotate(360deg); } }`}</style>
 
-        {/* Tactical Directives — bottom section, rule-based AI-style alerts */}
-        <div style={{ fontFamily: C.F, fontSize: 9, letterSpacing: 1.5, color: C.slateDim, marginBottom: 10, textTransform: "uppercase" }}>
-          Tactical Directives
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-          {directives.map((d) => (
-            <DirectiveCard key={d.key} directive={d} />
-          ))}
-        </div>
+            {scriptText != null && (
+              <pre
+                className="bg-black/80 font-mono text-xs"
+                style={{
+                  background: "rgba(0,0,0,0.85)", border: `1px solid ${PURPLE}44`, borderRadius: 10,
+                  padding: 12, fontFamily: MONO, fontSize: 10.5, lineHeight: 1.6, color: "#e9d5ff",
+                  whiteSpace: "pre-wrap", wordBreak: "break-word", margin: "0 0 14px",
+                }}
+              >
+                {scriptText}
+              </pre>
+            )}
 
-        <div style={{ fontFamily: C.F, fontSize: 9, letterSpacing: 1.5, color: C.slateDim, marginBottom: 10, textTransform: "uppercase" }}>
-          Category Legend
-        </div>
-        {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
-          <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 11, fontFamily: C.F }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: CATEGORY_COLOR[key], boxShadow: `0 0 6px ${CATEGORY_COLOR[key]}` }} />
-            {label}
-          </div>
-        ))}
-
-        <div style={{ marginTop: "auto", fontSize: 9, color: C.slateDim, fontFamily: C.F, letterSpacing: 0.5, paddingTop: 16 }}>
-          {geojson.features.length > 0
-            ? `${geojson.features.length} plotted result${geojson.features.length === 1 ? "" : "s"} · click a point for details`
-            : "Run a scan to populate live listing telemetry."}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DomGauge({ avgDom }) {
-  // Visual gauge capped at 90 days — beyond that the sector reads as
-  // maximally "cold" regardless of exact value, so the bar never overflows.
-  const capped = avgDom != null ? Math.min(avgDom, 90) : 0;
-  const pct = (capped / 90) * 100;
-  const color = avgDom == null ? C.slateDim : avgDom < 21 ? "#22C55E" : avgDom < 60 ? C.amber : LAYER_COLOR.price_cut;
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-        <span style={{ fontFamily: C.F, fontSize: 9, letterSpacing: 1, color: C.slateDim, textTransform: "uppercase" }}>Avg Days on Market</span>
-        <span style={{ fontFamily: C.F, fontSize: 13, fontWeight: 800, color }}>{avgDom != null ? `${avgDom}d` : "—"}</span>
-      </div>
-      <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: color, boxShadow: `0 0 8px ${color}`, transition: "width 0.4s ease" }} />
-      </div>
-    </div>
-  );
-}
-
-function DirectiveCard({ directive }) {
-  const { label, color, text, elevated } = directive;
-  return (
-    <div
-      style={{
-        border: `1px solid ${color}${elevated ? "77" : "33"}`,
-        borderRadius: 10,
-        padding: "10px 12px",
-        background: `linear-gradient(135deg, ${color}14, rgba(255,255,255,0.02))`,
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        boxShadow: elevated ? `0 0 14px ${color}22` : "none",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}` }} />
-        <span style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: 9, fontWeight: 800, letterSpacing: 2, color, textTransform: "uppercase" }}>
-          {label}
-        </span>
-      </div>
-      <div style={{ fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: 10.5, lineHeight: 1.5, color: C.slate }}>
-        {text}
-      </div>
-    </div>
-  );
-}
-
-// RentCast doesn't return an appraisal/valuation figure — this assumes a flat
-// buy-side + list-side commission rate against list price as a working
-// estimate, same convention used elsewhere in this app for commission math
-// (e.g. BrokerDashboard's commission_split_pct on the brokerage's own deals).
-const ASSUMED_COMMISSION_RATE = 0.03;
-
-function domBadgeColor(dom) {
-  if (dom == null) return C.slateDim;
-  if (dom < 7) return "#22C55E";
-  if (dom <= 60) return C.amber;
-  return LAYER_COLOR.price_cut;
-}
-
-function PropertyDossier({
-  feature, onClose, agents, selectedAgentId, onAgentChange, onDeploy, deploying,
-  onGenerateWhisper, whisperLoading, whisperPitch, onWhisperCopied,
-}) {
-  const p = feature.properties;
-  const isBrokerage = p.__source === "brokerage";
-  const accent = isBrokerage ? LAYER_COLOR.brokerage : (CATEGORY_COLOR[p.category] || C.blue);
-  const price = isBrokerage ? Number(p.deal_volume) || null : Number(p.price) || null;
-  const pricePerSqft = price && p.squareFootage ? price / p.squareFootage : null;
-  const estimatedCommission = isBrokerage
-    ? (p.gci != null ? Number(p.gci) : price != null ? price * (Number(p.commission_split_pct ?? 70) / 100) * ASSUMED_COMMISSION_RATE : null)
-    : (price != null ? price * ASSUMED_COMMISSION_RATE : null);
-  const dom = p.daysOnMarket;
-
-  return (
-    <div
-      style={{
-        border: `1px solid ${accent}55`, borderRadius: 10, padding: 12, marginBottom: 20,
-        background: "rgba(255,255,255,0.03)",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-        <div style={{ fontFamily: C.F, fontSize: 9, letterSpacing: 1.5, color: accent, textTransform: "uppercase", fontWeight: 800 }}>
-          {isBrokerage ? "Brokerage Dossier" : "Property Dossier"}
-        </div>
-        <button
-          onClick={onClose}
-          style={{ background: "transparent", border: "none", color: C.slateDim, cursor: "pointer", fontSize: 13, lineHeight: 1, padding: 0 }}
-        >
-          ×
-        </button>
-      </div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-        <div style={{ fontFamily: C.F, fontSize: 16, fontWeight: 800, color: "#fff" }}>
-          {isBrokerage ? fmtCompact(p.deal_volume) : (p.formattedPrice || fmtCompact(p.price))}
-        </div>
-        {!isBrokerage && (
-          <span
-            style={{
-              fontFamily: "'JetBrains Mono','Courier New',monospace", fontSize: 9, fontWeight: 800,
-              color: domBadgeColor(dom), border: `1px solid ${domBadgeColor(dom)}66`, borderRadius: 999,
-              padding: "2px 8px", whiteSpace: "nowrap",
-            }}
-          >
-            {dom != null ? `${dom}d DOM` : "DOM —"}
-          </span>
+            {/* Pipeline assignment */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 14 }}>
+              <div style={{ fontFamily: F, fontSize: 9, letterSpacing: 1.5, color: SLATE_DIM, marginBottom: 8, textTransform: "uppercase" }}>
+                Delegate to Field Agent
+              </div>
+              <select
+                value={selectedAgentId}
+                onChange={(e) => setSelectedAgentId(e.target.value)}
+                disabled={!agents.length || deploying}
+                style={{
+                  width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.14)",
+                  borderRadius: 8, color: "#fff", fontFamily: F, fontSize: 11.5, padding: "9px 10px",
+                  outline: "none", marginBottom: 10, cursor: agents.length ? "pointer" : "default",
+                }}
+              >
+                {agents.length ? (
+                  agents.map((a) => (
+                    <option key={a.id} value={a.id} style={{ background: "#0a0a0d" }}>{firstName(a.email)} — {a.email}</option>
+                  ))
+                ) : (
+                  <option value="">No agents available</option>
+                )}
+              </select>
+              <button
+                onClick={deployToPipeline}
+                disabled={!selectedAgentId || deploying}
+                style={{
+                  width: "100%", background: deploying ? "rgba(34,211,238,0.12)" : "rgba(34,211,238,0.2)",
+                  border: `1px solid ${CYAN}77`, borderRadius: 10, padding: "11px 14px",
+                  fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
+                  color: CYAN, cursor: !selectedAgentId || deploying ? "default" : "pointer",
+                  boxShadow: deploying ? "none" : `0 0 14px ${CYAN}44`,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  opacity: !selectedAgentId ? 0.5 : 1,
+                }}
+              >
+                {deploying ? <Loader2 size={13} style={{ animation: "srSpin 1s linear infinite" }} /> : <Send size={13} />}
+                {deploying ? "Deploying…" : "Deploy to Agent Pipeline"}
+              </button>
+            </div>
+          </>
         )}
       </div>
-      <div style={{ fontFamily: C.F, fontSize: 11, color: C.slate, marginBottom: 8 }}>
-        {p.address || "Address unavailable"}
-      </div>
-
-      {isBrokerage ? (
-        <>
-          <div style={{ fontFamily: C.F, fontSize: 11, color: C.slateDim, marginBottom: 4 }}>
-            Client: {p.client_name || "—"}
-          </div>
-          <div style={{ fontFamily: C.F, fontSize: 11, color: C.slateDim, marginBottom: 4 }}>
-            GCI: {fmtCompact(p.gci)}
-          </div>
-          <div style={{ fontFamily: C.F, fontSize: 11, color: C.slateDim }}>
-            Closing: {p.closing_date || "TBD"}
-          </div>
-        </>
-      ) : (
-        <div style={{ fontFamily: C.F, fontSize: 11, color: C.slateDim }}>
-          {p.bedrooms ?? "—"}bd / {p.bathrooms ?? "—"}ba · {p.squareFootage ? `${p.squareFootage.toLocaleString()} sqft` : "— sqft"}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 16, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${accent}22` }}>
-        <div>
-          <div style={{ fontFamily: C.F, fontSize: 8, letterSpacing: 1, color: C.slateDim, textTransform: "uppercase", marginBottom: 2 }}>Price / Sqft</div>
-          <div style={{ fontFamily: C.F, fontSize: 12, fontWeight: 800, color: "#fff" }}>{pricePerSqft ? `$${pricePerSqft.toFixed(0)}` : "—"}</div>
-        </div>
-        <div>
-          <div style={{ fontFamily: C.F, fontSize: 8, letterSpacing: 1, color: C.slateDim, textTransform: "uppercase", marginBottom: 2 }}>
-            {isBrokerage ? "Est. Commission" : "Est. Commission (3%)"}
-          </div>
-          <div style={{ fontFamily: C.F, fontSize: 12, fontWeight: 800, color: "#fff" }}>{fmtCompact(estimatedCommission)}</div>
-        </div>
-      </div>
-
-      <div style={{ fontSize: 9, marginTop: 10, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: 1 }}>
-        {isBrokerage ? `${CATEGORY_LABEL.brokerage} · ${p.stage}` : (CATEGORY_LABEL[p.category] || "Standard")}
-      </div>
-
-      {/* Agent Selector + Deploy trigger — pushes this dossier into the
-          selected agent's War Room (public.war_room_deals). */}
-      <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${accent}22` }}>
-        <select
-          value={selectedAgentId}
-          onChange={(e) => onAgentChange(e.target.value)}
-          disabled={!agents?.length || deploying}
-          style={{
-            width: "100%", background: "rgba(255,255,255,0.05)", border: `1px solid ${C.blueBorderDim}`,
-            borderRadius: 8, color: "#fff", fontFamily: C.F, fontSize: 11, padding: "8px 10px",
-            outline: "none", marginBottom: 8, cursor: agents?.length ? "pointer" : "default",
-          }}
-        >
-          {agents?.length ? (
-            agents.map((a) => (
-              <option key={a.id} value={a.id} style={{ background: "#0a0a0d" }}>{a.email}</option>
-            ))
-          ) : (
-            <option value="">No agents available</option>
-          )}
-        </select>
-
-        <button
-          onClick={onDeploy}
-          disabled={!selectedAgentId || deploying}
-          className="bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]"
-          style={{
-            width: "100%", background: deploying ? "#1d4ed8" : "#2563eb", color: "#fff", border: "none",
-            borderRadius: 8, padding: "10px 12px", fontFamily: C.F, fontSize: 11, fontWeight: 800,
-            letterSpacing: 1, textTransform: "uppercase", cursor: !selectedAgentId || deploying ? "default" : "pointer",
-            boxShadow: "0 0 12px rgba(59,130,246,0.4)", transition: "background 0.15s ease, box-shadow 0.15s ease",
-            opacity: !selectedAgentId ? 0.5 : 1,
-          }}
-          onMouseEnter={(e) => { if (!deploying && selectedAgentId) { e.currentTarget.style.background = "#3b82f6"; e.currentTarget.style.boxShadow = "0 0 20px rgba(59,130,246,0.65)"; } }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = deploying ? "#1d4ed8" : "#2563eb"; e.currentTarget.style.boxShadow = "0 0 12px rgba(59,130,246,0.4)"; }}
-        >
-          {deploying ? "Deploying…" : "Deploy to Agent War Room"}
-        </button>
-
-        {/* AI Whisper Campaign — discreet VIP outreach pitch, generated via api/claude.js */}
-        <button
-          onClick={onGenerateWhisper}
-          disabled={whisperLoading}
-          className="border-purple-500/50 hover:border-purple-400 text-purple-300"
-          style={{
-            width: "100%", marginTop: 8, background: "rgba(168,85,247,0.08)", color: "#d8b4fe",
-            border: "1px solid rgba(168,85,247,0.5)", borderRadius: 8, padding: "10px 12px",
-            fontFamily: C.F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
-            cursor: whisperLoading ? "default" : "pointer", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
-            boxShadow: "none",
-          }}
-          onMouseEnter={(e) => { if (!whisperLoading) { e.currentTarget.style.borderColor = "rgba(192,132,252,0.9)"; e.currentTarget.style.boxShadow = "0 0 14px rgba(168,85,247,0.35)"; } }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(168,85,247,0.5)"; e.currentTarget.style.boxShadow = "none"; }}
-        >
-          {whisperLoading ? "AI synthesizing asset telemetry…" : "Generate VIP Whisper Pitch"}
-        </button>
-
-        {whisperPitch && (
-          <WhisperPitchOutput pitch={whisperPitch} onCopied={onWhisperCopied} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function WhisperPitchOutput({ pitch, onCopied }) {
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(pitch);
-      onCopied?.();
-    } catch {
-      // clipboard permission denied or unavailable — nothing more we can do here
-    }
-  };
-
-  return (
-    <div style={{ marginTop: 10, position: "relative" }}>
-      <div
-        className="bg-black/80 font-mono text-xs text-purple-200 p-3 rounded-md"
-        style={{
-          background: "rgba(0,0,0,0.8)", fontFamily: "'JetBrains Mono','Courier New',monospace",
-          fontSize: 11.5, lineHeight: 1.6, color: "#e9d5ff", padding: 12, borderRadius: 8,
-          border: "1px solid rgba(168,85,247,0.35)", paddingRight: 36,
-        }}
-      >
-        {pitch}
-      </div>
-      <button
-        onClick={copy}
-        title="Copy to clipboard"
-        style={{
-          position: "absolute", top: 8, right: 8, background: "rgba(168,85,247,0.15)",
-          border: "1px solid rgba(168,85,247,0.4)", borderRadius: 6, width: 24, height: 24,
-          color: "#d8b4fe", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 12, lineHeight: 1, padding: 0,
-        }}
-      >
-        ⧉
-      </button>
-    </div>
-  );
-}
-
-function StatTile({ label, value }) {
-  return (
-    <div style={{ minWidth: 90 }}>
-      <div style={{ fontSize: 9, color: "rgba(148,163,184,0.7)", letterSpacing: 1, fontFamily: "'Plus Jakarta Sans',sans-serif", marginBottom: 4, textTransform: "uppercase" }}>
-        {label}
-      </div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", fontFamily: "'Plus Jakarta Sans',sans-serif" }}>{value}</div>
     </div>
   );
 }
