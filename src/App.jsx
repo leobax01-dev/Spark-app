@@ -5061,7 +5061,7 @@ function MainApp({user,onLogout}){
             // the Operations tab fills the full area between the header and
             // bottom nav, edge-to-edge.
             <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
-              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user}/></ErrorBoundary>}
+              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={setTab}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user}/></ErrorBoundary>}
               {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
@@ -5103,7 +5103,7 @@ function MainApp({user,onLogout}){
             // block — the Operations tab stretches from the sidebar's right
             // edge to the window's top/bottom/right edges.
             <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
-              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user}/></ErrorBoundary>}
+              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={setTab}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user}/></ErrorBoundary>}
               {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
