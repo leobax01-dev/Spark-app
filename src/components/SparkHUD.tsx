@@ -267,7 +267,7 @@ export default function SparkHUD() {
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <StatusPulse active={listening || speaking} color={speaking ? C.cyan : C.indigo} />
-              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 2, color: C.text }}>SPARK AI HUD</span>
+              <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 2, color: C.text }}>SPARK OS HUD</span>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -425,7 +425,7 @@ export default function SparkHUD() {
         }}
       >
         <StatusPulse active={listening || speaking} color={speaking ? C.cyan : C.indigo} />
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: C.text }}>SPARK AI HUD</span>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 2, color: C.text }}>SPARK OS HUD</span>
       </button>
     </div>
   );

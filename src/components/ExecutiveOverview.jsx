@@ -23,6 +23,7 @@ import {
   Zap, Activity, DollarSign, Gauge, TrendingUp, Loader2, Building2, Trophy,
   AlertTriangle, ArrowRight, FileDown, Radio,
 } from "lucide-react";
+import SparkBoot from "./SparkBoot";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -398,12 +399,57 @@ export default function ExecutiveOverview({ user, onNavigate }) {
       const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const pw = pdf.internal.pageSize.getWidth();
       const ph = pdf.internal.pageSize.getHeight();
+      const stamp = new Date();
+
+      // Dark SPARK OS terminal canvas
       pdf.setFillColor(5, 5, 5);
       pdf.rect(0, 0, pw, ph, "F");
-      const ratio = Math.min(pw / canvas.width, ph / canvas.height);
+
+      // Branded header band — SPARK OS Real Estate AI
+      const HEAD = 46;
+      pdf.setFillColor(12, 8, 20);
+      pdf.rect(0, 0, pw, HEAD, "F");
+      pdf.setDrawColor(168, 85, 247);
+      pdf.setLineWidth(1);
+      pdf.line(0, HEAD, pw, HEAD);
+      // Purple bolt glyph
+      pdf.setFillColor(192, 132, 252);
+      pdf.triangle(26, 14, 36, 14, 28, 24, "F");
+      pdf.triangle(34, 22, 26, 32, 36, 22, "F");
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(13);
+      pdf.text("SPARK OS REAL ESTATE AI", 48, 22);
+      pdf.setTextColor(148, 163, 184);
+      pdf.setFont("courier", "normal");
+      pdf.setFontSize(7.5);
+      pdf.text("MACRO INTELLIGENCE TEAR-SHEET", 48, 33);
+      pdf.text(stamp.toISOString().replace("T", "  ").slice(0, 19) + " UTC", pw - 26, 33, { align: "right" });
+
+      // Dashboard capture, fitted below the header band
+      const availH = ph - HEAD - 26;
+      const ratio = Math.min(pw / canvas.width, availH / canvas.height);
       const w = canvas.width * ratio;
       const h = canvas.height * ratio;
-      pdf.addImage(img, "PNG", (pw - w) / 2, (ph - h) / 2, w, h);
+      pdf.addImage(img, "PNG", (pw - w) / 2, HEAD + 12, w, h);
+
+      // Footer
+      pdf.setTextColor(120, 120, 140);
+      pdf.setFont("courier", "normal");
+      pdf.setFontSize(6.5);
+      pdf.text("CONFIDENTIAL · SPARK OS REAL ESTATE AI · usesparkai.app", pw / 2, ph - 10, { align: "center" });
+
+      // Professional document metadata
+      pdf.setProperties({
+        // ASCII-only title: jsPDF switches the whole string to UTF-16 the
+        // moment it contains a non-ASCII glyph (e.g. an em-dash), which
+        // some PDF readers/indexers surface as mojibake.
+        title: `SPARK OS Macro Report - ${stamp.toISOString().slice(0, 10)}`,
+        subject: "Brokerage macro-pipeline intelligence tear-sheet",
+        author: "SPARK OS Real Estate AI",
+        creator: "SPARK OS Real Estate AI",
+        keywords: "spark os, real estate ai, brokerage, pipeline, macro telemetry",
+      });
       setExportPct(95);
       pdf.save(`SPARK_OS_MACRO_REPORT_${new Date().toISOString().slice(0, 10)}.pdf`);
       setExportPct(100);
@@ -414,18 +460,9 @@ export default function ExecutiveOverview({ user, onNavigate }) {
     }
   }, [exporting]);
 
-  // ── Centralized loading state ──────────────────────────────────────────
-  if (loading) {
-    return (
-      <div style={{ width: "100%", height: "100%", background: "#050505", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
-        <style>{`@keyframes eoPulse { 0%,100% { opacity:1; transform:scale(1);} 50% { opacity:.45; transform:scale(.92);} }`}</style>
-        <Zap size={46} color={PURPLE_LT} fill={PURPLE_LT} style={{ filter: `drop-shadow(0 0 22px ${PURPLE})`, animation: "eoPulse 1.5s ease-in-out infinite" }} />
-        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 11, letterSpacing: 2.5, color: SLATE_DIM }}>
-          CONNECTING TO SECURE MAINFRAME...
-        </div>
-      </div>
-    );
-  }
+  // Centralized SPARK OS loading state — shared pulsing purple bolt splash
+  // so every Operations module boots identically.
+  if (loading) return <SparkBoot />;
 
   return (
     <div

@@ -1,13 +1,13 @@
 {
-  "name": "SPARK \u2014 Real Estate AI",
-  "short_name": "SPARK",
+  "name": "SPARK OS Real Estate AI",
+  "short_name": "SPARK OS",
   "description": "The AI that runs your real estate business while you sell. Autopilot, negotiation strategy, sphere reactivation, and more \u2014 always on.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0a0a12",
-  "theme_color": "#6366f1",
+  "background_color": "#050505",
+  "theme_color": "#a855f7",
   "categories": [
     "business",
     "productivity"

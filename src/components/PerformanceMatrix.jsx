@@ -24,6 +24,7 @@ import {
 import {
   Trophy, Target, Zap, Users, TrendingUp, Loader2, X, Activity,
 } from "lucide-react";
+import SparkBoot from "./SparkBoot";
 
 const CYAN = "#22d3ee";
 const PURPLE = "#a78bfa";
@@ -346,6 +347,10 @@ export default function PerformanceMatrix() {
     const fastest = withVelocity.length ? [...withVelocity].sort((a, b) => a.dealVelocity - b.dealVelocity)[0] : null;
     return { topVolume, topConversion, fastest };
   }, [agents]);
+
+  // Centralized SPARK OS loading state — shared pulsing purple bolt
+  // splash so every Operations module boots identically.
+  if (loading) return <SparkBoot />;
 
   return (
     <div

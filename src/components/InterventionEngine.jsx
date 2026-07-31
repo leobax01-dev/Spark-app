@@ -26,6 +26,7 @@ import {
 import {
   AlertTriangle, TrendingDown, Clock, Target, Zap, Radar as RadarIcon, User, MapPin, DollarSign, Loader2,
 } from "lucide-react";
+import SparkBoot from "./SparkBoot";
 
 const RED = "#ff3b5c";
 const AMBER = "#ffb020";
@@ -250,6 +251,10 @@ export default function InterventionEngine() {
       setPlaybookReady(true);
     }, 1400);
   }
+
+  // Centralized SPARK OS loading state — shared pulsing purple bolt
+  // splash so every Operations module boots identically.
+  if (loading) return <SparkBoot />;
 
   return (
     <div

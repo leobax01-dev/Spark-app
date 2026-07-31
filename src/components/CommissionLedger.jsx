@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   DollarSign, TrendingUp, Wallet, Search, Download, Loader2,
 } from "lucide-react";
+import SparkBoot from "./SparkBoot";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -239,6 +240,10 @@ export default function CommissionLedger() {
     background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8,
     color: "#fff", fontFamily: F, fontSize: 11, padding: "8px 10px", outline: "none", cursor: "pointer",
   };
+
+  // Centralized SPARK OS loading state — shared pulsing purple bolt
+  // splash so every Operations module boots identically.
+  if (loading) return <SparkBoot />;
 
   return (
     <div

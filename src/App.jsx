@@ -7,6 +7,7 @@ import ContentHistory, { saveGeneration, getHistory } from "./features/ContentHi
 import AutopilotPanel from "./features/AutopilotPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Icon from "./components/Icons";
+import { Zap } from "lucide-react";
 import BrokerTeamSettings from "./components/BrokerTeamSettings";
 import SurveillanceRadar from "./components/SurveillanceRadar";
 import ExecutiveOverview from "./components/ExecutiveOverview";
@@ -55,6 +56,21 @@ const C = {
   glass:"rgba(255,255,255,0.025)",
 };
 
+// ── SPARK OS design tokens ────────────────────────────────────────────────
+// The institutional terminal identity shared by the brand mark, the
+// Operations suite (Surveillance Radar / Executive Overview / Intervention
+// Engine / Performance Matrix / Commission Ledger), and every loading and
+// export surface. `C` above remains the legacy agent-app palette; BRAND is
+// the canonical accent/typography set for anything brand-facing.
+const BRAND = {
+  purple:"#a855f7", purpleLt:"#c084fc", cyan:"#22d3ee",
+  bg:"#050505",
+  glass:"rgba(0,0,0,0.6)", glassBorder:"rgba(255,255,255,0.1)",
+  slate:"rgba(226,232,240,0.9)", slateDim:"rgba(148,163,184,0.65)",
+  mono:"'JetBrains Mono','Courier New',monospace",
+  F:"'Plus Jakarta Sans',sans-serif",
+};
+
 const GLOBAL_CSS = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;background:#0a0a0d;-webkit-font-smoothing:antialiased}
@@ -67,6 +83,7 @@ const GLOBAL_CSS = `
   @keyframes scaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
   @keyframes slideR{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
   @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+  @keyframes sparkPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.9)}}
   @keyframes orb1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-30px) scale(1.08)}}
   @keyframes orb2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-44px,26px) scale(1.06)}}
   @keyframes orb3{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,30px)}}
@@ -80,7 +97,7 @@ const GLOBAL_CSS = `
   @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
   .nav-item{transition:all .18s ease}
   .nav-item:hover{background:rgba(255,255,255,0.04)!important;color:rgba(255,255,255,.9)!important}
-  .nav-item.active{background:rgba(79, 107, 255,.1)!important;color:#B8C6FF!important;border-color:rgba(79, 107, 255,.22)!important}
+  .nav-item.active{background:rgba(168,85,247,.12)!important;color:#c084fc!important;border-color:rgba(168,85,247,.35)!important;box-shadow:inset 2px 0 0 #a855f7,0 0 14px rgba(168,85,247,.18)!important}
   .btn-g{transition:all .2s ease}
   .btn-g:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 32px rgba(79, 107, 255,.28)!important;filter:brightness(1.08)}
   .btn-g:active:not(:disabled){transform:translateY(0);filter:brightness(.96)}
@@ -524,13 +541,45 @@ function OrbBg(){
     </div>
   );
 }
-function Logo({small}){
+// SPARK OS mark — the canonical brand lockup used in the sidebar, mobile
+// header, auth screen, and every splash/loading state. Vibrant purple Zap
+// bolt with a neon drop-shadow; `pulse` turns it into the loading state.
+function Logo({small, pulse}){
   return(
     <div style={{display:"flex",alignItems:"center",gap:10}}>
-      <div style={{width:small?30:36,height:small?30:36,borderRadius:9,background:"linear-gradient(135deg,#4F6BFF,#4257DB)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:small?14:17,boxShadow:"0 0 0 1px rgba(79, 107, 255,.3), 0 4px 20px rgba(79, 107, 255,.3)",flexShrink:0}}>⚡</div>
+      <div style={{width:small?30:36,height:small?30:36,borderRadius:9,
+        background:`linear-gradient(135deg,${BRAND.purple}2e,${BRAND.purple}0d)`,
+        border:`1px solid ${BRAND.purple}55`,
+        display:"flex",alignItems:"center",justifyContent:"center",
+        boxShadow:`0 0 0 1px ${BRAND.purple}22, 0 4px 20px ${BRAND.purple}40`,flexShrink:0}}>
+        <Zap size={small?15:18}
+          className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
+          color={BRAND.purpleLt} fill={BRAND.purpleLt}
+          style={{filter:"drop-shadow(0 0 10px rgba(168,85,247,0.6))",
+            animation: pulse ? "sparkPulse 1.5s ease-in-out infinite" : undefined}}/>
+      </div>
       <div>
-        <div style={{fontFamily:C.F,fontWeight:800,fontSize:small?14:16,color:C.text,letterSpacing:.5}}>SPARK</div>
-        <div style={{fontFamily:C.F,fontSize:8,color:C.textDim,letterSpacing:2.5,marginTop:-1}}>REAL ESTATE AI</div>
+        <div className="tracking-wider" style={{fontFamily:C.F,fontWeight:800,fontSize:small?14:16,color:C.text,letterSpacing:1.4}}>SPARK OS</div>
+        <div className="tracking-wider text-slate-400" style={{fontFamily:C.F,fontSize:8,color:C.textDim,letterSpacing:2.5,marginTop:-1}}>REAL ESTATE AI</div>
+      </div>
+    </div>
+  );
+}
+
+// Centralized SPARK OS loading/splash state — pulsing purple bolt over
+// monospace status text. Used anywhere the app is waiting on a boot,
+// session hydration, or mainframe connection.
+function SparkBoot({label="INITIALIZING SPARK OS..."}){
+  return(
+    <div style={{width:"100%",minHeight:"60vh",display:"flex",flexDirection:"column",
+      alignItems:"center",justifyContent:"center",gap:18,background:BRAND.bg}}>
+      <Zap size={46}
+        className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
+        color={BRAND.purpleLt} fill={BRAND.purpleLt}
+        style={{filter:`drop-shadow(0 0 22px ${BRAND.purple})`,animation:"sparkPulse 1.5s ease-in-out infinite"}}/>
+      <div className="font-mono tracking-wider text-slate-400"
+        style={{fontFamily:BRAND.mono,fontSize:11,letterSpacing:2.5,color:"rgba(148,163,184,0.65)"}}>
+        {label}
       </div>
     </div>
   );
@@ -1139,17 +1188,20 @@ function OnboardingModal({planKey,onClose}){
               background:`radial-gradient(circle,${C.indigo}28,transparent 70%)`,
               animation:"orb1 4s ease-in-out infinite"}}/>
             <div style={{position:"relative",width:72,height:72,borderRadius:"50%",
-              background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+              background:`linear-gradient(135deg,${BRAND.purple}33,${BRAND.purple}0f)`,
+              border:`1px solid ${BRAND.purple}55`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 8px 32px ${C.indigo}50`,margin:"0 auto"}}>
-              <span style={{fontSize:32}}>⚡</span>
+              boxShadow:`0 8px 32px ${BRAND.purple}55`,margin:"0 auto"}}>
+              <Zap size={34} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
+                color={BRAND.purpleLt} fill={BRAND.purpleLt}
+                style={{filter:"drop-shadow(0 0 14px rgba(168,85,247,0.6))"}}/>
             </div>
           </div>
 
           <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,
             margin:"0 0 8px",letterSpacing:"-0.02em"}}>
-            Welcome to <span style={{background:`linear-gradient(135deg,${C.indigoLt},${C.violet})`,
-              WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SPARK AI</span>
+            Welcome to <span style={{background:`linear-gradient(135deg,${BRAND.purpleLt},${BRAND.cyan})`,
+              WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SPARK OS</span>
           </h1>
           <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
             lineHeight:1.7,margin:"0 0 24px",maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>
@@ -1252,7 +1304,11 @@ function OnboardingModal({planKey,onClose}){
       render:()=>(
         <div>
           <div style={{textAlign:"center",marginBottom:18}}>
-            <div style={{fontSize:28,marginBottom:8}}>⚡</div>
+            <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}>
+              <Zap size={28} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
+                color={BRAND.purpleLt} fill={BRAND.purpleLt}
+                style={{filter:"drop-shadow(0 0 10px rgba(168,85,247,0.6))"}}/>
+            </div>
             <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:20,margin:"0 0 6px",
               letterSpacing:"-0.01em"}}>How it works</h2>
             <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0}}>
@@ -3261,9 +3317,14 @@ function InstallSparkCard(){
       border:`1px solid ${C.indigo}28`,borderRadius:16,padding:"18px 18px",
       marginBottom:16,display:"flex",alignItems:"center",gap:14}}>
       <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
-        background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+        background:`linear-gradient(135deg,${BRAND.purple}33,${BRAND.purple}0f)`,
+        border:`1px solid ${BRAND.purple}55`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        fontSize:20,boxShadow:`0 4px 14px ${C.indigo}30`}}>⚡</div>
+        boxShadow:`0 4px 14px ${BRAND.purple}40`}}>
+        <Zap size={21} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
+          color={BRAND.purpleLt} fill={BRAND.purpleLt}
+          style={{filter:"drop-shadow(0 0 10px rgba(168,85,247,0.6))"}}/>
+      </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:3}}>
           Install SPARK on your phone
@@ -3662,9 +3723,9 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
 
       {/* App info */}
       <div style={{textAlign:"center",padding:"8px 0 4px"}}>
-        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>SPARK Real Estate AI · v1.0</div>
+        <div style={{fontFamily:C.F,fontSize:11,color:C.textDim}}>SPARK OS Real Estate AI · v1.0</div>
         <div style={{fontFamily:C.F,fontSize:10,color:C.textFaint,marginTop:3}}>
-          © 2026 SPARK AI · usesparkai.app ·{" "}
+          © 2026 SPARK OS Real Estate AI · usesparkai.app ·{" "}
           <a href="https://usesparkai.app/privacy" target="_blank" rel="noreferrer"
             style={{color:C.textDim,textDecoration:"none"}}>Privacy</a> ·{" "}
           <a href="https://usesparkai.app/terms" target="_blank" rel="noreferrer"
@@ -4788,14 +4849,14 @@ function MainApp({user,onLogout}){
               background:`linear-gradient(135deg,${C.indigo}18,${C.violet}0e)`,
               border:`1px solid ${C.indigo}28`}}/>}
             <span style={{
-              color:active?C.indigoLt:"rgba(255,255,255,.32)",
+              color:active?BRAND.purpleLt:"rgba(255,255,255,.32)",
               transition:"all .16s ease",
               position:"relative",zIndex:1,
               filter:active?"none":"none"}}>
               {NAV_ICONS[item.id]||item.icon}
             </span>
             <span style={{fontSize:9,fontFamily:C.F,fontWeight:active?700:500,
-              color:active?C.indigoLt:"rgba(255,255,255,.28)",
+              color:active?BRAND.purpleLt:"rgba(255,255,255,.28)",
               letterSpacing:.3,position:"relative",zIndex:1}}>
               {item.label}
             </span>
@@ -4866,8 +4927,8 @@ function MainApp({user,onLogout}){
                 style={{display:"flex",alignItems:"center",gap:10,padding:"13px 14px",
                   borderRadius:11,border:`1px solid ${active?C.indigo+"40":C.border}`,
                   background:active?`${C.indigo}12`:"transparent",cursor:"pointer",position:"relative"}}>
-                <span style={{color:active?C.indigoLt:"rgba(255,255,255,.5)"}}>{NAV_ICONS[item.id]||item.icon}</span>
-                <span style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:active?C.indigoLt:C.text}}>{item.label}</span>
+                <span style={{color:active?BRAND.purpleLt:"rgba(255,255,255,.5)"}}>{NAV_ICONS[item.id]||item.icon}</span>
+                <span style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:active?BRAND.purpleLt:C.text}}>{item.label}</span>
                 {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
                   <div style={{position:"absolute",top:8,right:8,width:6,height:6,borderRadius:"50%",
                     background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
@@ -4945,10 +5006,10 @@ function MainApp({user,onLogout}){
               style={{width:"100%",display:"flex",alignItems:"center",gap:10,
                 padding:"9px 12px",borderRadius:9,marginBottom:2,
                 background:"transparent",border:"1px solid transparent",
-                color:active?C.indigoLt:C.textDim,cursor:"pointer",
+                color:active?BRAND.purpleLt:C.textDim,cursor:"pointer",
                 fontSize:13,fontWeight:active?600:500,textAlign:"left",
                 fontFamily:C.F}}>
-              <span style={{color:active?C.indigoLt:"rgba(255,255,255,.3)",flexShrink:0,display:"flex",alignItems:"center"}}>
+              <span style={{color:active?BRAND.purpleLt:"rgba(255,255,255,.3)",flexShrink:0,display:"flex",alignItems:"center"}}>
                 {NAV_ICONS[item.id]||item.icon}
               </span>
               {item.label}
@@ -5685,7 +5746,7 @@ function LandingPage({onStart}){
                 style={{fontSize:12,color:C.textDim,fontFamily:C.F,textDecoration:"none"}}>{l}</a>
             ))}
           </div>
-          <div style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>© 2026 SPARK AI · usesparkai.app</div>
+          <div style={{fontSize:11,color:C.textDim,fontFamily:C.F}}>© 2026 SPARK OS Real Estate AI · usesparkai.app</div>
         </div>
 
       </div>
