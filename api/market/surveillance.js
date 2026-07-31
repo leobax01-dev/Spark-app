@@ -95,6 +95,8 @@ function listingToFeature(listing) {
       bedrooms: listing.bedrooms ?? null,
       bathrooms: listing.bathrooms ?? null,
       squareFootage: listing.squareFootage ?? null,
+      lotSize: listing.lotSize ?? null,
+      yearBuilt: listing.yearBuilt ?? null,
       propertyType: listing.propertyType ?? null,
       listedDate: listing.listedDate ?? listing.listDate ?? null,
       priceHistory: listing.priceHistory ?? listing.history ?? null,
@@ -126,7 +128,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.RENTCAST_API_KEY;
   if (!apiKey) return emptyResponse(res, 500, "RentCast API key not configured");
 
-  const { zipCode, cityState, latitude, longitude, radius } = req.query || {};
+  const { zipCode, cityState, latitude, longitude, radius, limit } = req.query || {};
   if (!zipCode && !cityState && !(latitude && longitude)) {
     return emptyResponse(res, 400, "zipCode, cityState, or latitude+longitude query parameters required");
   }
@@ -147,7 +149,10 @@ export default async function handler(req, res) {
     if (state) url.searchParams.set("state", state);
   }
   url.searchParams.set("status", "Active");
-  url.searchParams.set("limit", "500");
+  // Callers that only render a fixed number of nodes (the agent Acquisition
+  // Grid asks for 25) can cap the pull instead of paying for 500 rows.
+  const cappedLimit = Math.min(Math.max(Number(limit) || 500, 1), 500);
+  url.searchParams.set("limit", String(cappedLimit));
 
   try {
     const rentcastRes = await fetch(url.toString(), {
