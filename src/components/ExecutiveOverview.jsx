@@ -618,7 +618,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
                   <div className="font-mono" style={{ fontFamily: MONO, fontSize: 10.5, lineHeight: 1.55, color: SLATE }}>{d.text}</div>
                   {d.severity === "danger" && onNavigate && (
                     <button
-                      onClick={() => onNavigate("intervention")}
+                      onClick={() => onNavigate("intervention", d.dealId)}
                       style={{
                         marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5,
                         background: `${RED}18`, border: `1px solid ${RED}66`, borderRadius: 6,

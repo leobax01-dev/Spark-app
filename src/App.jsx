@@ -4638,6 +4638,11 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
 function MainApp({user,onLogout}){
   const isBroker = user.role==="broker";
   const [tab,setTab]        =useState(()=>isBroker?"overview":"autopilot");
+  // Cross-route deep-link payload — lets one Operations module hand a
+  // specific record to another (e.g. Executive Overview's "DEPLOY
+  // INTERVENTION" target-locking that deal in the Intervention Engine).
+  const [focusDealId,setFocusDealId]=useState(null);
+  const navigateTo = useCallback((nextTab, dealId=null)=>{ setFocusDealId(dealId); setTab(nextTab); },[]);
   const [planKey,setPlanKey]=useState(()=>LS.get("sp_plan",user.plan||"trial"));
   const [credits,setCredits]=useState(()=>LS.get("sp_credits",user.credits??3));
   const [intendedPlan]=useState(()=>{
@@ -5122,9 +5127,9 @@ function MainApp({user,onLogout}){
             // the Operations tab fills the full area between the header and
             // bottom nav, edge-to-edge.
             <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
-              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={setTab}/></ErrorBoundary>}
+              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
-              {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user}/></ErrorBoundary>}
+              {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
               {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
               {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
             </div>
@@ -5164,9 +5169,9 @@ function MainApp({user,onLogout}){
             // block — the Operations tab stretches from the sidebar's right
             // edge to the window's top/bottom/right edges.
             <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
-              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={setTab}/></ErrorBoundary>}
+              {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
-              {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user}/></ErrorBoundary>}
+              {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
               {tab==="performance"&&<ErrorBoundary label="Performance Matrix"><PerformanceMatrix user={user}/></ErrorBoundary>}
               {tab==="commission"&&<ErrorBoundary label="Commission Ledger"><CommissionLedger user={user}/></ErrorBoundary>}
             </div>
