@@ -4,6 +4,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Icon from "../components/Icons";
+import TransactionIntelligence from "./TransactionIntelligence";
 import { Card, Label, Button, CopyButton } from "../components/UI";
 import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 
@@ -994,22 +995,52 @@ function CoordinatorHeader(){
   );
 }
 
-export default function TransactionPanel({ user, planKey, isMobile }){
-  const [tool,setTool]=useState("timeline");
+export default function TransactionPanel({ user, planKey, isMobile, onNavigate }){
+  // The terminal is the default view; the three original tools remain
+  // reachable from it (and from the tool strip) so the collateral bridge in
+  // the deal dossier has somewhere to land.
+  const [tool,setTool]=useState("terminal");
+  // Bumped whenever the bridge seeds a tool's store, and used as a React key
+  // so the tool remounts and picks up the seeded values — each tool reads its
+  // localStorage slice once, in a useState initialiser.
+  const [seed,setSeed]=useState(0);
+
+  const openTool = (id)=>{ setSeed(n=>n+1); setTool(id); };
 
   const TOOLS=[
-    {id:"timeline",    label:"Timeline",     icon:"Script", color:C.indigo,  desc:"Deal milestones + client emails"},
-    {id:"presentation",label:"Presentation", icon:"Trophy", color:C.violet,  desc:"Full listing appointment deck"},
-    {id:"cma",         label:"Pricing CMA",  icon:"Market", color:C.cyan,    desc:"Comp analysis + price strategy"},
+    {id:"terminal",    label:"Terminal",     icon:"Market",  color:C.cyan,    desc:"Pipeline + deal dossiers"},
+    {id:"timeline",    label:"Timeline",     icon:"Script",  color:C.indigo,  desc:"Deal milestones + client emails"},
+    {id:"presentation",label:"Presentation", icon:"Trophy",  color:C.violet,  desc:"Full listing appointment deck"},
+    {id:"cma",         label:"Pricing CMA",  icon:"Market",  color:C.cyan,    desc:"Comp analysis + price strategy"},
   ];
 
+  // Full-bleed terminal: no header, no tool strip, no bottom padding — it owns
+  // the whole area between the sidebar and the window edges.
+  if(tool==="terminal"){
+    return (
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column"}}>
+        <TransactionIntelligence
+          user={user} isMobile={isMobile}
+          onNavigate={onNavigate}
+          onOpenTool={openTool}
+        />
+      </div>
+    );
+  }
+
   return(
-    <div style={{paddingBottom:40}}>
-      <CoordinatorHeader/>
+    <div style={{padding:isMobile?"16px 14px 40px":"24px 28px 40px",boxSizing:"border-box"}}>
+      <button onClick={()=>setTool("terminal")}
+        style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,padding:"8px 13px",
+          borderRadius:9,cursor:"pointer",background:"rgba(34,211,238,.1)",
+          border:"1px solid rgba(34,211,238,.4)",color:"#22d3ee",
+          fontFamily:C.F,fontSize:10.5,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
+        ← Back to Transaction Terminal
+      </button>
 
       {/* Tool selector */}
       <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(3,1fr)",gap:8,marginBottom:20}}>
-        {TOOLS.map(t=>{
+        {TOOLS.filter(t=>t.id!=="terminal").map(t=>{
           const TIcon = Icon[t.icon];
           return(
           <div key={t.id} onClick={()=>setTool(t.id)}
@@ -1032,9 +1063,9 @@ export default function TransactionPanel({ user, planKey, isMobile }){
       </div>
 
       {/* Active tool */}
-      {tool==="timeline"     && <TransactionTimeline user={user}/>}
-      {tool==="presentation" && <ListingPresentation user={user}/>}
-      {tool==="cma"          && <CMAAnalyzer user={user}/>}
+      {tool==="timeline"     && <TransactionTimeline key={`tl-${seed}`} user={user}/>}
+      {tool==="presentation" && <ListingPresentation key={`lp-${seed}`} user={user}/>}
+      {tool==="cma"          && <CMAAnalyzer key={`cma-${seed}`} user={user}/>}
     </div>
   );
 }

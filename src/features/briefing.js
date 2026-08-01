@@ -7,6 +7,23 @@
 
 export const HIGH_DOM = 60;
 
+// Alerts dispatched from other terminals (currently the Transaction
+// Intelligence board, when a hard-stop contingency date is set or moved).
+// Folded into Panel A so a deadline change actually surfaces on the agent's
+// homepage rather than only living in the Deals tab.
+export const AUTOPILOT_ALERTS_KEY = "spark_autopilot_alerts_v1";
+
+function readDispatchedAlerts() {
+  try {
+    const raw = localStorage.getItem(AUTOPILOT_ALERTS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(list)) return [];
+    // Drop anything already past its deadline — a stale alert is worse than
+    // no alert, because it trains the agent to ignore the panel.
+    return list.filter((a) => !a.dueAt || new Date(a.dueAt).getTime() > Date.now());
+  } catch { return []; }
+}
+
 export function clockOf(ts) {
   const d = ts ? new Date(ts) : new Date();
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -54,10 +71,38 @@ export const DEMO_BRIEFING = {
 };
 
 // ── live briefing assembly ────────────────────────────────────────────────
+// Dispatched alerts are prepended to whichever briefing is returned. Each one
+// carries the SIM flag of the deal it came from — a deadline dispatched off a
+// synthesized demo deal is itself synthesized, and must not appear on the
+// homepage as a real exposure.
+function withDispatched(briefing) {
+  const dispatched = readDispatchedAlerts();
+  if (!dispatched.length) return briefing;
+  const threats = dispatched.map((a) => ({
+    id: `dispatch-${a.id}`,
+    severity: a.severity === "critical" ? "critical" : "high",
+    kind: a.kind || "CONTINGENCY DEADLINE",
+    simulated: !!a.simulated,
+    subject: a.subject,
+    detail: a.detail,
+    action: a.action || null,
+    value: Number(a.value) || 0,
+    _raw: a,
+  }));
+  const merged = [...threats, ...briefing.threats];
+  // The demo headline is a fixed string that counts only its own two
+  // scenarios; leaving it alone made the panel say "Two positions" while the
+  // spoken briefing counted three.
+  const headline = briefing.simulated
+    ? `${merged.length} position${merged.length !== 1 ? "s" : ""} need your judgment this morning. Everything else is handled.`
+    : briefing.headline;
+  return { ...briefing, headline, threats: merged };
+}
+
 export function buildBriefing({
   isDemo, apResult, sphere, listingPerf, lastRun, pipelineValue = 0, specialistStatuses = {},
 }) {
-  if (isDemo || !apResult) return DEMO_BRIEFING;
+  if (isDemo || !apResult) return withDispatched(DEMO_BRIEFING);
 
   const di = apResult?.deal_intelligence || {};
   const threats = [];
@@ -127,14 +172,14 @@ export function buildBriefing({
     }, 0) / scores.length)
     : 0;
 
-  return {
+  return withDispatched({
     simulated: false,
     pipelineValue,
     headline: apResult?.mission?.headline || "No critical positions this morning.",
     threats, ops,
     metrics: { atRisk, opportunity, probability },
     specialists: specialistStatuses,
-  };
+  });
 }
 
 export function buildSpokenText(briefing, voice) {
