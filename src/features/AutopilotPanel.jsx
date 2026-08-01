@@ -8,6 +8,7 @@ import { lsGet as apLsGet, lsSet as apLsSet, cloudSync as apCloudSync } from "..
 import { runComplianceCheck } from "../utils/compliance";
 import { Button, Card, Label, CopyButton } from "../components/UI";
 import Icon from "../components/Icons";
+import CommandMatrix from "./CommandMatrix";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -3643,8 +3644,12 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
   const synthRef        = useRef(null);
   const [showChat,    setShowChat]    = useState(false);
 
-  // View state — "intelligence" or "chat"
-  const [view,        setView]        = useState("intelligence");
+  // View state — "matrix" (Autonomous Command Matrix, the default homepage),
+  // "intelligence" (the specialist workspaces) or "chat".
+  // Non-premium must still land on "intelligence", which is where the paywall
+  // lives — defaulting everyone to the Matrix would hand out the premium
+  // briefing and hide the upgrade path entirely.
+  const [view,        setView]        = useState(planKey==="premium"?"matrix":"intelligence");
 
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -4335,13 +4340,15 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
             attention with everything else on the page; the same context now
             lives more usefully inside the roster cards below, so this is
             just a small reference line, not a dashboard. */}
-        {isPremium&&totalRuns>0&&(
+        {/* Was gated on totalRuns>0, which left a premium account with zero
+            runs stranded on the Matrix with no way to reach onboarding. */}
+        {isPremium&&(
           <div style={{display:"flex",gap:10,marginTop:8,paddingTop:8,borderBottom:`1px solid ${C.border}`,paddingBottom:8,flexWrap:"wrap",alignItems:"center"}}>
             <span style={{fontFamily:C.F,fontSize:10,color:C.textDim}}>
               {data.totalClients} client{data.totalClients!==1?"s":""} · {data.totalDeals} deal{data.totalDeals!==1?"s":""} · {totalRuns} run{totalRuns!==1?"s":""}{data.totalPipeline>0?` · $${Math.round(data.totalPipeline/1000)}k pipeline`:""}
             </span>
             <div style={{marginLeft:"auto",display:"flex",gap:8}}>
-              {[{id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},{id:"chat",label:"Chat"}].map(v=>(
+              {[{id:"matrix",label:"Matrix"},{id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},{id:"chat",label:"Chat"}].map(v=>(
                 <button key={v.id} onClick={()=>!v.disabled&&setView(v.id)}
                   style={{background:view===v.id?`${C.indigo}14`:"transparent",border:`1px solid ${view===v.id?C.indigo+"44":C.border}`,color:view===v.id?C.indigoLt:C.textDim,borderRadius:8,padding:"4px 12px",cursor:v.disabled?"default":"pointer",fontSize:10,fontFamily:C.F,fontWeight:700,opacity:v.disabled?.4:1,transition:"all .14s"}}>
                   {v.label}
@@ -4372,7 +4379,46 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
         )}
       </div>
 
+      {/* ── AUTONOMOUS COMMAND MATRIX ──
+          Sits as a flex sibling rather than inside the scroll container below:
+          it owns its own scrolling body and keeps the omni-command bar pinned,
+          which a shared overflow parent would break. */}
+      {isPremium&&view==="matrix"&&(
+        <div style={{flex:1,minHeight:0,display:"flex",flexDirection:"column"}}>
+          <CommandMatrix
+            loading={apRunning&&!apResult}
+            isDemo={!apResult}
+            voice={voice}
+            user={user}
+            apResult={apResult}
+            sphere={sphere}
+            listingPerf={listingPerf}
+            lastRun={lastRun}
+            pipelineValue={data.totalPipeline||0}
+            specialistStatuses={{
+              coordinator: computeRosterStatus("coordinator",{apResult,sphere,listingPerf,weeklyReport,runHistory}),
+              negotiate:   computeRosterStatus("negotiate",  {apResult,sphere,listingPerf,weeklyReport,runHistory}),
+              listings:    computeRosterStatus("listings",   {apResult,sphere,listingPerf,weeklyReport,runHistory}),
+              coaching:    computeRosterStatus("coaching",   {apResult,sphere,listingPerf,weeklyReport,runHistory}),
+            }}
+            micSupported={voiceSupported}
+            listening={voiceActive}
+            onToggleMic={toggleVoice}
+            transcript={transcript}
+            onOpenSituationRoom={r=>{ setSituationRoom(r); setApTab("deals"); setView("intelligence"); }}
+            onTalkThrough={t=>{
+              setView("chat");
+              const p = `Talk me through this: ${t.subject}. ${t.detail||""} What's my move?`;
+              setTimeout(()=>sendMessage(p),100);
+            }}
+            onOpenSpecialist={id=>{ setApTab(id); setView("intelligence"); }}
+            onDiscuss={p=>{ setView("chat"); setTimeout(()=>sendMessage(p),100); }}
+          />
+        </div>
+      )}
+
       {/* ── MAIN CONTENT AREA ── */}
+      {!(isPremium&&view==="matrix")&&(
       <div style={{flex:1,overflowY:"auto",scrollbarWidth:"thin",scrollbarColor:"rgba(255,255,255,.06) transparent"}}>
 
         {/* ── INTELLIGENCE VIEW ── */}
@@ -4819,6 +4865,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
           </div>
         )}
       </div>
+      )}
 
       {/* ── CHAT INPUT (always visible in chat view) ── */}
       {view==="chat"&&(
