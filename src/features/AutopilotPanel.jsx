@@ -9,6 +9,21 @@ import { runComplianceCheck } from "../utils/compliance";
 import { Button, Card, Label, CopyButton } from "../components/UI";
 import Icon from "../components/Icons";
 import CommandMatrix from "./CommandMatrix";
+import BriefingAudio from "../components/BriefingAudio";
+import { buildBriefing, buildSpokenText } from "./briefing";
+
+// Command Matrix palette — the consolidated header sits above the Matrix and
+// has to match it, not the older indigo panel chrome.
+const MX = {
+  purple:"#a855f7", purpleLt:"#c084fc", cyan:"#22d3ee", green:"#22c55e",
+  amber:"#ffb020", slateDim:"rgba(148,163,184,0.65)",
+  hairline:"rgba(255,255,255,0.1)",
+  mono:"'JetBrains Mono','Courier New',monospace",
+};
+// One gutter shared by the header, the Matrix body and the command bar — they
+// must line up, so the value is passed down rather than each guessing from its
+// own breakpoint (p-6 on mobile / p-8 on desktop).
+const MX_PAD_Y = 20;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -4250,6 +4265,22 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
   const isGoogle     = !!googleData?.connected;
   const currentMode  = MODES[mode];
 
+  // Built once here so the header's audio module and the Matrix body speak
+  // from the same briefing rather than each assembling its own.
+  const rosterCtx = { apResult, sphere, listingPerf, weeklyReport, runHistory };
+  const matrixSpecialists = {
+    coordinator: computeRosterStatus("coordinator", rosterCtx),
+    negotiate:   computeRosterStatus("negotiate",   rosterCtx),
+    listings:    computeRosterStatus("listings",    rosterCtx),
+    coaching:    computeRosterStatus("coaching",    rosterCtx),
+  };
+  const matrixBriefing = buildBriefing({
+    isDemo:!apResult, apResult, sphere, listingPerf, lastRun,
+    pipelineValue:data.totalPipeline||0, specialistStatuses:matrixSpecialists,
+  });
+  const spokenBriefing = buildSpokenText(matrixBriefing, voice);
+  const mxPad = isMobile ? 24 : 32; // p-6 / md:p-8
+
   const AP_TABS=[
     {id:"mission",  label:"Mission",  icon:"Mission"},
     {id:"deals",    label:"Deals",    icon:"Deals"},
@@ -4266,98 +4297,102 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
   ];
 
   return(
-    <div style={{display:"flex",flexDirection:"column",
-      // The old flat "100vh - 170px" was one static number used for both
-      // desktop AND mobile — but mobile's actual header/nav are much
-      // shorter than whatever that number was tuned against, so the box
-      // rendered shorter than the real available space, leaving dead
-      // space at the bottom. On mobile the parent scroll container
-      // (spark-final.jsx) already reserves 90px of bottom padding to
-      // clear the fixed nav bar, so this shouldn't subtract nav height
-      // again — that would double-compensate and make the gap worse, not
-      // better. Uses dvh (dynamic viewport height) + real env() safe-area
-      // values instead of a guessed pixel number, since those are exact
-      // by definition rather than estimated.
-      height:isMobile
-        ? "calc(100dvh - 65px - env(safe-area-inset-top))"
-        : "calc(100vh - 170px)",
-      minHeight:500,position:"relative"}}>
+    <div className="w-full h-full flex flex-col bg-[#050505] text-white max-w-none"
+      style={{display:"flex",flexDirection:"column",
+      // App.jsx now renders autopilot edge-to-edge (no 840px wrapper, no 32/36
+      // padding), so this fills its parent instead of subtracting a guessed
+      // header height from the viewport. The old "100vh - 170px" was tuned
+      // against a title block that no longer exists above it.
+      width:"100%",maxWidth:"none",height:"100%",minHeight:0,
+      background:"#050505",color:"#fff",boxSizing:"border-box",
+      position:"relative"}}>
 
-      <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
-        onNavigate={onNavigate} onOpenTab={setApTab} googleData={googleData}/>
+      {/* The panel itself is padding-free so the Matrix can run edge-to-edge,
+          so anything above the header supplies its own matching gutter. */}
+      <div style={{flexShrink:0,padding:`${MX_PAD_Y}px ${mxPad}px 0`,boxSizing:"border-box"}}>
+        <ActivationChecklist voice={voice} planKey={planKey} apResult={apResult}
+          onNavigate={onNavigate} onOpenTab={setApTab} googleData={googleData}/>
+      </div>
 
-      {/* ── TOP HEADER ── */}
-      <div style={{flexShrink:0,marginBottom:12}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-          background:`linear-gradient(135deg,${C.indigo}10,${C.violet}06)`,
-          border:`1px solid ${C.indigo}22`,borderRadius:14,
-          padding:isMobile?"9px 12px":"12px 16px",position:"relative",overflow:"hidden"}}>
-          {/* Purely decorative — real estate a narrow screen can't spare */}
-          {!isMobile&&<div style={{position:"absolute",top:"-30%",right:"-5%",width:140,height:140,borderRadius:"50%",pointerEvents:"none",background:`radial-gradient(circle,${C.indigo}16,transparent 70%)`}}/>}
+      {/* ── CONSOLIDATED HEADER ──
+          One full-width bar for the whole panel. Previously the App shell
+          rendered a "SPARK Autopilot + PREMIUM" title block AND this panel
+          rendered its own branded pill banner AND the Matrix rendered a third
+          "AUTONOMOUS COMMAND MATRIX" label — three stacked headers before any
+          content. The App-level block is gone (autopilot is full-bleed now)
+          and this is the single header. */}
+      <div style={{flexShrink:0,display:"flex",alignItems:"center",
+        gap:14,flexWrap:"wrap",width:"100%",boxSizing:"border-box",
+        padding:`${MX_PAD_Y}px ${mxPad}px 14px`,
+        borderBottom:`1px solid ${MX.hairline}`}}>
 
-          {/* Identity */}
-          <div style={{display:"flex",alignItems:"center",gap:isMobile?8:10,position:"relative"}}>
-            <div style={{width:isMobile?30:38,height:isMobile?30:38,borderRadius:9,flexShrink:0,
-              background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 4px 14px ${C.indigo}40`,
-              animation:apRunning?"spin 2s linear infinite":"none"}}><Icon.Sparkle size={isMobile?15:19} color="#fff"/></div>
-            <div>
-              <div style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?12:14,color:C.text,
-                display:"flex",alignItems:"center",gap:6}}>
-                SPARK Autopilot
-                {isPremium&&<span style={{fontSize:8,background:`${C.violet}18`,border:`1px solid ${C.violet}30`,color:C.violet,borderRadius:8,padding:"1px 7px",fontWeight:700,letterSpacing:1}}>✦ PREMIUM</span>}
-              </div>
-              <div style={{fontFamily:C.F,fontSize:9,marginTop:2,display:"flex",alignItems:"center",gap:5,color:apRunning?C.amber:apResult?C.emerald:C.textDim}}>
-                <div style={{width:4,height:4,borderRadius:"50%",background:apRunning?C.amber:apResult?C.emerald:C.textDim,animation:apRunning?"pulse 1s ease infinite":"none"}}/>
-                {apRunning?"Analyzing your business...":apResult?"Monitoring your business · Always on":"Ready to analyze"}
-                {/* Nice to know, not essential — cut on mobile where every
-                    extra clause pushes this card's line count up */}
-                {!isMobile&&isPremium&&apResult&&!apRunning&&(
-                  <span style={{color:C.textDim,marginLeft:2,display:"inline-flex",alignItems:"center",gap:3}}><Icon.Mail size={9}/> Email alerts on</span>
-                )}
-              </div>
-            </div>
+        {/* Left — identity + live telemetry badge.
+            marginRight:auto rather than flex-grow: growing this squeezed the
+            right-hand group until the Run button wrapped onto its own row. */}
+        <div style={{display:"flex",alignItems:"center",gap:11,minWidth:0,marginRight:"auto"}}>
+          <div style={{width:isMobile?30:34,height:isMobile?30:34,borderRadius:9,flexShrink:0,
+            background:`linear-gradient(135deg,#7c3aed,${MX.purple})`,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            boxShadow:`0 0 16px ${MX.purple}66`,
+            animation:apRunning?"spin 2s linear infinite":"none"}}>
+            <Icon.Sparkle size={isMobile?15:17} color="#fff"/>
           </div>
-
-          {/* Controls */}
-          <div style={{display:"flex",gap:6,alignItems:"center",position:"relative"}}>
-            {syncing&&!isMobile&&<span style={{fontSize:9,color:C.amber,fontFamily:C.F}}>syncing...</span>}
-            {isGoogle&&!isMobile&&<div style={{display:"flex",alignItems:"center",gap:4,background:"rgba(34, 197, 94,.08)",border:"1px solid rgba(34, 197, 94,.2)",borderRadius:7,padding:"3px 8px",cursor:"pointer"}} onClick={fetchGoogleData}>
-              <div style={{width:4,height:4,borderRadius:"50%",background:C.emerald}}/>
-              <span style={{fontSize:8,color:C.emerald,fontFamily:C.F,fontWeight:700}}>Google</span>
-            </div>}
-            {isPremium&&(
-              <Button variant="primary" C={C} onClick={runAutopilot} disabled={apRunning||!hasEnoughData}
-                style={{padding:isMobile?"6px 12px":"7px 14px",fontSize:isMobile?10:11,borderRadius:9}}>
-                {apRunning?"Analyzing...":"▶ Run"}
-              </Button>
-            )}
+          <div style={{minWidth:0}}>
+            <div style={{fontFamily:C.F,fontWeight:800,fontSize:isMobile?14:17,color:"#fff",
+              letterSpacing:"-0.01em",lineHeight:1.2}}>SPARK Autopilot</div>
+            <div className="font-mono tracking-wider" style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
+              <span style={{width:6,height:6,borderRadius:"50%",flexShrink:0,
+                background:apRunning?MX.amber:apResult?MX.green:MX.slateDim,
+                boxShadow:`0 0 8px ${apRunning?MX.amber:apResult?MX.green:"transparent"}`,
+                animation:apRunning?"pulse 1s ease infinite":"none"}}/>
+              <span style={{fontFamily:MX.mono,fontSize:8,letterSpacing:1.6,textTransform:"uppercase",
+                color:apRunning?MX.amber:apResult?MX.green:MX.slateDim}}>
+                [ {apRunning?"Running analysis":apResult?"Live pipeline telemetry":"Telemetry standing by"} ]
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Quiet context line — was 4 large unexplained numbers competing for
-            attention with everything else on the page; the same context now
-            lives more usefully inside the roster cards below, so this is
-            just a small reference line, not a dashboard. */}
-        {/* Was gated on totalRuns>0, which left a premium account with zero
-            runs stranded on the Matrix with no way to reach onboarding. */}
-        {isPremium&&(
-          <div style={{display:"flex",gap:10,marginTop:8,paddingTop:8,borderBottom:`1px solid ${C.border}`,paddingBottom:8,flexWrap:"wrap",alignItems:"center"}}>
-            <span style={{fontFamily:C.F,fontSize:10,color:C.textDim}}>
-              {data.totalClients} client{data.totalClients!==1?"s":""} · {data.totalDeals} deal{data.totalDeals!==1?"s":""} · {totalRuns} run{totalRuns!==1?"s":""}{data.totalPipeline>0?` · $${Math.round(data.totalPipeline/1000)}k pipeline`:""}
-            </span>
-            <div style={{marginLeft:"auto",display:"flex",gap:8}}>
-              {[{id:"matrix",label:"Matrix"},{id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},{id:"chat",label:"Chat"}].map(v=>(
+        {/* Right — audio briefing + view toggles + run.
+            Wraps at narrow widths; the Run button passes full={false} because
+            Button defaults to width:100% for primary, which is what made it
+            span the whole header when it wrapped. */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",
+          gap:10,flexWrap:"wrap",minWidth:0}}>
+          {isPremium&&view==="matrix"&&<BriefingAudio text={spokenBriefing} compact={isMobile}/>}
+
+          {isPremium&&(
+            <div style={{display:"flex",gap:4,padding:4,borderRadius:11,
+              background:"rgba(0,0,0,0.5)",border:`1px solid ${MX.hairline}`}}>
+              {[{id:"matrix",label:"Matrix"},
+                {id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},
+                {id:"chat",label:"Chat"}].map(v=>(
                 <button key={v.id} onClick={()=>!v.disabled&&setView(v.id)}
-                  style={{background:view===v.id?`${C.indigo}14`:"transparent",border:`1px solid ${view===v.id?C.indigo+"44":C.border}`,color:view===v.id?C.indigoLt:C.textDim,borderRadius:8,padding:"4px 12px",cursor:v.disabled?"default":"pointer",fontSize:10,fontFamily:C.F,fontWeight:700,opacity:v.disabled?.4:1,transition:"all .14s"}}>
+                  className="font-mono" style={{
+                    fontFamily:MX.mono,fontSize:9,fontWeight:800,letterSpacing:1,
+                    textTransform:"uppercase",padding:"7px 12px",borderRadius:7,
+                    cursor:v.disabled?"default":"pointer",opacity:v.disabled?.35:1,
+                    background:view===v.id?`${MX.purple}22`:"transparent",
+                    border:`1px solid ${view===v.id?MX.purple+"88":"transparent"}`,
+                    color:view===v.id?MX.purpleLt:MX.slateDim,
+                    boxShadow:view===v.id?`0 0 12px ${MX.purple}44`:"none",
+                    transition:"all .16s"}}>
                   {v.label}
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
+          {isPremium&&(
+            <Button variant="primary" C={C} full={false} onClick={runAutopilot} disabled={apRunning||!hasEnoughData}
+              style={{padding:isMobile?"7px 12px":"8px 15px",fontSize:isMobile?10:11,borderRadius:9,flexShrink:0}}>
+              {apRunning?"Analyzing...":"▶ Run"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div style={{flexShrink:0}}>
         {/* Mode selector for non-premium (chat only) or in chat view */}
         {(!isPremium||view==="chat")&&(
           <div style={{display:"flex",gap:5,background:"rgba(255,255,255,.02)",borderRadius:10,padding:3,marginTop:8}}>
@@ -4395,12 +4430,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
             listingPerf={listingPerf}
             lastRun={lastRun}
             pipelineValue={data.totalPipeline||0}
-            specialistStatuses={{
-              coordinator: computeRosterStatus("coordinator",{apResult,sphere,listingPerf,weeklyReport,runHistory}),
-              negotiate:   computeRosterStatus("negotiate",  {apResult,sphere,listingPerf,weeklyReport,runHistory}),
-              listings:    computeRosterStatus("listings",   {apResult,sphere,listingPerf,weeklyReport,runHistory}),
-              coaching:    computeRosterStatus("coaching",   {apResult,sphere,listingPerf,weeklyReport,runHistory}),
-            }}
+            specialistStatuses={matrixSpecialists}
+            briefing={matrixBriefing}
+            pad={mxPad}
             micSupported={voiceSupported}
             listening={voiceActive}
             onToggleMic={toggleVoice}

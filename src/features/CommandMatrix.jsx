@@ -33,11 +33,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { animate } from "framer-motion";
 import {
-  Zap, Play, Pause, Volume2, VolumeX, Mic, Send, X, ShieldAlert, Radio,
-  ArrowRight, MessageSquare, Terminal, ChevronRight, CheckCircle2, Loader2,
-  FileText, Handshake, LineChart, GraduationCap, AlertTriangle, Paperclip,
+  Zap, Mic, Send, X, ShieldAlert, MessageSquare, Terminal, ChevronRight,
+  CheckCircle2, Loader2, FileText, Handshake, LineChart, GraduationCap,
+  AlertTriangle, Paperclip,
 } from "lucide-react";
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
+import { buildBriefing, HIGH_DOM } from "./briefing";
 
 // ── design tokens ─────────────────────────────────────────────────────────
 const BG = "#050505";
@@ -71,9 +72,32 @@ function fmtMoney(n) {
   return `$${Math.round(n).toLocaleString()}`;
 }
 function fmtFull(n) { return `$${Math.round(n || 0).toLocaleString()}`; }
-function clockOf(ts) {
-  const d = ts ? new Date(ts) : new Date();
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+// Tailwind's `md:`/`lg:` prefixes do nothing in this app (no Tailwind build),
+// so the two breakpoints the layout depends on are resolved in JS.
+//
+// Measured against the CONTAINER, not the viewport: this panel renders beside
+// a ~250px sidebar, so a 1100px window leaves an ~850px panel that must not be
+// laid out as `lg`. Thresholds are the Tailwind values minus a typical sidebar
+// (1024→780, 768→560), which keeps the intent at full width and stays correct
+// when the sidebar is absent (mobile) or present (desktop).
+const BP_SPLIT = 780; // lg: — 7/5 command split
+const BP_TICKER = 560; // md: — 3-up ticker grid
+
+function useContainerWidth(ref) {
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (cr) setW(cr.width);
+    });
+    ro.observe(el);
+    setW(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, [ref]);
+  return w;
 }
 
 // ── framer-motion value ticker ────────────────────────────────────────────
@@ -98,120 +122,6 @@ function useTicker(target, { duration = 1.1 } = {}) {
   return shown;
 }
 
-// ── spoken briefing player ────────────────────────────────────────────────
-function BriefingAudio({ text, compact }) {
-  const [state, setState] = useState("idle"); // idle | playing | paused
-  const [muted, setMuted] = useState(false);
-  const [supported, setSupported] = useState(true);
-  const synthRef = useRef(null);
-  const uttRef = useRef(null);
-
-  useEffect(() => {
-    const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
-    synthRef.current = synth;
-    setSupported(!!synth);
-    return () => { try { synth?.cancel(); } catch { /* nothing playing */ } };
-  }, []);
-
-  const speak = useCallback(() => {
-    const synth = synthRef.current;
-    if (!synth || !text) return;
-    synth.cancel();
-    const clean = String(text)
-      .replace(/\*\*(.*?)\*\*/g, "$1").replace(/[#*_`>]/g, "")
-      .replace(/\n+/g, ". ").slice(0, 1400);
-    const utt = new SpeechSynthesisUtterance(clean);
-    utt.rate = 0.98; utt.pitch = 1; utt.volume = muted ? 0 : 1;
-    const voices = synth.getVoices() || [];
-    const preferred = voices.find((v) =>
-      /Samantha|Google US English|Microsoft Aria|Alex/.test(v.name));
-    if (preferred) utt.voice = preferred;
-    utt.onend = () => setState("idle");
-    utt.onerror = () => setState("idle");
-    uttRef.current = utt;
-    synth.speak(utt);
-    setState("playing");
-  }, [text, muted]);
-
-  const toggle = useCallback(() => {
-    const synth = synthRef.current;
-    if (!synth) return;
-    if (state === "playing") { synth.pause(); setState("paused"); return; }
-    if (state === "paused") { synth.resume(); setState("playing"); return; }
-    speak();
-  }, [state, speak]);
-
-  const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      const next = !m;
-      // The Web Speech API has no live volume control on an in-flight
-      // utterance — muting mid-sentence has to restart it at volume 0.
-      if (state === "playing" && uttRef.current) {
-        const synth = synthRef.current;
-        synth?.cancel();
-        setState("idle");
-      }
-      return next;
-    });
-  }, [state]);
-
-  const playing = state === "playing";
-
-  return (
-    <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
-      padding: compact ? "7px 10px" : "8px 12px", borderRadius: 12,
-      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-      border: `1px solid ${HAIRLINE}`,
-    }}>
-      <button onClick={toggle} disabled={!supported || !text} title={supported ? "Play the 8am briefing" : "Speech synthesis unavailable in this browser"}
-        style={{
-          width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: "flex",
-          alignItems: "center", justifyContent: "center",
-          background: playing ? `${PURPLE}22` : `linear-gradient(135deg,#7c3aed,${PURPLE})`,
-          border: `1px solid ${PURPLE}88`, color: "#fff",
-          cursor: supported && text ? "pointer" : "not-allowed",
-          opacity: supported && text ? 1 : 0.45,
-          boxShadow: playing ? `0 0 14px ${PURPLE}77` : "none",
-        }}>
-        {playing ? <Pause size={13} /> : <Play size={13} />}
-      </button>
-
-      {/* Visualizer — animates only while actually speaking. */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 2.5, height: 18, width: 46, flexShrink: 0 }}>
-        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-          <span key={i} style={{
-            flex: 1, borderRadius: 1, background: playing ? PURPLE_LT : "rgba(148,163,184,0.28)",
-            height: playing ? "100%" : 3,
-            transformOrigin: "bottom",
-            animation: playing ? `cmBar 0.9s ease-in-out ${i * 0.09}s infinite` : "none",
-            boxShadow: playing ? `0 0 6px ${PURPLE}88` : "none",
-          }} />
-        ))}
-      </div>
-
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div className="tracking-wider text-slate-400" style={{
-          fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.6, color: SLATE_DIM, textTransform: "uppercase",
-        }}>8AM Audio Briefing</div>
-        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9.5, color: playing ? PURPLE_LT : SLATE, whiteSpace: "nowrap" }}>
-          {!supported ? "UNAVAILABLE IN THIS BROWSER" : !text ? "NO BRIEFING YET"
-            : playing ? "TRANSMITTING…" : state === "paused" ? "PAUSED" : "READY"}
-        </div>
-      </div>
-
-      <button onClick={toggleMute} disabled={!supported}
-        title={muted ? "Unmute briefing" : "Mute briefing"}
-        style={{
-          background: "transparent", border: "none", padding: 0, flexShrink: 0,
-          color: muted ? SLATE_DIM : CYAN, cursor: supported ? "pointer" : "not-allowed",
-        }}>
-        {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-      </button>
-    </div>
-  );
-}
-
 // ── GCI ticker card ───────────────────────────────────────────────────────
 function TickerCard({ label, value, sub, color, format = "money", icon: IconCmp }) {
   const shown = useTicker(value);
@@ -220,7 +130,7 @@ function TickerCard({ label, value, sub, color, format = "money", icon: IconCmp 
       : fmtMoney(shown);
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      flex: "1 1 190px", minWidth: 0, padding: 14, borderRadius: 13,
+      minWidth: 0, padding: 14, borderRadius: 13,
       background: `linear-gradient(135deg,${color}0e,rgba(0,0,0,0.45))`,
       backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
       border: `1px solid ${color}33`,
@@ -616,14 +526,22 @@ function ConfirmModal({ plan, busy, onCancel, onConfirm }) {
 }
 
 // ── omni-command bar ──────────────────────────────────────────────────────
-function OmniCommand({ onSubmit, listening, onToggleMic, micSupported, transcript }) {
+function OmniCommand({ onSubmit, listening, onToggleMic, micSupported, transcript, pad = 32 }) {
   const [text, setText] = useState("");
   useEffect(() => { if (transcript) setText(transcript); }, [transcript]);
 
   const fire = () => { if (!text.trim()) return; onSubmit(text); setText(""); };
 
   return (
-    <div style={{ flexShrink: 0, paddingTop: 12 }}>
+    // Full-width footer band; the input itself is capped and centred inside it
+    // so the command line stays reachable rather than stretching to 2000px on
+    // an ultrawide monitor.
+    <div className="w-full" style={{
+      flexShrink: 0, width: "100%", padding: `12px ${pad}px 16px`, boxSizing: "border-box",
+      borderTop: `1px solid ${HAIRLINE}`, background: "rgba(5,5,5,0.86)",
+      backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+    }}>
+      <div className="max-w-4xl mx-auto w-full" style={{ maxWidth: 896, margin: "0 auto", width: "100%" }}>
       <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
         display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 14,
         background: "rgba(0,0,0,0.72)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
@@ -679,6 +597,7 @@ function OmniCommand({ onSubmit, listening, onToggleMic, micSupported, transcrip
       }}>
         Every command requires explicit confirmation before anything is written
       </div>
+      </div>
     </div>
   );
 }
@@ -693,155 +612,38 @@ function syncNote(synced, user) {
   return " Saved on this device — cloud sync failed, it will retry on next sync.";
 }
 
-// ── demo-safe fallback synthesizer ────────────────────────────────────────
-// A brand-new account has nothing to brief on. Rather than showing an empty
-// terminal, this stands up a complete 8am briefing for a fictional
-// high-volume luxury agent. Everything it produces is badged SIM.
-// Deliberately NOT exported — a non-component export from this file breaks
-// react-refresh's fast-refresh boundary and forces full page reloads in dev.
-const DEMO_BRIEFING = {
-  simulated: true,
-  pipelineValue: 4_180_000,
-  headline: "Two positions need your judgment this morning. Everything else is handled.",
-  threats: [
-    {
-      id: "demo-t1", severity: "critical", kind: "TRANSACTION RISK", simulated: true,
-      subject: "Inspection objection deadline on 104 Elm St expires in 19 hours",
-      detail: "The Whitmore contract ($2.4M) hit its inspection objection deadline at 5:00 PM tomorrow. The buyer's agent submitted a $38,000 repair request Tuesday and no response has been logged. If the deadline passes without a written response, the buyer can terminate and recover earnest money.",
-      action: "Get a written position from the Whitmores today — accept, counter, or reject — and send it to the buyer's agent before 5:00 PM tomorrow.",
-      value: 72_000,
-    },
-    {
-      id: "demo-t2", severity: "high", kind: "SPHERE REACTIVATION", simulated: true,
-      subject: "Caroline Ashford's one-year anniversary at 88 Harbor Point is Friday",
-      detail: "Caroline closed a $3.1M purchase on Friday last year and referred two clients within her first six months. She has had no contact in 94 days. One-year anniversaries are the single highest-converting reactivation window in your sphere, and it closes this week.",
-      action: "Send a personal anniversary note Friday morning with a current valuation of 88 Harbor Point. Do not attach a referral ask to the first touch.",
-      value: 46_500,
-    },
-  ],
-  ops: [
-    // Worded to match what utils/compliance actually does — a fair-housing
-    // language review of outbound copy. It does not verify disclosures on
-    // file, so no op claims it does, even in the demo.
-    { id: "demo-o1", at: "08:00", simulated: true, text: "Compliance language review passed for 104 Elm St outbound copy — 4 drafts cleared" },
-    { id: "demo-o2", at: "08:00", simulated: true, text: "Listing performance chron-refresh complete — 6 active listings re-scored" },
-    { id: "demo-o3", at: "08:01", simulated: true, text: "Sphere scan complete — 214 contacts evaluated, 3 reactivation windows opening" },
-  ],
-  metrics: { atRisk: 118_500, opportunity: 46_500, probability: 71 },
-  specialists: {
-    coordinator: { text: "Monitoring 3 deals under contract", tone: "warn" },
-    negotiate: { text: "1 open repair-credit position", tone: "warn" },
-    listings: { text: "Analyzing 12 comps across 6 listings", tone: "calm" },
-    coaching: { text: "Tracking a follow-up pattern", tone: "info" },
-  },
-};
-
 // ── main component ────────────────────────────────────────────────────────
 export default function CommandMatrix({
   loading, isDemo, voice, user, apResult, sphere, listingPerf, lastRun,
-  pipelineValue = 0, specialistStatuses = {},
+  pipelineValue = 0, specialistStatuses = {}, briefing: briefingProp, pad = 32,
   onOpenSituationRoom, onTalkThrough, onOpenSpecialist, onDiscuss,
   micSupported, listening, onToggleMic, transcript,
 }) {
   const [plan, setPlan] = useState(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
+  const rootRef = useRef(null);
+  const cw = useContainerWidth(rootRef);
+  // Before the observer's first measurement cw is 0; assume wide so the
+  // desktop layout paints on the first frame instead of flashing single-column.
+  const wide = cw === 0 || cw >= BP_SPLIT;
+  const md = cw === 0 || cw >= BP_TICKER;
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3800); return () => clearTimeout(t); }, [toast]);
 
   const demo = isDemo || !apResult;
 
   // ── briefing assembly ───────────────────────────────────────────────────
-  const briefing = useMemo(() => {
-    if (demo) return DEMO_BRIEFING;
+  // The parent computes this so the header's audio module and this body share
+  // one briefing; falling back to building it here keeps the component usable
+  // standalone.
+  const briefing = useMemo(
+    () => briefingProp || buildBriefing({
+      isDemo: demo, apResult, sphere, listingPerf, lastRun, pipelineValue, specialistStatuses,
+    }),
+    [briefingProp, demo, apResult, sphere, listingPerf, lastRun, pipelineValue, specialistStatuses],
+  );
 
-    const di = apResult?.deal_intelligence || {};
-    const threats = [];
-
-    (di.risks || []).forEach((r, i) => {
-      threats.push({
-        id: `risk-${i}`,
-        severity: r.severity === "high" || r.severity === "critical" ? "critical" : "high",
-        kind: "TRANSACTION RISK", simulated: false,
-        // The deal name heads the card and the risk is the body. Concatenating
-        // both into the subject repeated the same sentence twice on screen.
-        subject: r.deal || r.risk,
-        detail: r.deal ? r.risk : (r.action || r.risk),
-        action: r.deal ? r.action : null, value: Number(r.value) || 0,
-        _raw: r,
-      });
-    });
-
-    (apResult?.relationship_alerts || []).forEach((a, i) => {
-      threats.push({
-        id: `alert-${i}`, severity: "high", kind: "RELATIONSHIP DECAY", simulated: false,
-        subject: `${a.client} has gone quiet for ${a.days} days`,
-        detail: a.reason || `No contact logged in ${a.days} days.`,
-        action: a.message ? `Send: "${String(a.message).slice(0, 130)}${String(a.message).length > 130 ? "…" : ""}"` : null,
-        value: 0, _raw: a,
-      });
-    });
-
-    (sphere?.opportunities || []).slice(0, 1).forEach((o, i) => {
-      threats.push({
-        id: `sphere-${i}`, severity: "high", kind: "SPHERE REACTIVATION", simulated: false,
-        subject: `${o.name} — ${o.trigger}`,
-        detail: o.why_now, action: o.message ? `Open with: "${String(o.message).slice(0, 130)}…"` : null,
-        value: 0, _raw: o,
-      });
-    });
-
-    // Background ops describe work this system genuinely performed. Nothing
-    // here is invented — each line is gated on the artifact that proves it ran.
-    const ops = [];
-    const at = clockOf(lastRun);
-    if (apResult?.client_scores?.length) {
-      ops.push({ id: "op-scores", at, text: `Client scoring complete — ${apResult.client_scores.length} contact${apResult.client_scores.length !== 1 ? "s" : ""} re-scored` });
-    }
-    if (apResult?.market_intelligence?.insight) {
-      ops.push({ id: "op-market", at, text: "Market intelligence refresh complete — pipeline zips re-pulled" });
-    }
-    if (sphere) {
-      ops.push({ id: "op-sphere", at, text: `Sphere scan complete — ${sphere.total_dormant ?? 0} dormant contact${(sphere.total_dormant ?? 0) !== 1 ? "s" : ""} evaluated` });
-    }
-    if (listingPerf?.listings?.length) {
-      ops.push({ id: "op-listings", at, text: `Listing performance chron-refresh complete — ${listingPerf.listings.length} listing${listingPerf.listings.length !== 1 ? "s" : ""} re-scored` });
-    }
-    if (apResult?.performance_forecast) {
-      ops.push({ id: "op-forecast", at, text: `GCI forecast recomputed — ${apResult.performance_forecast.momentum || "steady"} momentum` });
-    }
-
-    const atRisk = (di.risks || []).reduce((s, r) => s + (Number(r.value) || 0), 0);
-    const opportunity = (di.opportunities || []).reduce((s, o) => s + (Number(o.value) || 0), 0);
-    const scores = apResult?.client_scores || [];
-    const probability = scores.length
-      ? Math.round(scores.reduce((s, c) => {
-        const p = parseInt(String(c.probability || "").replace("%", ""), 10);
-        return s + (Number.isFinite(p) ? p : Number(c.score) || 0);
-      }, 0) / scores.length)
-      : 0;
-
-    return {
-      simulated: false,
-      pipelineValue,
-      headline: apResult?.mission?.headline || "No critical positions this morning.",
-      threats, ops,
-      metrics: { atRisk, opportunity, probability },
-      specialists: specialistStatuses,
-    };
-  }, [demo, apResult, sphere, listingPerf, lastRun, pipelineValue, specialistStatuses]);
-
-  const spokenText = useMemo(() => {
-    const name = (voice?.name || "").split(" ")[0];
-    const n = briefing.threats.length;
-    return [
-      `Good morning${name ? `, ${name}` : ""}. This is your eight A.M. briefing.`,
-      briefing.headline,
-      n ? `${n} position${n !== 1 ? "s" : ""} require your judgment.` : "Nothing requires your judgment right now.",
-      ...briefing.threats.slice(0, 2).map((t) => `${t.subject}. ${t.action || ""}`),
-      briefing.ops.length ? `I handled ${briefing.ops.length} operation${briefing.ops.length !== 1 ? "s" : ""} in the background.` : "",
-    ].filter(Boolean).join(" ");
-  }, [briefing, voice]);
 
   // ── command execution ───────────────────────────────────────────────────
   const submitCommand = useCallback((text) => {
@@ -908,65 +710,67 @@ export default function CommandMatrix({
   const m = briefing.metrics;
 
   return (
-    <div className="w-full h-full bg-[#050505]" style={{
-      position: "relative", width: "100%", height: "100%", background: BG,
-      display: "flex", flexDirection: "column", minHeight: 0,
+    <div ref={rootRef} className="w-full h-full flex flex-col bg-[#050505] text-white max-w-none" style={{
+      position: "relative", width: "100%", maxWidth: "none", height: "100%", background: BG,
+      color: "#fff", display: "flex", flexDirection: "column", minHeight: 0,
     }}>
       <style>{CM_KEYFRAMES}</style>
 
-      {/* ── scrolling body ── */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent" }}>
+      {/* ── scrolling body ── p-6 md:p-8, no max-width, no auto margins ── */}
+      <div className="w-full p-6 md:p-8" style={{
+        flex: 1, overflowY: "auto", minHeight: 0, width: "100%",
+        padding: pad, boxSizing: "border-box",
+        scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent",
+      }}>
 
-        {/* ── Top telemetry banner ── */}
-        <div style={{ marginBottom: 14 }}>
+        {/* ── Pipeline wealth banner (full width) ── */}
+        <div className="w-full" style={{ width: "100%", marginBottom: 18 }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
-            marginBottom: 12,
+            fontFamily: F, fontSize: 22, fontWeight: 800, lineHeight: 1.25, color: "#fff",
+            textShadow: `0 0 26px ${CYAN}44`,
           }}>
-            <div style={{ flex: "1 1 300px", minWidth: 0 }}>
-              <div className="tracking-wider text-slate-400" style={{
-                fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2.2,
-                color: SLATE_DIM, textTransform: "uppercase", marginBottom: 5,
-                display: "flex", alignItems: "center", gap: 7,
-              }}>
-                <Radio size={10} color={CYAN} />
-                Autonomous Command Matrix
-                {briefing.simulated && (
-                  <span style={{ color: AMBER, border: `1px solid ${AMBER}55`, borderRadius: 4, padding: "1px 5px", fontSize: 7 }}>
-                    LIVE EXAMPLE
-                  </span>
-                )}
-              </div>
-              <div style={{
-                fontFamily: F, fontSize: 19, fontWeight: 800, lineHeight: 1.3, color: "#fff",
-                textShadow: `0 0 26px ${CYAN}44`,
-              }}>
-                <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: `0 0 20px ${CYAN}88` }}>
-                  {fmtMoney(briefing.pipelineValue)}
-                </span>{" "}
-                IN PIPELINE WEALTH BEING ACTIVELY PROTECTED
-              </div>
+            <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: `0 0 20px ${CYAN}88` }}>
+              {fmtMoney(briefing.pipelineValue)}
+            </span>{" "}
+            IN PIPELINE WEALTH BEING ACTIVELY PROTECTED
+          </div>
+          {briefing.simulated && (
+            <div className="font-mono tracking-wider" style={{
+              fontFamily: MONO, fontSize: 8, letterSpacing: 1.6, color: AMBER, marginTop: 6,
+              textTransform: "uppercase",
+            }}>
+              ⚠ Live example — synthesized for a fictional agent until your own data is in
             </div>
-
-            <BriefingAudio text={spokenText} />
-          </div>
-
-          {/* ── GCI ticker cards ── */}
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <TickerCard label="Commission at Risk" value={m.atRisk} color={RED} icon={AlertTriangle}
-              sub="Slippage exposure from stalled and deadline-bound deals" />
-            <TickerCard label="Opportunity Surfaced" value={m.opportunity} color={GREEN} icon={Zap}
-              sub="Sphere reactivation and dormant-lead upside found this cycle" />
-            <TickerCard label="Pipeline Probability" value={m.probability} color={CYAN} format="pct" icon={LineChart}
-              sub="Average close score across every scored client" />
-          </div>
+          )}
         </div>
 
-        {/* ── Dual-panel briefing ── */}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-start" }}>
+        {/* ── GCI ticker grid: 1 col → 3 cols, full width ── */}
+        {/* Explicit tracks, not auto-fit: auto-fit produced a phantom 4th
+            column at desktop width whose gap pushed the grid past 100%. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full" style={{
+          display: "grid", width: "100%", gap: 16, marginBottom: 22,
+          gridTemplateColumns: md ? "repeat(3, minmax(0,1fr))" : "minmax(0,1fr)",
+        }}>
+          <TickerCard label="Commission at Risk" value={m.atRisk} color={RED} icon={AlertTriangle}
+            sub="Slippage exposure from stalled and deadline-bound deals" />
+          <TickerCard label="Opportunity Surfaced" value={m.opportunity} color={GREEN} icon={Zap}
+            sub="Sphere reactivation and dormant-lead upside found this cycle" />
+          <TickerCard label="Pipeline Probability" value={m.probability} color={CYAN} format="pct" icon={LineChart}
+            sub="Average close score across every scored client" />
+        </div>
 
-          {/* Panel A */}
-          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
+        {/* ── Main command split: 12-col grid, 7/5 at lg and up ──
+            Tailwind is not configured in this app, so the requested grid
+            classes are kept for the day it lands and backed by the equivalent
+            inline grid. `minmax(0,Xfr)` rather than `Xfr` so long threat text
+            cannot blow the column past its track. */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full" style={{
+          display: "grid", width: "100%", gap: 22, marginBottom: 22, alignItems: "start",
+          gridTemplateColumns: wide ? "minmax(0,7fr) minmax(0,5fr)" : "minmax(0,1fr)",
+        }}>
+
+          {/* Panel A — lg:col-span-7 */}
+          <div className="lg:col-span-7" style={{ minWidth: 0 }}>
             <div className="tracking-wider" style={{
               fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2,
               color: RED, textTransform: "uppercase", marginBottom: 9,
@@ -997,8 +801,8 @@ export default function CommandMatrix({
             ))}
           </div>
 
-          {/* Panel B */}
-          <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+          {/* Panel B — lg:col-span-5 */}
+          <div className="lg:col-span-5" style={{ minWidth: 0 }}>
             <div className="tracking-wider" style={{
               fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2,
               color: GREEN, textTransform: "uppercase", marginBottom: 9,
@@ -1029,7 +833,7 @@ export default function CommandMatrix({
 
       {/* ── Omni-command bar ── */}
       <OmniCommand onSubmit={submitCommand} listening={listening} onToggleMic={onToggleMic}
-        micSupported={micSupported} transcript={transcript} />
+        micSupported={micSupported} transcript={transcript} pad={pad} />
 
       <ConfirmModal plan={plan} busy={busy} onCancel={() => setPlan(null)} onConfirm={execute} />
 
