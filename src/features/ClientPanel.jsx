@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 import Icon from "../components/Icons";
+import ClientIntelligence from "./ClientIntelligence";
 import { Card, Label, Button, CopyButton } from "../components/UI";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1760,8 +1761,20 @@ function SmartIntake({ user, isMobile }){
   );
 }
 
-export default function ClientPanel({ user, planKey, isMobile }){
-  const [tool, setTool] = useState("briefing");
+export default function ClientPanel({ user, planKey, isMobile, onNavigate }){
+  // The Sphere terminal is the default view; the four original tools stay
+  // reachable from it so the dossier's action bridges have somewhere to land.
+  const [tool, setTool] = useState("sphere");
+  // Bumped when a bridge seeds a tool, and used as a React key so the tool
+  // remounts and picks up the seeded value (each reads its store once, in a
+  // useState initialiser).
+  const [seed, setSeed] = useState(0);
+
+  const openTool = (id, prefill)=>{
+    if(prefill) { try { localStorage.setItem("spark_note_prefill", prefill); } catch(e) { /* storage unavailable */ } }
+    setSeed(n=>n+1);
+    setTool(id);
+  };
 
   const TOOLS=[
     {id:"briefing",  label:"Daily Briefing", icon:"Sun",   color:C.indigo,  desc:"Your AI morning action plan"},
@@ -1770,12 +1783,27 @@ export default function ClientPanel({ user, planKey, isMobile }){
     {id:"import",    label:"Import CRM",     icon:"Inbox", color:C.emerald, desc:"Bring in your existing clients"},
   ];
 
-  return(
-    <div style={{paddingBottom:40}}>
-      <RelationshipManagerHeader/>
-      <SmartIntake user={user} isMobile={isMobile}/>
+  // Full-bleed terminal: no header, no tool strip — it owns the whole area
+  // between the sidebar and the window edges.
+  if(tool==="sphere"){
+    return (
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column"}}>
+        <ClientIntelligence user={user} isMobile={isMobile}
+          onNavigate={onNavigate} onOpenTool={openTool}/>
+      </div>
+    );
+  }
 
-      {/* Tool selector */}
+  return(
+    <div style={{padding:isMobile?"16px 14px 40px":"24px 28px 40px",boxSizing:"border-box"}}>
+      <button onClick={()=>setTool("sphere")}
+        style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,padding:"8px 13px",
+          borderRadius:9,cursor:"pointer",background:"rgba(34,211,238,.1)",
+          border:"1px solid rgba(34,211,238,.4)",color:"#22d3ee",
+          fontFamily:C.F,fontSize:10.5,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
+        ← Back to Sphere Terminal
+      </button>
+
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
           const TIcon = Icon[t.icon];
@@ -1798,10 +1826,10 @@ export default function ClientPanel({ user, planKey, isMobile }){
         })}
       </div>
 
-      {tool==="briefing" && <DailyBriefing/>}
-      {tool==="pipeline" && <ClientPipeline user={user}/>}
-      {tool==="notes"    && <DealNotes/>}
-      {tool==="import"   && <ClientImport user={user}/>}
+      {tool==="briefing" && <DailyBriefing key={`b-${seed}`}/>}
+      {tool==="pipeline" && <ClientPipeline key={`p-${seed}`} user={user}/>}
+      {tool==="notes"    && <DealNotes key={`n-${seed}`}/>}
+      {tool==="import"   && <ClientImport key={`i-${seed}`} user={user}/>}
     </div>
   );
 }
