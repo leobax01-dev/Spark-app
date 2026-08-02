@@ -4754,7 +4754,7 @@ function MainApp({user,onLogout}){
   // no shell title block. Autopilot joins them because the Command Matrix owns
   // its own full-width header — the shell title block was the duplicate
   // "SPARK Autopilot + PREMIUM" banner stacked above it.
-  const FULL_BLEED_TAB_IDS = [...OPERATIONS_TAB_IDS, "autopilot", "transactions", "clients"];
+  const FULL_BLEED_TAB_IDS = [...OPERATIONS_TAB_IDS, "autopilot", "transactions", "clients", "market"];
   const NAV=isBroker ? [
     {id:"overview",     icon:"📊", label:"Executive Overview",   section:"OPERATIONS"},
     {id:"radar",        icon:"📡", label:"Surveillance Radar",   section:"OPERATIONS"},
@@ -5146,6 +5146,7 @@ function MainApp({user,onLogout}){
               {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}
               {tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile} onNavigate={setTab}/></ErrorBoundary>}
               {tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile} onNavigate={setTab}/></ErrorBoundary>}
+              {tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile} onNavigate={setTab}/></ErrorBoundary>}
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
@@ -5168,7 +5169,7 @@ function MainApp({user,onLogout}){
 
                 {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
                 {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-                {tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+                {tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
               </div>
             </div>
           )}
@@ -5192,6 +5193,7 @@ function MainApp({user,onLogout}){
               {tab==="autopilot"&&<ErrorBoundary label="Autopilot"><AutopilotPanel user={user} voice={voice} planKey={planKey} onNavigate={setTab} isMobile={isMobile}/></ErrorBoundary>}
               {tab==="transactions"&&<ErrorBoundary label="Deals"><TransactionPanel user={user} planKey={planKey} isMobile={isMobile} onNavigate={setTab}/></ErrorBoundary>}
               {tab==="clients"&&<ErrorBoundary label="Clients"><ClientPanel user={user} planKey={planKey} isMobile={isMobile} onNavigate={setTab}/></ErrorBoundary>}
+              {tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile} onNavigate={setTab}/></ErrorBoundary>}
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",padding:"32px 36px",position:"relative",zIndex:1}}>
@@ -5210,7 +5212,7 @@ function MainApp({user,onLogout}){
 
                 {tab==="affiliate"&&<AffiliatePanel user={user} planKey={planKey}/>}
                 {tab==="settings"&&<><BillingPanel planKey={planKey} setPlanKey={setPlanKey} credits={credits} setCredits={setCredits} userEmail={user.email} user={user} intendedPlan={intendedPlan}/><div style={{marginTop:28}}><SettingsPanel user={user} planKey={planKey} onLogout={doLogout} apiKeys={apiKeys} setApiKeys={setApiKeys} voice={voice} setVoice={setVoice}/></div></>}
-                {tab==="market"&&<ErrorBoundary label="Market"><MarketPanel user={user} planKey={planKey} isMobile={isMobile}/></ErrorBoundary>}{tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
+                {tab==="calculator"&&<ErrorBoundary label="Calculator"><CommissionCalculator user={user} planKey={planKey}/></ErrorBoundary>}{tab==="team"&&<ErrorBoundary label="Team Settings"><BrokerTeamSettings user={user}/></ErrorBoundary>}
               </div>
             </div>
           )}

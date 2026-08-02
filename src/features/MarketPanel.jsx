@@ -5,6 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import { lsGet, lsSet, cloudLoad, cloudSync } from "../utils/storage";
 import Icon from "../components/Icons";
+import MacroIntelligence from "./MacroIntelligence";
 import { Card, Label, Button, CopyButton } from "../components/UI";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,273 +285,10 @@ Return ONLY valid JSON:
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 2 — LEAD RESPONSE GENERATOR
 // ─────────────────────────────────────────────────────────────────────────────
-const LEAD_SOURCES = [
-  "Zillow Inquiry","Realtor.com Inquiry","Open House Sign-In",
-  "Referral","Cold Call / Door Knock","Social Media DM",
-  "Website Form","Past Client Re-Engagement","FSBO Outreach","Expired Listing"
-];
-
-function LeadResponse(){
-  const [inputs,setInputs]=useState({
-    leadSource:"Zillow Inquiry", leadName:"", leadPhone:"",
-    propertyAddress:"", propertyPrice:"", leadMessage:"",
-    agentName:"", agentMarket:"", responseTime:"",
-  });
-  const [result,setResult]=useState(null);
-  const [loading,setLoading]=useState(false);
-  const [activeSeq,setActiveSeq]=useState("immediate");
-
-  function set(k){ return v=>setInputs(p=>({...p,[k]:v})); }
-
-  async function generate(){
-    if(!inputs.leadName||!inputs.leadSource){
-      alert("Please enter lead name and source"); return;
-    }
-    setLoading(true);
-    try{
-      const r = await fetch("/api/claude",{
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          system:"You are SPARK's Analyst — the team member who turns raw leads into a real conversion plan for this agent. Generate personalized, high-converting lead response sequences. Return ONLY valid JSON, no markdown.",
-          messages:[{role:"user",content:
-            `Generate a complete lead response sequence for:
-Lead: ${inputs.leadName}, Source: ${inputs.leadSource}
-Property interest: ${inputs.propertyAddress} (${inputs.propertyPrice})
-Their message: "${inputs.leadMessage}"
-Agent: ${inputs.agentName}, Market: ${inputs.agentMarket}
-Response time: ${inputs.responseTime||"ASAP"}
-
-Return ONLY valid JSON:
-{"lead_profile":"2-sentence assessment of this lead's likely motivation and readiness","immediate_text":"immediate SMS response — personal, warm, under 160 chars, asks one qualifying question","immediate_email":{"subject":"email subject","body":"immediate email response — 3 short paragraphs, personal, references their specific inquiry, ends with clear next step"},"day3_followup":{"text":"day 3 text — brief check-in, different angle from first message","email":{"subject":"subject","body":"day 3 email — value add, market insight or relevant listing, soft CTA"}},"day7_reengagement":{"text":"day 7 text — creates urgency without being pushy","email":{"subject":"subject","body":"day 7 email — new approach, ask a specific question, make it about them"}},"voicemail_script":"30-second voicemail script — warm, specific, creates reason to call back","qualifying_questions":["5 most important qualifying questions to ask this specific lead"],"objection_responses":{"not_ready":"response if they say they're not ready yet","just_looking":"response if they say just looking","have_agent":"response if they say they already have an agent"},"conversion_tip":"one specific tip for converting this type of lead from this source"}`
-          }]
-        })
-      });
-      const d = await r.json();
-      if(!r.ok || d?.error || d?.type==="error"){
-        throw new Error(d?.error?.message || d?.error || `HTTP ${r.status}`);
-      }
-      const raw = d.content?.[0]?.text||"";
-      const cleaned = raw.replace(/```json\n?/g,"").replace(/```\n?/g,"").trim();
-      const first=cleaned.indexOf("{"); const last=cleaned.lastIndexOf("}");
-      if(first!==-1&&last!==-1){ setResult(JSON.parse(cleaned.slice(first,last+1))); }
-    }catch(e){
-      console.error("Lead response generation failed:", e);
-      alert(`Couldn't generate the response: ${e.message}`);
-    }
-    setLoading(false);
-  }
-
-  const SEQ_TABS=[
-    {id:"immediate",label:"Immediate",icon:"Zap",   color:C.emerald},
-    {id:"day3",     label:"Day 3",    icon:"Weekly",color:C.indigo},
-    {id:"day7",     label:"Day 7",    icon:"Sphere",color:C.amber},
-    {id:"tools",    label:"Tools",    icon:"Wrench",color:C.violet},
-  ];
-
-  return(
-    <div style={{animation:"fadeUp .35s ease"}}>
-      <MCard accent={C.emerald}>
-        <MLabel color={C.emerald}>LEAD DETAILS</MLabel>
-
-        {/* Lead source selector */}
-        <div style={{marginBottom:12}}>
-          <div style={{fontSize:9,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,
-            fontWeight:700,marginBottom:7}}>LEAD SOURCE</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {LEAD_SOURCES.map(s=>(
-              <button key={s} onClick={()=>set("leadSource")(s)}
-                style={{padding:"5px 10px",borderRadius:16,
-                  border:`1px solid ${inputs.leadSource===s?C.emerald+"55":C.border}`,
-                  background:inputs.leadSource===s?`${C.emerald}10`:"transparent",
-                  color:inputs.leadSource===s?C.emerald:C.textDim,
-                  cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:600}}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <MField label="LEAD NAME" value={inputs.leadName} onChange={set("leadName")} placeholder="John & Amy Martinez"/>
-          <MField label="THEIR PHONE" value={inputs.leadPhone} onChange={set("leadPhone")} placeholder="+1 305 555 0100"/>
-          <MField label="PROPERTY ADDRESS" value={inputs.propertyAddress} onChange={set("propertyAddress")} placeholder="123 Ocean Dr, Miami Beach"/>
-          <MField label="LIST PRICE" value={inputs.propertyPrice} onChange={set("propertyPrice")} placeholder="$1,250,000"/>
-          <MField label="YOUR NAME" value={inputs.agentName} onChange={set("agentName")} placeholder="Sarah Williams"/>
-          <MField label="YOUR MARKET" value={inputs.agentMarket} onChange={set("agentMarket")} placeholder="Miami Beach luxury"/>
-        </div>
-        <MField label="THEIR MESSAGE / INQUIRY (paste if available)" value={inputs.leadMessage}
-          onChange={set("leadMessage")} placeholder="Hi, I'm interested in the property at 123 Ocean Dr. Is it still available? We're looking to move in the next few months..." area rows={3}/>
-      </MCard>
-
-      <MBtn onClick={generate} loading={loading} color={C.emerald}>
-        <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Icon.Zap size={14}/> Generate Full Response Sequence</span>
-      </MBtn>
-
-      {result&&(
-        <div style={{marginTop:20,animation:"scaleIn .28s ease"}}>
-          {/* Lead profile */}
-          <MCard accent={C.cyan}>
-            <MLabel color={C.cyan}>LEAD PROFILE</MLabel>
-            <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.7}}>
-              {result.lead_profile}
-            </p>
-          </MCard>
-
-          {/* Sequence tabs */}
-          <div style={{display:"flex",gap:6,marginBottom:14,
-            background:"rgba(255,255,255,.025)",borderRadius:10,padding:3}}>
-            {SEQ_TABS.map(t=>{
-              const TIcon = Icon[t.icon];
-              return(
-              <button key={t.id} onClick={()=>setActiveSeq(t.id)}
-                style={{flex:1,padding:"8px 4px",borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",gap:4,
-                  border:`1px solid ${activeSeq===t.id?t.color+"28":"transparent"}`,
-                  background:activeSeq===t.id?`linear-gradient(135deg,${t.color}14,${t.color}08)`:"transparent",
-                  color:activeSeq===t.id?t.color:C.textDim,cursor:"pointer",
-                  fontSize:9,fontWeight:700,fontFamily:C.F,letterSpacing:.8}}>
-                {TIcon&&<TIcon size={11}/>} {t.label.toUpperCase()}
-              </button>
-              );
-            })}
-          </div>
-
-          {/* Immediate */}
-          {activeSeq==="immediate"&&(
-            <div style={{animation:"scaleIn .22s ease"}}>
-              <MCard accent={C.emerald}>
-                <div style={{display:"flex",justifyContent:"space-between",
-                  alignItems:"center",marginBottom:10}}>
-                  <MLabel color={C.emerald}>SEND NOW — TEXT</MLabel>
-                  <MCopyBtn text={result.immediate_text}/>
-                </div>
-                <p style={{fontFamily:C.F,fontSize:14,fontWeight:600,color:C.text,
-                  margin:0,lineHeight:1.7}}>{result.immediate_text}</p>
-                <div style={{fontSize:10,color:C.textDim,fontFamily:C.F,marginTop:6}}>
-                  {(result.immediate_text||"").length} / 160 chars
-                </div>
-              </MCard>
-              {result.immediate_email&&(
-                <MCard accent={C.indigo}>
-                  <div style={{display:"flex",justifyContent:"space-between",
-                    alignItems:"center",marginBottom:8}}>
-                    <MLabel color={C.indigo}>SEND NOW — EMAIL</MLabel>
-                    <MCopyBtn text={`Subject: ${result.immediate_email.subject}\n\n${result.immediate_email.body}`}/>
-                  </div>
-                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,
-                    color:C.text,marginBottom:8}}>
-                    Subject: {result.immediate_email.subject}
-                  </div>
-                  <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,
-                    lineHeight:1.8,whiteSpace:"pre-wrap"}}>{result.immediate_email.body}</p>
-                </MCard>
-              )}
-              {result.voicemail_script&&(
-                <MCard accent={C.violet}>
-                  <div style={{display:"flex",justifyContent:"space-between",
-                    alignItems:"center",marginBottom:8}}>
-                    <MLabel color={C.violet}>VOICEMAIL SCRIPT</MLabel>
-                    <MCopyBtn text={result.voicemail_script}/>
-                  </div>
-                  <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,
-                    lineHeight:1.8,fontStyle:"italic"}}>"{result.voicemail_script}"</p>
-                </MCard>
-              )}
-            </div>
-          )}
-
-          {/* Day 3 */}
-          {activeSeq==="day3"&&result.day3_followup&&(
-            <div style={{animation:"scaleIn .22s ease"}}>
-              <MCard accent={C.indigo}>
-                <div style={{display:"flex",justifyContent:"space-between",
-                  alignItems:"center",marginBottom:10}}>
-                  <MLabel color={C.indigo}>DAY 3 — TEXT</MLabel>
-                  <MCopyBtn text={result.day3_followup.text}/>
-                </div>
-                <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,
-                  margin:0,lineHeight:1.7}}>{result.day3_followup.text}</p>
-              </MCard>
-              {result.day3_followup.email&&(
-                <MCard accent={C.indigo}>
-                  <div style={{display:"flex",justifyContent:"space-between",
-                    alignItems:"center",marginBottom:8}}>
-                    <MLabel color={C.indigo}>DAY 3 — EMAIL</MLabel>
-                    <MCopyBtn text={`Subject: ${result.day3_followup.email.subject}\n\n${result.day3_followup.email.body}`}/>
-                  </div>
-                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text,marginBottom:8}}>
-                    Subject: {result.day3_followup.email.subject}
-                  </div>
-                  <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,
-                    lineHeight:1.8,whiteSpace:"pre-wrap"}}>{result.day3_followup.email.body}</p>
-                </MCard>
-              )}
-            </div>
-          )}
-
-          {/* Day 7 */}
-          {activeSeq==="day7"&&result.day7_reengagement&&(
-            <div style={{animation:"scaleIn .22s ease"}}>
-              <MCard accent={C.amber}>
-                <div style={{display:"flex",justifyContent:"space-between",
-                  alignItems:"center",marginBottom:10}}>
-                  <MLabel color={C.amber}>DAY 7 — TEXT</MLabel>
-                  <MCopyBtn text={result.day7_reengagement.text}/>
-                </div>
-                <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,
-                  margin:0,lineHeight:1.7}}>{result.day7_reengagement.text}</p>
-              </MCard>
-              {result.day7_reengagement.email&&(
-                <MCard accent={C.amber}>
-                  <div style={{display:"flex",justifyContent:"space-between",
-                    alignItems:"center",marginBottom:8}}>
-                    <MLabel color={C.amber}>DAY 7 — EMAIL</MLabel>
-                    <MCopyBtn text={`Subject: ${result.day7_reengagement.email.subject}\n\n${result.day7_reengagement.email.body}`}/>
-                  </div>
-                  <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text,marginBottom:8}}>
-                    Subject: {result.day7_reengagement.email.subject}
-                  </div>
-                  <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,
-                    lineHeight:1.8,whiteSpace:"pre-wrap"}}>{result.day7_reengagement.email.body}</p>
-                </MCard>
-              )}
-            </div>
-          )}
-
-          {/* Tools */}
-          {activeSeq==="tools"&&(
-            <div style={{animation:"scaleIn .22s ease"}}>
-              <ResultList label="QUALIFYING QUESTIONS" items={result.qualifying_questions} color={C.violet}/>
-              {result.objection_responses&&(
-                <MCard accent={C.rose}>
-                  <MLabel color={C.rose}>OBJECTION RESPONSES</MLabel>
-                  {[
-                    {key:"not_ready",label:"\"I'm not ready yet\""},
-                    {key:"just_looking",label:"\"Just looking\""},
-                    {key:"have_agent",label:"\"I already have an agent\""},
-                  ].map((o,i)=>(
-                    <div key={i} style={{marginBottom:12}}>
-                      <div style={{fontFamily:C.F,fontSize:10,color:C.rose,
-                        fontWeight:700,marginBottom:4}}>{o.label}</div>
-                      <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,
-                        margin:0,lineHeight:1.6}}>{result.objection_responses[o.key]}</p>
-                    </div>
-                  ))}
-                </MCard>
-              )}
-              {result.conversion_tip&&(
-                <MCard accent={C.emerald}>
-                  <MLabel color={C.emerald}>CONVERSION TIP</MLabel>
-                  <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,
-                    margin:0,lineHeight:1.6}}>{result.conversion_tip}</p>
-                </MCard>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
+// The legacy manual "Lead Details" form (LeadResponse) and its LEAD_SOURCES
+// list were removed here. An agent should not retype a lead that already
+// arrived in their system — MacroIntelligence's Inbound Queue reads real
+// capture-page submissions (api/google-data.js capture_lead) instead.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TOOL 3 — BUSINESS PERFORMANCE DASHBOARD
@@ -894,20 +632,40 @@ function AnalystHeader(){
   );
 }
 
-export default function MarketPanel({ user, planKey, isMobile }){
-  const [tool, setTool] = useState("leads");
+export default function MarketPanel({ user, planKey, isMobile, onNavigate }){
+  // The terminal is the default view. The legacy "Lead Response" tool — a
+  // manual LEAD DETAILS form an agent had to retype an inbound lead into — is
+  // gone; the Inbound Queue reads real capture-page submissions instead.
+  const [tool, setTool] = useState("terminal");
+  const [seed, setSeed] = useState(0);
+
+  const openTool = (id)=>{ setSeed(n=>n+1); setTool(id); };
 
   const TOOLS=[
-    {id:"leads",     label:"Lead Response",  icon:"Zap",   color:C.emerald, desc:"Full response sequence for any lead"},
-    {id:"report",    label:"Market Report",  icon:"Market",color:C.cyan,    desc:"Brandable neighborhood intel report"},
-    {id:"dashboard", label:"My Business",    icon:"Coaching",color:C.indigo,  desc:"GCI tracker, pipeline & AI coaching"},
+    {id:"report",    label:"Market Report",  icon:"Market",  color:C.cyan,   desc:"Brandable neighborhood intel report"},
+    {id:"dashboard", label:"My Business",    icon:"Coaching",color:C.indigo, desc:"GCI tracker, pipeline & AI coaching"},
   ];
 
-  return(
-    <div style={{paddingBottom:40}}>
-      <AnalystHeader/>
+  if(tool==="terminal"){
+    return (
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column"}}>
+        <MacroIntelligence user={user} isMobile={isMobile}
+          onNavigate={onNavigate} onOpenTool={openTool}/>
+      </div>
+    );
+  }
 
-      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(3,1fr)",gap:8,marginBottom:20}}>
+  return(
+    <div style={{padding:isMobile?"16px 14px 40px":"24px 28px 40px",boxSizing:"border-box"}}>
+      <button onClick={()=>setTool("terminal")}
+        style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,padding:"8px 13px",
+          borderRadius:9,cursor:"pointer",background:"rgba(34,197,94,.1)",
+          border:"1px solid rgba(34,197,94,.4)",color:"#22c55e",
+          fontFamily:C.F,fontSize:10.5,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
+        ← Back to Macro Terminal
+      </button>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8,marginBottom:20}}>
         {TOOLS.map(t=>{
           const TIcon = Icon[t.icon];
           return(
@@ -929,9 +687,8 @@ export default function MarketPanel({ user, planKey, isMobile }){
         })}
       </div>
 
-      {tool==="leads"     && <LeadResponse/>}
-      {tool==="report"    && <NeighborhoodReport/>}
-      {tool==="dashboard" && <BusinessDashboard user={user}/>}
+      {tool==="report"    && <NeighborhoodReport key={`r-${seed}`}/>}
+      {tool==="dashboard" && <BusinessDashboard key={`d-${seed}`} user={user}/>}
     </div>
   );
 }
