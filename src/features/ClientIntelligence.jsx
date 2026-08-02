@@ -32,8 +32,10 @@ import {
   Zap, X, Search, Mic, Send, Paperclip, Loader2, CheckCircle2, ChevronUp,
   ChevronDown, ArrowUpDown, Users, Wallet, Bell, Activity, Link2, Home,
   Phone, Mail, MessageSquare, Presentation, Briefcase, AlertTriangle, Clock,
+  UploadCloud,
 } from "lucide-react";
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
+import MigrationCenter from "./MigrationCenter";
 import {
   enrichClient, sphereTelemetry, synthesizeSphere, linkSynthConnections,
   parseBudget, TIERS,
@@ -635,6 +637,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
   const [committing, setCommitting] = useState(false);
   const [bridgeBusy, setBridgeBusy] = useState(false);
   const [toast, setToast] = useState(null);
+  const [migrating, setMigrating] = useState(false);
 
   const rootRef = useRef(null);
   const cw = useContainerWidth(rootRef);
@@ -811,7 +814,8 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
         scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent",
       }}>
         {/* header */}
-        <div style={{ marginBottom: 18 }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+        <div style={{ minWidth: 0, marginRight: "auto" }}>
           <div className="tracking-wider text-slate-400" style={{
             fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2.2, color: SLATE_DIM,
             textTransform: "uppercase", marginBottom: 4,
@@ -822,6 +826,15 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
             </span>{" "}
             RELATIONSHIPS UNDER ACTIVE TELEMETRY
           </div>
+        </div>
+        <button onClick={() => setMigrating(true)} style={{
+          flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "10px 15px",
+          borderRadius: 10, cursor: "pointer", background: `${PURPLE}1c`,
+          border: `1px solid ${PURPLE}77`, color: PURPLE_LT,
+          fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
+        }}>
+          <UploadCloud size={12} /> [ Migrate Sphere ]
+        </button>
         </div>
 
         <OmniIntake onParsed={setProposal} pad={pad} />
@@ -971,6 +984,10 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
       )}
 
       <CommitModal proposal={proposal} busy={committing} onDiscard={() => setProposal(null)} onCommit={commit} />
+
+      {migrating && (
+        <MigrationCenter user={user} onClose={() => setMigrating(false)} onImported={load} />
+      )}
 
       {toast && (
         <div className="backdrop-blur-2xl" style={{

@@ -1780,7 +1780,7 @@ export default function ClientPanel({ user, planKey, isMobile, onNavigate }){
     {id:"briefing",  label:"Daily Briefing", icon:"Sun",   color:C.indigo,  desc:"Your AI morning action plan"},
     {id:"pipeline",  label:"Pipeline",       icon:"Funnel",color:C.violet,  desc:"Track & manage all clients"},
     {id:"notes",     label:"Note Analyzer",  icon:"Brain", color:C.cyan,    desc:"Turn rough notes into intel"},
-    {id:"import",    label:"Import CRM",     icon:"Inbox", color:C.emerald, desc:"Bring in your existing clients"},
+    {id:"import",    label:"Migrate CRM",    icon:"Inbox", color:C.emerald, desc:"Open the Migration Command Center"},
   ];
 
   // Full-bleed terminal: no header, no tool strip — it owns the whole area
@@ -1829,7 +1829,24 @@ export default function ClientPanel({ user, planKey, isMobile, onNavigate }){
       {tool==="briefing" && <DailyBriefing key={`b-${seed}`}/>}
       {tool==="pipeline" && <ClientPipeline key={`p-${seed}`} user={user}/>}
       {tool==="notes"    && <DealNotes key={`n-${seed}`}/>}
-      {tool==="import"   && <ClientImport key={`i-${seed}`} user={user}/>}
+      {/* The legacy CSV box is superseded by the Migration Command Center,
+          which lives in the Sphere terminal. This tile routes there rather
+          than keeping two divergent import paths alive. */}
+      {tool==="import"   && (
+        <div style={{textAlign:"center",padding:"36px 16px"}}>
+          <div style={{fontFamily:C.F,fontSize:14,fontWeight:800,color:C.text,marginBottom:8}}>
+            Import moved to the Migration Command Center
+          </div>
+          <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 auto 18px",maxWidth:360,lineHeight:1.7}}>
+            Column mapping, duplicate detection and the commit gate all live there now.
+          </p>
+          <button onClick={()=>setTool("sphere")} style={{padding:"12px 22px",borderRadius:10,cursor:"pointer",
+            background:"rgba(168,85,247,.12)",border:"1px solid rgba(168,85,247,.5)",color:"#c084fc",
+            fontFamily:C.F,fontSize:11,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
+            [ Open Migration Command Center ]
+          </button>
+        </div>
+      )}
     </div>
   );
 }
