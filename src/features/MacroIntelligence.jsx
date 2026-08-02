@@ -36,6 +36,7 @@ import {
   Copy, Check, Send, Trash2, Link2, Radar, Clock, AlertTriangle, FileText,
 } from "lucide-react";
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
+import { useContainerWidth, breakpoints, kpiRail, figureSize, headingSize, chartHeight, axisProps, gridProps, legendProps } from "../responsive";
 import {
   enrichLead, leadsFromClients, macroTelemetry, absorption,
   synthesizeLeads, synthesizeFarms, synthesizeMacroSeries, parseMoney, agoLabel,
@@ -69,18 +70,6 @@ function fmtMoney(n) {
 }
 function fmtFull(n) { return `$${Math.round(Number(n) || 0).toLocaleString()}`; }
 
-function useContainerWidth(ref) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((e) => { const r = e[0]?.contentRect; if (r) setW(r.width); });
-    ro.observe(el);
-    setW(el.getBoundingClientRect().width);
-    return () => ro.disconnect();
-  }, [ref]);
-  return w;
-}
 
 function useTicker(target, duration = 1.0) {
   const [shown, setShown] = useState(Number(target) || 0);
@@ -97,7 +86,7 @@ function useTicker(target, duration = 1.0) {
 }
 
 // ── HUD ───────────────────────────────────────────────────────────────────
-function HudCard({ label, value, sub, color, icon: I, format = "int", bar, pulse, unavailable }) {
+function HudCard({ bp, cardStyle, label, value, sub, color, icon: I, format = "int", bar, pulse, unavailable }) {
   const shown = useTicker(unavailable ? 0 : value);
   const text = unavailable ? "—"
     : format === "money" ? fmtMoney(shown)
@@ -106,7 +95,7 @@ function HudCard({ label, value, sub, color, icon: I, format = "int", bar, pulse
           : `${Math.round(shown)}`;
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      minWidth: 0, padding: 15, borderRadius: 13,
+      minWidth: 0, padding: 15, borderRadius: 13, ...cardStyle,
       background: `#111111`,
       backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
@@ -116,20 +105,19 @@ function HudCard({ label, value, sub, color, icon: I, format = "int", bar, pulse
         {I && <I size={11} color={color} />}
         <span className="tracking-wider text-slate-400" style={{
           fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5, color: SLATE_DIM,
-          textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          textTransform: "uppercase", lineHeight: 1.35,
         }}>[ {label} ]</span>
       </div>
       <div className="font-mono" style={{
-        fontFamily: MONO, fontSize: 25, fontWeight: 800, color: unavailable ? SLATE_DIM : color,
-        textShadow: "none", lineHeight: 1.1,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        fontFamily: MONO, fontSize: figureSize(bp || {}), fontWeight: 800, color: unavailable ? SLATE_DIM : color,
+        lineHeight: 1.1, whiteSpace: "nowrap",
       }}>{text}</div>
       {bar != null && (
         <div style={{ height: 5, borderRadius: 3, background: "#27272a", overflow: "hidden", marginTop: 8 }}>
           <div style={{ width: `${Math.max(0, Math.min(100, bar))}%`, height: "100%", background: color, boxShadow: "none", transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
         </div>
       )}
-      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 5, lineHeight: 1.45 }}>{sub}</div>
+      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: "auto", paddingTop: 6, lineHeight: 1.45 }}>{sub}</div>
     </div>
   );
 }
@@ -409,6 +397,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
   const rootRef = useRef(null);
   const cw = useContainerWidth(rootRef);
   const wide = cw === 0 || cw >= 780;
+  const bp = breakpoints(cw);
   const mid = cw === 0 || cw >= 560;
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); }, [toast]);
@@ -545,7 +534,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
             }}>
               <Radio size={10} color={GREEN} /> Macro-Intelligence &amp; Autonomous Inbound Terminal
             </div>
-            <div style={{ fontFamily: F, fontSize: 21, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
+            <div style={{ fontFamily: F, fontSize: headingSize(bp), fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
               <span className="font-mono" style={{ fontFamily: MONO, color: GREEN, textShadow: "none"}}>
                 {leads.length}
               </span>{" "}
@@ -581,23 +570,22 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
         </div>
 
         {/* HUD */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full" style={{
-          display: "grid", width: "100%", gap: 16, marginBottom: 20,
-          gridTemplateColumns: wide ? "repeat(4, minmax(0,1fr))" : mid ? "repeat(2, minmax(0,1fr))" : "minmax(0,1fr)",
-        }}>
-          <HudCard label="30-Day Inbound Velocity" value={hud.leads30} color={GREEN} icon={Inbox}
+        {(() => { const r = kpiRail(bp, { cols: 4 }); return (
+        <div className={r.className} style={{ ...r.style, marginBottom: 20 }}>
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="30-Day Inbound Velocity" value={hud.leads30} color={GREEN} icon={Inbox}
             sub={`${hud.leads30} lead${hud.leads30 !== 1 ? "s" : ""} · ${hud.cvr.toFixed(1)}% engaged`} />
-          <HudCard label="YTD GCI Tracker" value={hud.ytd} color={CYAN} icon={Wallet} format="money"
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="YTD GCI Tracker" value={hud.ytd} color={CYAN} icon={Wallet} format="money"
             bar={hud.gciPct ?? 0}
             sub={hud.annualTarget > 0
               ? `${(hud.gciPct ?? 0).toFixed(0)}% of ${fmtMoney(hud.annualTarget)} annual target`
               : "Set a monthly GCI target in My Business"} />
-          <HudCard label="Local Absorption Rate" value={0} color={AMBER} icon={TrendingUp} format="months"
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Local Absorption Rate" value={0} color={AMBER} icon={TrendingUp} format="months"
             unavailable={abs.months == null}
             sub={abs.months == null ? "No sold-listing feed wired up — months of supply can't be computed" : abs.label} />
-          <HudCard label="Active Micro-Farms" value={hud.farms} color={PURPLE_LT} icon={Target}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Active Micro-Farms" value={hud.farms} color={PURPLE_LT} icon={Target}
             sub={`${hud.farmsMonitored} area${hud.farmsMonitored !== 1 ? "s" : ""} under monitoring`} />
         </div>
+        ); })()}
 
         {anySim && (
           <div className="font-mono" style={{
@@ -704,20 +692,20 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
                   fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.8, color: CYAN,
                   textTransform: "uppercase", marginBottom: 12,
                 }}>[ City-Wide Pricing vs Inventory · 12mo ]</div>
-                <div style={{ height: 260, width: "100%", flexShrink: 0 }}>
+                <div style={{ height: chartHeight(bp), width: "100%", flexShrink: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-                      <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
-                      <XAxis dataKey="month" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="l" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="r" orientation="right" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
+                      <CartesianGrid {...gridProps(bp)} />
+                      <XAxis dataKey="month" {...axisProps(bp)} />
+                      <YAxis yAxisId="l" {...axisProps(bp)} width={bp.mobile ? 34 : 48} />
+                      <YAxis yAxisId="r" orientation="right" {...axisProps(bp)} width={bp.mobile ? 34 : 48} />
                       {/* Rate needs its own scale. Sharing the inventory axis
                           (1200-1600) rendered a 6.2% line flat along the floor,
                           which read as "no data" rather than a rate. */}
                       <YAxis yAxisId="rate" hide domain={["dataMin - 0.6", "dataMax + 0.6"]} />
                       <Tooltip contentStyle={{ background: "#111111", border: `1px solid ${HAIRLINE}`, borderRadius: 9, fontFamily: MONO, fontSize: 11 }}
                         labelStyle={{ color: SLATE_DIM }} />
-                      <Legend wrapperStyle={{ fontFamily: MONO, fontSize: 9, color: SLATE_DIM }} />
+                      <Legend {...legendProps(bp)} />
                       {/* isAnimationActive={false} on every series — the animation
                           lifecycle does not resolve in this environment and the
                           series render completely empty without it. */}

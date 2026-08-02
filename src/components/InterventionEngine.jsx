@@ -33,6 +33,7 @@ import {
   DollarSign, Loader2, Send, CheckCircle2, X, ArrowUpDown, Layers,
 } from "lucide-react";
 import SparkBoot from "./SparkBoot";
+import { useContainerWidth, breakpoints, chartHeight, axisProps, gridProps, legendProps } from "../responsive";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -210,6 +211,9 @@ function buildPlaybook(d) {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function InterventionEngine({ user, focusDealId }) {
+  const opsRef = useRef(null);
+  const cw = useContainerWidth(opsRef);
+  const bp = breakpoints(cw);
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -434,7 +438,7 @@ export default function InterventionEngine({ user, focusDealId }) {
   const selColor = selected ? QUADRANTS[selected.quadrant].color : PURPLE_LT;
 
   return (
-    <div
+    <div ref={opsRef}
       className="w-full h-full flex flex-col bg-[#050505] text-white p-6 gap-6 overflow-y-auto"
       style={{
         width: "100%", height: "100%", display: "flex", flexDirection: "column",
@@ -518,7 +522,7 @@ export default function InterventionEngine({ user, focusDealId }) {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 14, right: 22, bottom: 14, left: 4 }}>
-                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
+                  <CartesianGrid {...gridProps(bp)} />
                   <XAxis type="number" dataKey="daysStalled" name="Days Stalled" unit="d"
                     stroke="rgba(255,255,255,0.2)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} />
                   <YAxis type="number" dataKey="volume" name="Volume"

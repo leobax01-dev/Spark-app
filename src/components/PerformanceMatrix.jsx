@@ -34,6 +34,7 @@ import {
   Loader2, X, Send, ArrowRight, Crown,
 } from "lucide-react";
 import SparkBoot from "./SparkBoot";
+import { useContainerWidth, breakpoints, chartHeight, axisProps, gridProps, legendProps } from "../responsive";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -239,6 +240,9 @@ function synthesizeAgents(real, deskVolume) {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function PerformanceMatrix({ user, onNavigate }) {
+  const opsRef = useRef(null);
+  const cw = useContainerWidth(opsRef);
+  const bp = breakpoints(cw);
   const [deals, setDeals] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -416,7 +420,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
   if (loading) return <SparkBoot label="ANALYZING BROKERAGE ALPHA & PRODUCTION METRICS..." />;
 
   return (
-    <div
+    <div ref={opsRef}
       className="w-full h-full flex flex-col bg-[#050505] text-white p-6 gap-6 overflow-y-auto"
       style={{
         width: "100%", height: "100%", display: "flex", flexDirection: "column",
@@ -529,7 +533,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
                     <stop offset="100%" stopColor={CYAN} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                <CartesianGrid {...gridProps(bp)} />
                 <XAxis dataKey="name" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: F }} />
                 <YAxis yAxisId="l" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }}
                   tickFormatter={view === "volume" ? fmtMoney : view === "velocity" ? (v) => `${Math.round(v)}d` : (v) => `${Math.round(v)}%`} />

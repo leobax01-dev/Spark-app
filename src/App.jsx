@@ -5106,7 +5106,7 @@ function MainApp({user,onLogout}){
   );
 
   return(
-    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
+    <div className="spark-vh" style={{display:"flex",flexDirection:"column",height:"100dvh",background:C.bg,color:C.text,fontFamily:C.F,overflow:"hidden"}}>
       <OrbBg/>
       <ToastContainer/>
       {isBroker&&<SparkHUD/>}
@@ -5135,7 +5135,7 @@ function MainApp({user,onLogout}){
             // Viewport breakout: no padding/maxWidth wrapper, no title block —
             // the Operations tab fills the full area between the header and
             // bottom nav, edge-to-edge.
-            <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
+            <div className="w-full min-h-[100dvh] relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,minHeight:0,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
               {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
@@ -5149,7 +5149,7 @@ function MainApp({user,onLogout}){
             </div>
           ):(
             <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch",
-              padding:"16px 14px 90px",position:"relative",zIndex:1}}>
+              padding:"16px 14px calc(96px + env(safe-area-inset-bottom, 0px))",position:"relative",zIndex:1}}>
               <div style={{maxWidth:"100%"}}>
                 <div style={{marginBottom:18}}>
                   <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:22,
@@ -5182,7 +5182,7 @@ function MainApp({user,onLogout}){
             // Viewport breakout: no padding, no maxWidth container, no title
             // block — the Operations tab stretches from the sidebar's right
             // edge to the window's top/bottom/right edges.
-            <div className="w-full h-screen relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
+            <div className="w-full min-h-[100dvh] relative bg-[#0a0a0a] overflow-hidden" style={{flex:1,minHeight:0,position:"relative",overflow:"hidden",background:"#0a0a0a"}}>
               {tab==="overview"&&<ErrorBoundary label="Executive Overview"><ExecutiveOverview user={user} onNavigate={navigateTo}/></ErrorBoundary>}
               {tab==="radar"&&<ErrorBoundary label="Surveillance Radar"><SurveillanceRadar user={user}/></ErrorBoundary>}
               {tab==="intervention"&&<ErrorBoundary label="Intervention Engine"><InterventionEngine user={user} focusDealId={focusDealId}/></ErrorBoundary>}
@@ -5415,7 +5415,7 @@ function LandingPage({onStart}){
   ];
 
   return(
-    <div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:C.F,overflowX:"hidden"}}>
+    <div style={{background:C.bg,minHeight:"100dvh",color:C.text,fontFamily:C.F,overflowX:"hidden"}}>
       <OrbBg/>
       <div style={{position:"relative",zIndex:1}}>
 
@@ -5975,7 +5975,7 @@ function AuthPage({mode,onAuth,onSwitch}){
   const inputStyle={width:"100%",background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:8,padding:"11px 14px",color:"rgba(255,255,255,.92)",fontSize:14,fontFamily:C.F,outline:"none",boxSizing:"border-box",transition:"border-color .18s"};
 
   return(
-    <div style={{minHeight:"100vh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F}}>
+    <div style={{minHeight:"100dvh",background:C.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:C.F}}>
       <OrbBg/>
       <ToastContainer/>
       <div style={{width:"100%",maxWidth:400,padding:"20px",position:"relative",zIndex:1,opacity:mounted?1:0,transition:"opacity .35s ease"}}>
@@ -6253,7 +6253,7 @@ function PublicLeadCapture({ agentEmail }){
   const agentFirst = agentProfile?.name?.split(" ")[0] || "them";
 
   return(
-    <div style={{minHeight:"100vh",background:"#08090e",display:"flex",
+    <div style={{minHeight:"100dvh",background:"#08090e",display:"flex",
       alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
       <div style={{width:"100%",maxWidth:440}}>
         <div style={{display:"flex",alignItems:"center",gap:9,justifyContent:"center",marginBottom:28}}>
@@ -6382,5 +6382,5 @@ export default function App(){
   if(screen==="landing") return <LandingPage onStart={m=>{ setAuthMode(m); setScreen("auth"); }}/>;
   if(screen==="auth")    return <AuthPage mode={authMode} onAuth={u=>{ setUser(u); setScreen("app"); }} onSwitch={()=>setAuthMode(m=>m==="login"?"signup":"login")}/>;
   if(screen==="app"&&user) return <MainApp user={user} onLogout={()=>{ LS.del("sp_onboarded"); setUser(null); setScreen("landing"); }}/>;
-  return <div style={{minHeight:"100vh",background:"#08090e"}}/>;
+  return <div style={{minHeight:"100dvh",background:"#08090e"}}/>;
 }

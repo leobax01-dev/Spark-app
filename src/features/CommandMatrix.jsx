@@ -38,6 +38,7 @@ import {
   AlertTriangle, Paperclip,
 } from "lucide-react";
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
+import { useContainerWidth, breakpoints, kpiRail, figureSize, headingSize } from "../responsive";
 import { buildBriefing, HIGH_DOM } from "./briefing";
 
 // ── design tokens ─────────────────────────────────────────────────────────
@@ -84,21 +85,6 @@ function fmtFull(n) { return `$${Math.round(n || 0).toLocaleString()}`; }
 const BP_SPLIT = 780; // lg: — 7/5 command split
 const BP_TICKER = 560; // md: — 3-up ticker grid
 
-function useContainerWidth(ref) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((entries) => {
-      const cr = entries[0]?.contentRect;
-      if (cr) setW(cr.width);
-    });
-    ro.observe(el);
-    setW(el.getBoundingClientRect().width);
-    return () => ro.disconnect();
-  }, [ref]);
-  return w;
-}
 
 // ── framer-motion value ticker ────────────────────────────────────────────
 // Imperative only. The rendered value is plain state driven by onUpdate, so a
@@ -123,14 +109,14 @@ function useTicker(target, { duration = 1.1 } = {}) {
 }
 
 // ── GCI ticker card ───────────────────────────────────────────────────────
-function TickerCard({ label, value, sub, color, format = "money", icon: IconCmp }) {
+function TickerCard({ bp, cardStyle, label, value, sub, color, format = "money", icon: IconCmp }) {
   const shown = useTicker(value);
   const text = format === "pct" ? `${Math.round(shown)}%`
     : format === "full" ? fmtFull(shown)
       : fmtMoney(shown);
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      minWidth: 0, padding: 14, borderRadius: 13,
+      minWidth: 0, padding: 14, borderRadius: 13, ...cardStyle,
       background: `#111111`,
       backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
@@ -139,16 +125,14 @@ function TickerCard({ label, value, sub, color, format = "money", icon: IconCmp 
         {IconCmp && <IconCmp size={11} color={color} />}
         <span className="tracking-wider text-slate-400" style={{
           fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5,
-          color: SLATE_DIM, textTransform: "uppercase", overflow: "hidden",
-          textOverflow: "ellipsis", whiteSpace: "nowrap",
+          color: SLATE_DIM, textTransform: "uppercase", lineHeight: 1.35,
         }}>[ {label} ]</span>
       </div>
       <div className="font-mono" style={{
-        fontFamily: MONO, fontSize: 25, fontWeight: 800, color,
-        textShadow: "none", lineHeight: 1.1,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        fontFamily: MONO, fontSize: figureSize(bp || {}), fontWeight: 800, color,
+        lineHeight: 1.1, whiteSpace: "nowrap",
       }}>{text}</div>
-      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 4, lineHeight: 1.45 }}>{sub}</div>
+      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: "auto", paddingTop: 6, lineHeight: 1.45 }}>{sub}</div>
     </div>
   );
 }
@@ -627,6 +611,7 @@ export default function CommandMatrix({
   // Before the observer's first measurement cw is 0; assume wide so the
   // desktop layout paints on the first frame instead of flashing single-column.
   const wide = cw === 0 || cw >= BP_SPLIT;
+  const bp = breakpoints(cw);
   const md = cw === 0 || cw >= BP_TICKER;
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3800); return () => clearTimeout(t); }, [toast]);
@@ -726,7 +711,7 @@ export default function CommandMatrix({
         {/* ── Pipeline wealth banner (full width) ── */}
         <div className="w-full" style={{ width: "100%", marginBottom: 18 }}>
           <div style={{
-            fontFamily: F, fontSize: 22, fontWeight: 800, lineHeight: 1.25, color: "#fff",
+            fontFamily: F, fontSize: headingSize(bp, 22), fontWeight: 800, lineHeight: 1.25, color: "#fff",
             textShadow: "none",
           }}>
             <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: "none"}}>
@@ -747,17 +732,16 @@ export default function CommandMatrix({
         {/* ── GCI ticker grid: 1 col → 3 cols, full width ── */}
         {/* Explicit tracks, not auto-fit: auto-fit produced a phantom 4th
             column at desktop width whose gap pushed the grid past 100%. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full" style={{
-          display: "grid", width: "100%", gap: 16, marginBottom: 22,
-          gridTemplateColumns: md ? "repeat(3, minmax(0,1fr))" : "minmax(0,1fr)",
-        }}>
-          <TickerCard label="Commission at Risk" value={m.atRisk} color={RED} icon={AlertTriangle}
+        {(() => { const r = kpiRail(bp, { cols: 3 }); return (
+        <div className={r.className} style={{ ...r.style, marginBottom: 22 }}>
+          <TickerCard bp={bp} cardStyle={r.cardStyle} label="Commission at Risk" value={m.atRisk} color={RED} icon={AlertTriangle}
             sub="Slippage exposure from stalled and deadline-bound deals" />
-          <TickerCard label="Opportunity Surfaced" value={m.opportunity} color={GREEN} icon={Zap}
+          <TickerCard bp={bp} cardStyle={r.cardStyle} label="Opportunity Surfaced" value={m.opportunity} color={GREEN} icon={Zap}
             sub="Sphere reactivation and dormant-lead upside found this cycle" />
-          <TickerCard label="Pipeline Probability" value={m.probability} color={CYAN} format="pct" icon={LineChart}
+          <TickerCard bp={bp} cardStyle={r.cardStyle} label="Pipeline Probability" value={m.probability} color={CYAN} format="pct" icon={LineChart}
             sub="Average close score across every scored client" />
         </div>
+        ); })()}
 
         {/* ── Main command split: 12-col grid, 7/5 at lg and up ──
             Tailwind is not configured in this app, so the requested grid

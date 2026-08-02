@@ -24,6 +24,7 @@ import {
   AlertTriangle, ArrowRight, FileDown, Radio,
 } from "lucide-react";
 import SparkBoot from "./SparkBoot";
+import { useContainerWidth, breakpoints, chartHeight, axisProps, gridProps, legendProps } from "../responsive";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -244,6 +245,9 @@ function useDecrypt(lines, active) {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function ExecutiveOverview({ user, onNavigate }) {
+  const opsRef = useRef(null);
+  const cw = useContainerWidth(opsRef);
+  const bp = breakpoints(cw);
   const [deals, setDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -465,7 +469,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
   if (loading) return <SparkBoot />;
 
   return (
-    <div
+    <div ref={opsRef}
       ref={rootRef}
       className="w-full h-full flex flex-col bg-[#050505] text-white p-6 gap-6 overflow-y-auto"
       style={{
@@ -562,7 +566,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
                     <stop offset="100%" stopColor={PURPLE} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                <CartesianGrid {...gridProps(bp)} />
                 <XAxis dataKey="date" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} />
                 <YAxis yAxisId="left" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
                 <YAxis yAxisId="right" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} tickFormatter={fmtMoney} />

@@ -46,9 +46,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { motion } from "framer-motion";
 import {
   Zap, Radar as RadarIcon, MapPin, X, FileText, MessageSquare, Bookmark,
-  Loader2, Layers, Crosshair, Copy, Check, Search, Satellite,
+  Loader2, Layers, Crosshair, Copy, Check, Search, Satellite, ChevronUp, ChevronDown,
 } from "lucide-react";
 import SparkBoot from "./SparkBoot";
+import { useContainerWidth, breakpoints } from "../responsive";
 
 // Mapbox pk.* tokens are public by design. VITE_MAPBOX_TOKEN is the name this
 // build asks for; the other two are kept so the currently-provisioned
@@ -585,6 +586,10 @@ export default function AgentSurveillance({ user }) {
   const [watchlist, setWatchlist] = useState([]);
   const [toast, setToast] = useState(null);
 
+  const rootRef = useRef(null);
+  const cw = useContainerWidth(rootRef);
+  const bp = breakpoints(cw);
+  const [legendOpen, setLegendOpen] = useState(false);
   const mapRef = useRef(null);
   const decryptTimer = useRef(null);
   const setupDone = useRef(false);
@@ -792,10 +797,13 @@ export default function AgentSurveillance({ user }) {
   if (booting) return <SparkBoot label="SCANNING MARKET GRID FOR ACQUISITION TARGETS..." />;
 
   const selMeta = selected ? NODE[selected.type] : null;
-  const mapW = `calc(100% - ${PANEL_W}px)`;
+  // A fixed 392px right rail leaves calc(100% - 392px) = negative on a 390px
+  // phone, which collapsed the map to zero width. On mobile the map is full
+  // width and the dossier is a bottom sheet over it.
+  const mapW = bp.mobile ? "100%" : `calc(100% - ${PANEL_W}px)`;
 
   return (
-    <div className="w-full h-full relative bg-[#050505] overflow-hidden"
+    <div ref={rootRef} className="w-full h-full relative bg-[#050505] overflow-hidden"
       style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "hidden", background: "#050505" }}>
       <style>{`
         @keyframes asPulse{0%{transform:scale(.55);opacity:.95}100%{transform:scale(2.7);opacity:0}}
@@ -851,8 +859,9 @@ export default function AgentSurveillance({ user }) {
           Offset past LEGEND_CLEAR so the HUD centers in the space to the RIGHT
           of the radar legend rather than underneath it. */}
       <div style={{
-        position: "absolute", top: 16, left: LEGEND_CLEAR, zIndex: 40,
-        width: `calc(100% - ${PANEL_W}px - ${LEGEND_CLEAR}px)`,
+        position: "absolute", top: 16, left: bp.mobile ? 0 : LEGEND_CLEAR, zIndex: 40,
+        width: bp.mobile ? "100%" : `calc(100% - ${PANEL_W}px - ${LEGEND_CLEAR}px)`,
+        padding: bp.mobile ? "0 12px" : 0, boxSizing: "border-box",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 9, pointerEvents: "none",
       }}>
         <div style={{ width: "min(460px, 100%)", pointerEvents: "auto", position: "relative" }}>
@@ -955,14 +964,62 @@ export default function AgentSurveillance({ user }) {
         </div>
       </div>
 
-      {/* ── Radar legend (top-left) ── */}
+      {/* Style toggle — lives in the legend on desktop; the legend is hidden on
+          mobile, so it surfaces here as a compact floating control. */}
+      {bp.mobile && (
+        <div style={{
+          position: "absolute", right: 12, bottom: 140, zIndex: 30, display: "flex", gap: 6,
+          background: "#111111", border: "1px solid #27272a", borderRadius: 8, padding: 4,
+        }}>
+          {STYLES.map((st) => {
+            const Icon2 = st.icon;
+            return (
+              <button key={st.id} onClick={() => { setupDone.current = false; setStyleId(st.id); }}
+                aria-label={st.label}
+                style={{
+                  padding: "7px 9px", borderRadius: 6, cursor: "pointer",
+                  background: styleId === st.id ? `${CYAN}1e` : "transparent",
+                  border: `1px solid ${styleId === st.id ? CYAN : "transparent"}`,
+                  color: styleId === st.id ? CYAN : SLATE_DIM,
+                }}>
+                <Icon2 size={13} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Radar legend ──
+          Desktop: a floating card top-left.
+          Mobile: a bottom sheet. A 246px absolute panel over a phone-width map
+          covered most of the tactical grid, which is the one thing this screen
+          exists to show. Collapsed it is a single handle row; expanded it
+          slides up over the lower third and can be dismissed again. */}
       <div className="backdrop-blur-2xl bg-black/60 border border-white/10"
-        style={{
+        style={bp.mobile ? { display: "none" } : {
           position: "absolute", top: 16, left: 16, zIndex: 20, width: 246,
           background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: "1px solid #27272a", borderRadius: 12, padding: 14,
           boxShadow: "none",
         }}>
+        {bp.mobile && (
+          <button onClick={() => setLegendOpen((o) => !o)}
+            aria-expanded={legendOpen}
+            style={{
+              width: "100%", height: 48, display: "flex", alignItems: "center", gap: 8,
+              background: "transparent", border: "none", cursor: "pointer", padding: 0,
+              fontFamily: MONO, fontSize: 9, letterSpacing: 1.6, color: SLATE_DIM,
+              textTransform: "uppercase",
+            }}>
+            <Zap size={13} color={PURPLE_LT} fill={PURPLE_LT} />
+            Radar legend
+            <span className="font-mono" style={{ marginLeft: "auto", color: SLATE }}>
+              {counts.ACTIVE + counts.EXPIRING + counts.PREDICTED} nodes
+            </span>
+            {legendOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+        )}
+        <div style={{ display: bp.mobile && !legendOpen ? "none" : "block" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
           <Zap size={15} color={PURPLE_LT} fill={PURPLE_LT}
             style={{ filter: "none", animation: "none" }} />
@@ -1032,6 +1089,7 @@ export default function AgentSurveillance({ user }) {
             );
           })}
         </div>
+        </div>
       </div>
 
       {error && (
@@ -1047,7 +1105,7 @@ export default function AgentSurveillance({ user }) {
       {toast && (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           style={{
-            position: "absolute", bottom: 22, left: `calc((100% - ${PANEL_W}px) / 2)`, transform: "translateX(-50%)", zIndex: 90,
+            position: "absolute", bottom: bp.mobile ? 74 : 22, left: bp.mobile ? "50%" : `calc((100% - ${PANEL_W}px) / 2)`, transform: "translateX(-50%)", zIndex: 90,
             background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             border: `1px solid ${CYAN}88`, borderRadius: 10, padding: "10px 18px", color: "#fff",
             fontFamily: F, fontSize: 12, fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap",
@@ -1057,7 +1115,14 @@ export default function AgentSurveillance({ user }) {
       {/* ── Acquisition Dossier (right) ── */}
       <div className="w-96 backdrop-blur-2xl bg-black/60 border-l border-white/10 flex flex-col h-full z-10"
         style={{
-          position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL_W, zIndex: 10,
+          ...(bp.mobile
+            ? { position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", zIndex: 60,
+                // Peek while idle so the map keeps the screen; expand to a
+                // sheet once a node is locked and there is a dossier to read.
+                height: selected ? "64%" : 128,
+                borderTop: "1px solid #27272a", borderLeft: "none", borderRadius: "12px 12px 0 0",
+                transition: "height .26s cubic-bezier(.16,1,.3,1)" }
+            : { position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL_W, zIndex: 10 }),
           background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           borderLeft: "1px solid #27272a", display: "flex", flexDirection: "column",
           padding: 18, boxSizing: "border-box", overflowY: "auto",

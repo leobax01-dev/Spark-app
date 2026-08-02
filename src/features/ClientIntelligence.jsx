@@ -35,6 +35,7 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
+import { useContainerWidth, breakpoints, kpiRail, figureSize, headingSize } from "../responsive";
 import MigrationCenter from "./MigrationCenter";
 import {
   enrichClient, sphereTelemetry, synthesizeSphere, linkSynthConnections,
@@ -81,18 +82,6 @@ function touchLabel(days) {
 }
 
 // ── container breakpoints ─────────────────────────────────────────────────
-function useContainerWidth(ref) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((e) => { const r = e[0]?.contentRect; if (r) setW(r.width); });
-    ro.observe(el);
-    setW(el.getBoundingClientRect().width);
-    return () => ro.disconnect();
-  }, [ref]);
-  return w;
-}
 
 function useTicker(target, duration = 1.0) {
   const [shown, setShown] = useState(Number(target) || 0);
@@ -109,14 +98,14 @@ function useTicker(target, duration = 1.0) {
 }
 
 // ── HUD card ──────────────────────────────────────────────────────────────
-function HudCard({ label, value, sub, color, format = "money", pulse, icon: I }) {
+function HudCard({ bp, cardStyle, label, value, sub, color, format = "money", pulse, icon: I }) {
   const shown = useTicker(value);
   const text = format === "int" ? `${Math.round(shown)}`
     : format === "days" ? (value == null ? "—" : `${Math.round(shown)}d`)
       : fmtMoney(shown);
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      minWidth: 0, padding: 15, borderRadius: 13,
+      minWidth: 0, padding: 15, borderRadius: 13, ...cardStyle,
       background: `#111111`,
       backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
@@ -126,14 +115,14 @@ function HudCard({ label, value, sub, color, format = "money", pulse, icon: I })
         {I && <I size={11} color={color} />}
         <span className="tracking-wider text-slate-400" style={{
           fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5, color: SLATE_DIM,
-          textTransform: "uppercase", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          textTransform: "uppercase", lineHeight: 1.35,
         }}>[ {label} ]</span>
       </div>
       <div className="font-mono" style={{
-        fontFamily: MONO, fontSize: 25, fontWeight: 800, color, textShadow: "none",
-        lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        fontFamily: MONO, fontSize: figureSize(bp || {}), fontWeight: 800, color,
+        lineHeight: 1.1, whiteSpace: "nowrap",
       }}>{text}</div>
-      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 4, lineHeight: 1.45 }}>{sub}</div>
+      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: "auto", paddingTop: 6, lineHeight: 1.45 }}>{sub}</div>
     </div>
   );
 }
@@ -642,6 +631,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
   const rootRef = useRef(null);
   const cw = useContainerWidth(rootRef);
   const wide = cw === 0 || cw >= 780;
+  const bp = breakpoints(cw);
   const mid = cw === 0 || cw >= 560;
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t); }, [toast]);
@@ -820,7 +810,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
             fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2.2, color: SLATE_DIM,
             textTransform: "uppercase", marginBottom: 4,
           }}>Sphere Telemetry &amp; Reactivation Grid</div>
-          <div style={{ fontFamily: F, fontSize: 21, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
+          <div style={{ fontFamily: F, fontSize: headingSize(bp), fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
             <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: "none"}}>
               {hud.networkSize}
             </span>{" "}
@@ -840,20 +830,19 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
         <OmniIntake onParsed={setProposal} pad={pad} />
 
         {/* HUD */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full" style={{
-          display: "grid", width: "100%", gap: 16, marginBottom: 20,
-          gridTemplateColumns: wide ? "repeat(4, minmax(0,1fr))" : mid ? "repeat(2, minmax(0,1fr))" : "minmax(0,1fr)",
-        }}>
-          <HudCard label="Total Sphere Liquidity" value={hud.liquidity} color={CYAN} icon={Wallet}
+        {(() => { const r = kpiRail(bp, { cols: 4 }); return (
+        <div className={r.className} style={{ ...r.style, marginBottom: 20 }}>
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Total Sphere Liquidity" value={hud.liquidity} color={CYAN} icon={Wallet}
             sub={`Stated budgets across ${hud.liquidityCount} in-play client${hud.liquidityCount !== 1 ? "s" : ""}`} />
-          <HudCard label="Dormant Opportunities" value={hud.dormant} color={GREEN} format="int" icon={Users}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Dormant Opportunities" value={hud.dormant} color={GREEN} format="int" icon={Users}
             sub="Past clients with a surging reactivation score" />
-          <HudCard label="Impending Triggers" value={hud.triggersThisWeek} color={hud.triggersThisWeek > 0 ? AMBER : SLATE_HEX}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Impending Triggers" value={hud.triggersThisWeek} color={hud.triggersThisWeek > 0 ? AMBER : SLATE_HEX}
             format="int" pulse={hud.triggersThisWeek > 0} icon={Bell}
             sub="Actionable life and market events in play" />
-          <HudCard label="Network Health" value={hud.avgDays} color={PURPLE_LT} format="days" icon={Activity}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Network Health" value={hud.avgDays} color={PURPLE_LT} format="days" icon={Activity}
             sub={`Mean days since touch · top ${Math.min(50, hud.scoredCount)} scored`} />
         </div>
+        ); })()}
 
         {/* search + tier filter */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16, width: "100%" }}>

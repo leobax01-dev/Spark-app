@@ -139,3 +139,64 @@ body {
 /* Native form controls inherit the palette rather than the OS default. */
 input, textarea, select, button { font-family: inherit; }
 input::placeholder, textarea::placeholder { color: var(--spark-text-faint); }
+
+/* ── Mobile-native terminal utilities ─────────────────────────────────────
+ * Tailwind is not installed, so the snap-scroll / hide-scrollbar / safe-area
+ * behaviours the mobile refactor needs are real CSS here. Class names mirror
+ * the Tailwind equivalents so markup reads the same either way. */
+
+/* Horizontal KPI rail. Cards snap; the scrollbar is hidden but the track
+ * still scrolls by touch, wheel and keyboard. */
+.spark-rail {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+  scrollbar-width: none;
+}
+.spark-rail::-webkit-scrollbar { display: none; }
+.spark-rail > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+
+.hide-scrollbar { scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Monetary values must never be clipped. Where a figure previously carried
+ * nowrap + ellipsis it now shrinks instead — a truncated "$3…" is worse than
+ * a smaller but complete "$3.42M". */
+.spark-figure {
+  font-family: var(--spark-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--spark-text);
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.1;
+}
+
+/* Dynamic viewport height — iOS Safari/Chrome collapse the address bar, and
+ * 100vh overshoots by that amount, pushing the last row under the dock. */
+.spark-vh { min-height: 100vh; }
+@supports (height: 100dvh) {
+  .spark-vh { min-height: 100dvh; }
+}
+
+/* Bottom clearance so the mobile nav dock and the Autopilot command bar never
+ * sit on top of table rows or pagination. */
+.spark-dock-safe {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 768px) {
+  .spark-dock-safe { padding-bottom: 0; }
+}
+
+/* Touch targets stay >= 44px on coarse pointers regardless of visual size. */
+@media (pointer: coarse) {
+  button, [role="button"] { min-height: 36px; }
+}

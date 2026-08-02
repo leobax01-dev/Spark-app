@@ -47,6 +47,7 @@ import {
   Presentation, LineChart, Upload,
 } from "lucide-react";
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
+import { useContainerWidth, breakpoints, kpiRail, figureSize, headingSize } from "../responsive";
 import { AUTOPILOT_ALERTS_KEY } from "./briefing";
 
 // ── design tokens ─────────────────────────────────────────────────────────
@@ -143,18 +144,6 @@ function addDays(base, n) {
 }
 
 // ── container breakpoints (no Tailwind build) ─────────────────────────────
-function useContainerWidth(ref) {
-  const [w, setW] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver((e) => { const r = e[0]?.contentRect; if (r) setW(r.width); });
-    ro.observe(el);
-    setW(el.getBoundingClientRect().width);
-    return () => ro.disconnect();
-  }, [ref]);
-  return w;
-}
 
 // ── ticker ────────────────────────────────────────────────────────────────
 function useTicker(target, duration = 1.0) {
@@ -301,14 +290,14 @@ function dealHealth(deal, now = Date.now()) {
 }
 
 // ── HUD card ──────────────────────────────────────────────────────────────
-function HudCard({ label, value, sub, color, format = "money", pulse, icon: I }) {
+function HudCard({ bp, cardStyle, label, value, sub, color, format = "money", pulse, icon: I }) {
   const shown = useTicker(value);
   const text = format === "pct" ? `${Math.round(shown)}%`
     : format === "int" ? `${Math.round(shown)}`
       : fmtMoney(shown);
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      minWidth: 0, padding: 15, borderRadius: 13,
+      minWidth: 0, padding: 15, borderRadius: 13, ...cardStyle,
       background: `#111111`,
       backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
@@ -318,16 +307,14 @@ function HudCard({ label, value, sub, color, format = "money", pulse, icon: I })
         {I && <I size={11} color={color} />}
         <span className="tracking-wider text-slate-400" style={{
           fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.5,
-          color: SLATE_DIM, textTransform: "uppercase",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          color: SLATE_DIM, textTransform: "uppercase", lineHeight: 1.35,
         }}>[ {label} ]</span>
       </div>
       <div className="font-mono" style={{
-        fontFamily: MONO, fontSize: 25, fontWeight: 800, color,
-        textShadow: "none", lineHeight: 1.1,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        fontFamily: MONO, fontSize: figureSize(bp || {}), fontWeight: 800, color,
+        lineHeight: 1.1, whiteSpace: "nowrap",
       }}>{text}</div>
-      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 4, lineHeight: 1.45 }}>{sub}</div>
+      <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: "auto", paddingTop: 6, lineHeight: 1.45 }}>{sub}</div>
     </div>
   );
 }
@@ -612,6 +599,7 @@ export default function TransactionIntelligence({
   const rootRef = useRef(null);
   const cw = useContainerWidth(rootRef);
   const wide = cw === 0 || cw >= 900;   // lg: 5-col kanban
+  const bp = breakpoints(cw);
   const mid = cw === 0 || cw >= 620;    // sm/md: 2-col HUD
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3800); return () => clearTimeout(t); }, [toast]);
@@ -902,7 +890,7 @@ export default function TransactionIntelligence({
               fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2.2,
               color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4,
             }}>Transaction Intelligence &amp; Lifecycle Terminal</div>
-            <div style={{ fontFamily: F, fontSize: 21, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
+            <div style={{ fontFamily: F, fontSize: headingSize(bp), fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
               <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: "none"}}>
                 {fmtMoney(hud.volume)}
               </span>{" "}
@@ -930,20 +918,19 @@ export default function TransactionIntelligence({
         </div>
 
         {/* ── Telemetry HUD ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full" style={{
-          display: "grid", width: "100%", gap: 16, marginBottom: 20,
-          gridTemplateColumns: wide ? "repeat(4, minmax(0,1fr))" : mid ? "repeat(2, minmax(0,1fr))" : "minmax(0,1fr)",
-        }}>
-          <HudCard label="Active Transaction Volume" value={hud.volume} color={CYAN} icon={Building2}
+        {(() => { const r = kpiRail(bp, { cols: 4 }); return (
+        <div className={r.className} style={{ ...r.style, marginBottom: 20 }}>
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Active Transaction Volume" value={hud.volume} color={CYAN} icon={Building2}
             sub={`${hud.activeCount} deal${hud.activeCount !== 1 ? "s" : ""} not yet closed`} />
-          <HudCard label="Projected Agent GCI" value={hud.gci} color={GREEN} icon={TrendingUp}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Projected Agent GCI" value={hud.gci} color={GREEN} icon={TrendingUp}
             sub={`Live ${GCI_RATE * 100}% calculation on active volume`} />
-          <HudCard label="Critical Contingency Risk" value={hud.critical} color={hud.critical > 0 ? RED : SLATE_HEX}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Critical Contingency Risk" value={hud.critical} color={hud.critical > 0 ? RED : SLATE_HEX}
             format="int" pulse={hud.critical > 0} icon={AlertTriangle}
             sub={`Hard-stop dates inside ${URGENT_HOURS} hours`} />
-          <HudCard label="Average Pipeline Health" value={hud.health} color={PURPLE_LT} format="pct" icon={LineChart}
+          <HudCard bp={bp} cardStyle={r.cardStyle} label="Average Pipeline Health" value={hud.health} color={PURPLE_LT} format="pct" icon={LineChart}
             sub="Mean close probability across active deals" />
         </div>
+        ); })()}
 
         {/* ── Search + stage filter ── */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16, width: "100%" }}>

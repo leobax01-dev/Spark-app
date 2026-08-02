@@ -41,6 +41,7 @@ import {
   X, CheckCircle2, ShieldAlert, ArrowUpDown,
 } from "lucide-react";
 import SparkBoot from "./SparkBoot";
+import { useContainerWidth, breakpoints, chartHeight, axisProps, gridProps, legendProps } from "../responsive";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -266,6 +267,10 @@ function toCsv(rows) {
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function CommissionLedger({ user }) {
+  // rootRef doubles as the html2canvas capture target and the measured node.
+  const rootRef = useRef(null);
+  const cw = useContainerWidth(rootRef);
+  const bp = breakpoints(cw);
   const [rawDeals, setRawDeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -282,8 +287,6 @@ export default function CommissionLedger({ user }) {
   const [bracketFilter, setBracketFilter] = useState("all");
   const [sortKey, setSortKey] = useState("gci");
   const [sortDir, setSortDir] = useState("desc");
-
-  const rootRef = useRef(null);
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 4200); return () => clearTimeout(t); }, [toast]);
 
@@ -683,12 +686,12 @@ export default function CommissionLedger({ user }) {
                     <stop offset="100%" stopColor={CYAN} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                <CartesianGrid {...gridProps(bp)} />
                 <XAxis dataKey="name" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} />
                 <YAxis yAxisId="l" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
                 <YAxis yAxisId="r" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} tickFormatter={fmtMoney} />
                 <Tooltip content={<GlassTooltip />} cursor={{ fill: "#18181b" }} />
-                <Legend wrapperStyle={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM }} />
+                <Legend {...legendProps(bp)} />
                 <Bar yAxisId="l" dataKey="confirmed" stackId="a" name={view === "waterfall" ? "Agent Payout" : "Confirmed GCI"}
                   fill="url(#clConfirmed)" isAnimationActive={false} radius={[0, 0, 0, 0]} />
                 <Bar yAxisId="l" dataKey="weighted" stackId="a" name={view === "waterfall" ? "Brokerage Net" : "Prob-Weighted GCI"}
