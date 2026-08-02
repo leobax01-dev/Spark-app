@@ -47,10 +47,10 @@ function useCompFetcher() {
 // DESIGN TOKENS — mirrors App.jsx C object
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
-  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
-  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
-  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
+  bg:"#0a0a0a", surface:"#111111", surfaceUp:"#18181b", surfaceHigh:"#18181b",
+  border:"#27272a", borderMd:"#27272a",
+  indigo:"#8b5cf6", indigoLt:"#a78bfa", violet:"#7c3aed",
+  cyan:"#38bdf8", emerald:"#10b981", amber:"#f59e0b", rose:"#ef4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -99,7 +99,7 @@ function TCopyBtn({text}){
 function ResultBlock({label, value, color=C.indigo, area=false}){
   if(!value) return null;
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+    <div style={{background:"#18181b",border:`1px solid ${C.border}`,
       borderRadius:10,padding:"13px 14px",marginBottom:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
         <span style={{fontSize:8,color,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>{label}</span>
@@ -114,7 +114,7 @@ function ResultBlock({label, value, color=C.indigo, area=false}){
 function ResultList({label, items, color=C.indigo}){
   if(!items?.length) return null;
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+    <div style={{background:"#18181b",border:`1px solid ${C.border}`,
       borderRadius:10,padding:"13px 14px",marginBottom:10}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <span style={{fontSize:8,color,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>{label}</span>
@@ -171,8 +171,8 @@ function CompsPanel({ compsLoading, compsError, compsData, overrides, setOverrid
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
         <div style={{display:"flex",alignItems:"center",gap:7}}>
           <div style={{width:3,height:13,borderRadius:2,
-            background:`linear-gradient(180deg,${C.emerald},${C.emerald}60)`,
-            boxShadow:`0 0 7px ${C.emerald}80`}}/>
+            background:`${C.emerald}`,
+            boxShadow: "none"}}/>
           <span style={{fontSize:9,color:C.emerald,fontFamily:C.F,
             fontWeight:700,letterSpacing:2.2}}>COMPS AUTO-FETCHED</span>
         </div>
@@ -354,7 +354,7 @@ function DocumentDropzone({ fields, onExtracted, label }){
       style={{
         border:`1.5px dashed ${dragActive?C.indigo:status==="error"?C.rose+"60":C.border}`,
         borderRadius:12, padding:"16px 14px", cursor:"pointer", textAlign:"center",
-        background:dragActive?`${C.indigo}0c`:"rgba(255,255,255,.015)",
+        background:dragActive?`${C.indigo}0c`:"#18181b",
         transition:"all .15s ease", marginBottom:16,
       }}>
       <input ref={fileInputRef} type="file" accept="image/*" style={{display:"none"}}
@@ -518,7 +518,7 @@ function TransactionTimeline({ user }){
       {result&&(
         <div style={{animation:"scaleIn .28s ease"}}>
           {/* Summary header */}
-          <div style={{background:`linear-gradient(135deg,${C.indigo}14,${C.violet}08)`,
+          <div style={{background:`#18181b`,
             border:`1px solid ${C.indigo}28`,borderRadius:13,padding:"16px 18px",
             marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
@@ -553,7 +553,7 @@ function TransactionTimeline({ user }){
                   background:`linear-gradient(135deg,${m.color}22,${m.color}0a)`,
                   border:`1px solid ${m.color}40`,
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  color:m.color,zIndex:1,boxShadow:`0 0 8px ${m.color}20`}}>
+                  color:m.color,zIndex:1,boxShadow: "none"}}>
                   {MIcon&&<MIcon size={17}/>}
                 </div>
                 {/* Content */}
@@ -573,7 +573,7 @@ function TransactionTimeline({ user }){
                   <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:"0 0 8px",
                     lineHeight:1.5}}>{m.action}</p>
                   {/* Email preview */}
-                  <div style={{background:"rgba(255,255,255,.02)",borderRadius:7,
+                  <div style={{background:"#18181b",borderRadius:7,
                     padding:"8px 10px",borderLeft:`2px solid ${m.color}60`}}>
                     <div style={{fontSize:7,color:m.color,fontFamily:C.F,fontWeight:700,
                       letterSpacing:1.5,marginBottom:4}}>CLIENT EMAIL</div>
@@ -901,7 +901,7 @@ Return ONLY valid JSON:
         <div style={{marginTop:20,animation:"scaleIn .28s ease"}}>
           {/* Price recommendation hero */}
           <div style={{
-            background:`linear-gradient(135deg,${C.emerald}12,${C.indigo}08)`,
+            background:`#18181b`,
             border:`1px solid ${C.emerald}30`,
             borderRadius:14,padding:"22px 20px",marginBottom:14,textAlign:"center"}}>
             <div style={{fontSize:9,color:C.emerald,letterSpacing:2.5,
@@ -974,13 +974,13 @@ function CoordinatorHeader(){
     : `Tracking ${underContract.length} deal${underContract.length!==1?"s":""} under contract right now.`;
 
   return(
-    <div style={{background:`linear-gradient(135deg,${C.indigo}10,${C.violet}06)`,
+    <div style={{background:`#18181b`,
       border:`1px solid ${C.indigo}22`,borderRadius:14,padding:"14px 16px",marginBottom:18,
       display:"flex",alignItems:"center",gap:12}}>
       <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
-        background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+        background:`#8b5cf6`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:`0 4px 14px ${C.indigo}40`}}>
+        boxShadow: "none"}}>
         <Icon.Coordinator size={18} color="#fff"/>
       </div>
       <div>
@@ -1033,7 +1033,7 @@ export default function TransactionPanel({ user, planKey, isMobile, onNavigate }
       <button onClick={()=>setTool("terminal")}
         style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,padding:"8px 13px",
           borderRadius:9,cursor:"pointer",background:"rgba(34,211,238,.1)",
-          border:"1px solid rgba(34,211,238,.4)",color:"#22d3ee",
+          border:"1px solid rgba(34,211,238,.4)",color:"#38bdf8",
           fontFamily:C.F,fontSize:10.5,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
         ← Back to Transaction Terminal
       </button>
@@ -1047,7 +1047,7 @@ export default function TransactionPanel({ user, planKey, isMobile, onNavigate }
             style={{
               padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
               border:`1px solid ${tool===t.id?t.color+"50":C.border}`,
-              background:tool===t.id?`${t.color}0e`:"rgba(255,255,255,.015)",
+              background:tool===t.id?`${t.color}0e`:"#18181b",
               transition:"all .16s ease"}}>
             <div style={{display:"flex",justifyContent:"center",marginBottom:6,color:tool===t.id?t.color:C.textMd}}>
               {TIcon&&<TIcon size={19}/>}

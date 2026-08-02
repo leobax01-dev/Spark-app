@@ -12,7 +12,7 @@ export default function PipelineHex({ label, count, color, onClick, active }) {
       style={{
         clipPath: HEX_CLIP,
         border: "none",
-        background: active ? `${color}22` : "rgba(255,255,255,0.03)",
+        background: active ? `${color}22` : "#18181b",
         padding: "14px 10px",
         cursor: "pointer",
         fontFamily: C.F,
@@ -21,10 +21,10 @@ export default function PipelineHex({ label, count, color, onClick, active }) {
         alignItems: "center",
         gap: 4,
         transition: "background .18s ease, transform .15s ease",
-        boxShadow: active ? `0 0 18px ${color}55 inset` : "none",
+        boxShadow: "none",
       }}
     >
-      <span style={{ fontSize: 20, fontWeight: 800, color, textShadow: `0 0 8px ${color}88` }}>{count}</span>
+      <span style={{ fontSize: 20, fontWeight: 800, color, textShadow: "none"}}>{count}</span>
       <span style={{ fontSize: 8, letterSpacing: 1.2, color: C.textMd, textTransform: "uppercase" }}>{label}</span>
     </button>
   );

@@ -12,10 +12,10 @@ import { Card, Label, Button, CopyButton } from "../components/UI";
 // DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
-  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
-  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
-  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
+  bg:"#0a0a0a", surface:"#111111", surfaceUp:"#18181b", surfaceHigh:"#18181b",
+  border:"#27272a", borderMd:"#27272a",
+  indigo:"#8b5cf6", indigoLt:"#a78bfa", violet:"#7c3aed",
+  cyan:"#38bdf8", emerald:"#10b981", amber:"#f59e0b", rose:"#ef4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -67,7 +67,7 @@ function MCopyBtn({text}){
 function ResultBlock({label, value, color=C.indigo}){
   if(!value) return null;
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+    <div style={{background:"#18181b",border:`1px solid ${C.border}`,
       borderRadius:10,padding:"13px 14px",marginBottom:10}}>
       <div style={{display:"flex",justifyContent:"space-between",
         alignItems:"center",marginBottom:8}}>
@@ -83,7 +83,7 @@ function ResultBlock({label, value, color=C.indigo}){
 function ResultList({label, items, color=C.indigo}){
   if(!items?.length) return null;
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+    <div style={{background:"#18181b",border:`1px solid ${C.border}`,
       borderRadius:10,padding:"13px 14px",marginBottom:10}}>
       <div style={{display:"flex",justifyContent:"space-between",
         alignItems:"center",marginBottom:10}}>
@@ -402,7 +402,7 @@ Return ONLY valid JSON:
         <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8,alignItems:"center",gap:5}}>
           <div style={{width:5,height:5,borderRadius:"50%",
             background:syncStatus==="synced"?C.emerald:syncStatus==="syncing"?C.amber:syncStatus==="offline"?C.rose:C.textDim,
-            boxShadow:syncStatus==="synced"?`0 0 5px ${C.emerald}`:"none"}}/>
+            boxShadow: "none"}}/>
           <span style={{fontSize:9,color:C.textDim,fontFamily:C.F}}>
             {syncStatus==="synced"?"Synced to cloud":syncStatus==="syncing"?"Syncing...":syncStatus==="offline"?"Offline — saved locally":""}
           </span>
@@ -453,7 +453,7 @@ Return ONLY valid JSON:
                 <div style={{height:"100%",width:`${pctToTarget}%`,
                   background:`linear-gradient(90deg,${pctToTarget>=100?C.emerald:pctToTarget>=60?C.amber:C.rose},${C.indigoLt})`,
                   borderRadius:3,transition:"width .6s ease",
-                  boxShadow:`0 0 8px ${pctToTarget>=100?C.emerald:C.amber}60`}}/>
+                  boxShadow: "none"}}/>
               </div>
             </div>
           )}
@@ -473,7 +473,7 @@ Return ONLY valid JSON:
         </div>
 
         {adding&&(
-          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+          <div style={{background:"#18181b",border:`1px solid ${C.border}`,
             borderRadius:10,padding:"13px 12px",marginBottom:12}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
               <MField label="DEAL / CLIENT NAME" value={newDeal.name} onChange={v=>setNewDeal(p=>({...p,name:v}))} placeholder="Johnson Family Sale"/>
@@ -611,13 +611,13 @@ function AnalystHeader(){
   }
 
   return(
-    <div style={{background:`linear-gradient(135deg,${C.emerald}10,${C.cyan}06)`,
+    <div style={{background:`#18181b`,
       border:`1px solid ${C.emerald}22`,borderRadius:14,padding:"14px 16px",marginBottom:18,
       display:"flex",alignItems:"center",gap:12}}>
       <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
-        background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+        background:`${C.emerald}`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:`0 4px 14px ${C.emerald}40`}}>
+        boxShadow: "none"}}>
         <Icon.Market size={18} color="#fff"/>
       </div>
       <div>
@@ -660,7 +660,7 @@ export default function MarketPanel({ user, planKey, isMobile, onNavigate }){
       <button onClick={()=>setTool("terminal")}
         style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,padding:"8px 13px",
           borderRadius:9,cursor:"pointer",background:"rgba(34,197,94,.1)",
-          border:"1px solid rgba(34,197,94,.4)",color:"#22c55e",
+          border:"1px solid rgba(34,197,94,.4)",color:"#10b981",
           fontFamily:C.F,fontSize:10.5,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
         ← Back to Macro Terminal
       </button>
@@ -672,7 +672,7 @@ export default function MarketPanel({ user, planKey, isMobile, onNavigate }){
           <div key={t.id} onClick={()=>setTool(t.id)}
             style={{padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
               border:`1px solid ${tool===t.id?t.color+"50":C.border}`,
-              background:tool===t.id?`${t.color}0e`:"rgba(255,255,255,.015)",
+              background:tool===t.id?`${t.color}0e`:"#18181b",
               transition:"all .16s ease"}}>
             <div style={{display:"flex",justifyContent:"center",marginBottom:6,color:tool===t.id?t.color:C.textMd}}>
               {TIcon&&<TIcon size={19}/>}

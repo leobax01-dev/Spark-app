@@ -40,7 +40,7 @@ function TaskRow({ task, onApprove, approving, sound }) {
         [{(task.priority || "MED").slice(0, 3).toUpperCase()}]
       </span>
       <span style={{ display: "flex", alignItems: "center", gap: 6, color }}>
-        <span style={{ width: 8, height: 8, clipPath: "polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)", background: color, boxShadow: `0 0 6px ${color}` }} />
+        <span style={{ width: 8, height: 8, clipPath: "polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)", background: color, boxShadow: "none"}} />
         {task.owner}
       </span>
       <span style={{ color: C.textDim }}>{timeAgo(task.created_at)}</span>
@@ -60,7 +60,7 @@ function TaskRow({ task, onApprove, approving, sound }) {
             padding: "5px 10px",
             cursor: approving ? "default" : "pointer",
             opacity: approving ? 0.5 : 1,
-            boxShadow: `0 0 10px ${C.emerald}44`,
+            boxShadow: "none",
             borderRadius: 2,
           }}
         >
@@ -125,7 +125,7 @@ export default function TaskDrawer({ status, label, color, onClose, onApproved, 
         inset: 0,
         zIndex: 200,
         background: "rgba(2,4,10,0.78)",
-        backdropFilter: "blur(8px)",
+        backdropFilter: "none",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -141,7 +141,7 @@ export default function TaskDrawer({ status, label, color, onClose, onApproved, 
           flexDirection: "column",
           background: "rgba(5,8,16,0.9)",
           border: `1px solid ${color}55`,
-          boxShadow: `0 0 80px ${color}22`,
+          boxShadow: "none",
           borderRadius: 4,
           overflow: "hidden",
         }}

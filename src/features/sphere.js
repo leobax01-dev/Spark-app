@@ -17,16 +17,16 @@
 //   they exist ONLY on synthesized demo clients and carry simulated:true.
 
 export const TIERS = {
-  A: { id: "A", label: "Tier A", min: 2_000_000, color: "#a855f7" },
-  B: { id: "B", label: "Tier B", min: 750_000, color: "#22d3ee" },
+  A: { id: "A", label: "Tier A", min: 2_000_000, color: "#8b5cf6" },
+  B: { id: "B", label: "Tier B", min: 750_000, color: "#38bdf8" },
   C: { id: "C", label: "Tier C", min: 0, color: "#94a3b8" },
 };
 
 export const TRIGGER_TYPES = {
-  ANNIVERSARY: { id: "ANNIVERSARY", label: "Home Anniversary", color: "#22c55e" },
-  DORMANT: { id: "DORMANT", label: "Dormant Sphere", color: "#ffb020" },
-  RATE_DROP: { id: "RATE_DROP", label: "Rate Drop", color: "#22d3ee" },
-  COMP_SOLD: { id: "COMP_SOLD", label: "Target Comp Sold", color: "#a855f7" },
+  ANNIVERSARY: { id: "ANNIVERSARY", label: "Home Anniversary", color: "#10b981" },
+  DORMANT: { id: "DORMANT", label: "Dormant Sphere", color: "#f59e0b" },
+  RATE_DROP: { id: "RATE_DROP", label: "Rate Drop", color: "#38bdf8" },
+  COMP_SOLD: { id: "COMP_SOLD", label: "Target Comp Sold", color: "#8b5cf6" },
 };
 
 // Parses "$800k", "1.2M", "800,000 - 1.2m", "up to $2.5M" → a single number.

@@ -28,12 +28,12 @@ import SparkBoot from "./SparkBoot";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const CYAN = "#22d3ee";
-const GREEN = "#22C55E";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const CYAN = "#38bdf8";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 
@@ -92,9 +92,9 @@ function MetricCard({ icon: IconCmp, label, value, accent, delta, spark, format 
       className="backdrop-blur-2xl bg-black/60 border border-white/10 rounded-xl p-4"
       style={{
         flex: 1, position: "relative", overflow: "hidden",
-        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${accent}33`, borderRadius: 12, padding: 16,
-        boxShadow: `inset 0 0 34px ${accent}0d, 0 0 22px ${accent}14`,
+        boxShadow: "none",
         display: "flex", flexDirection: "column", gap: 7, minWidth: 0,
       }}
     >
@@ -105,7 +105,7 @@ function MetricCard({ icon: IconCmp, label, value, accent, delta, spark, format 
             <AreaChart data={spark} margin={{ top: 30, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={`eoSpark-${label.replace(/\s/g, "")}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={accent} stopOpacity={0.75} />
+                  <stop offset="0%" stopColor={accent} stopOpacity={0.4} />
                   <stop offset="100%" stopColor={accent} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -122,13 +122,13 @@ function MetricCard({ icon: IconCmp, label, value, accent, delta, spark, format 
           {label}
         </span>
       </div>
-      <div className="font-mono" style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "#fff", textShadow: `0 0 16px ${accent}88`, letterSpacing: -0.5, position: "relative" }}>
+      <div className="font-mono" style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "#fff", textShadow: "none", letterSpacing: -0.5, position: "relative" }}>
         <Ticker value={value} format={format} />
       </div>
       {delta != null && (
         <div className="font-mono" style={{
           fontFamily: MONO, fontSize: 9.5, fontWeight: 700, position: "relative",
-          color: delta >= 0 ? GREEN : RED, textShadow: `0 0 10px ${delta >= 0 ? GREEN : RED}88`,
+          color: delta >= 0 ? GREEN : RED, textShadow: "none",
         }}>
           {delta >= 0 ? "+" : ""}{delta.toFixed(1)}% MoM
         </div>
@@ -145,10 +145,10 @@ function GlassTooltip({ active, payload, label }) {
     <div
       className="backdrop-blur-2xl bg-black/60 border border-white/10"
       style={{
-        background: "rgba(4,4,8,0.88)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+        background: "rgba(4,4,8,0.88)", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${PURPLE}55`, borderRadius: 10, padding: "10px 13px",
         fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 190,
-        boxShadow: `0 0 24px ${PURPLE}33`,
+        boxShadow: "none",
       }}
     >
       <div style={{ fontWeight: 800, marginBottom: 6, letterSpacing: 1, color: PURPLE_LT }}>{label}</div>
@@ -481,7 +481,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Building2 size={20} color={PURPLE_LT} style={{ filter: `drop-shadow(0 0 8px ${PURPLE}aa)` }} />
+        <Building2 size={20} color={PURPLE_LT} style={{ filter: "none"}} />
         <div>
           <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, letterSpacing: 1.4, color: "#fff" }}>EXECUTIVE OVERVIEW</div>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, color: SLATE_DIM, letterSpacing: 2 }}>
@@ -498,13 +498,13 @@ export default function ExecutiveOverview({ user, onNavigate }) {
             border: `1px solid ${PURPLE}77`, borderRadius: 10, padding: "10px 16px",
             color: PURPLE_LT, fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1,
             textTransform: "uppercase", cursor: exporting ? "default" : "pointer",
-            boxShadow: exporting ? "none" : `0 0 15px ${PURPLE}55`, position: "relative", overflow: "hidden",
+            boxShadow: "none", position: "relative", overflow: "hidden",
           }}
         >
           {exporting ? <Loader2 size={13} style={{ animation: "eoSpin 1s linear infinite" }} /> : <FileDown size={13} />}
           {exporting ? `Generating… ${exportPct}%` : "Generate Tear-Sheet"}
           {exporting && (
-            <span style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: `${exportPct}%`, background: PURPLE_LT, boxShadow: `0 0 8px ${PURPLE}`, transition: "width .3s ease" }} />
+            <span style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: `${exportPct}%`, background: PURPLE_LT, boxShadow: "none", transition: "width .3s ease" }} />
           )}
         </button>
       </div>
@@ -527,8 +527,8 @@ export default function ExecutiveOverview({ user, onNavigate }) {
       <div
         className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16, height: 268, flexShrink: 0,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 14, padding: 16, height: 268, flexShrink: 0,
           display: "flex", flexDirection: "column", position: "relative", overflow: "hidden",
         }}
       >
@@ -542,7 +542,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
             style={{
               position: "absolute", top: 34, bottom: 12, left: 16, width: 2, zIndex: 3, pointerEvents: "none",
               background: `linear-gradient(180deg, transparent, ${CYAN}, transparent)`,
-              boxShadow: `0 0 18px ${CYAN}`,
+              boxShadow: "none",
               animation: "eoSweep 2.4s cubic-bezier(.4,0,.2,1) 1 forwards",
             }}
           />
@@ -558,14 +558,14 @@ export default function ExecutiveOverview({ user, onNavigate }) {
               <ComposedChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="eoVolumeGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={PURPLE} stopOpacity={0.62} />
-                    <stop offset="100%" stopColor={PURPLE} stopOpacity={0.02} />
+                    <stop offset="0%" stopColor={PURPLE} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={PURPLE} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(148,163,184,0.1)" vertical={false} />
-                <XAxis dataKey="date" stroke="rgba(255,255,255,0.22)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }} />
-                <YAxis yAxisId="left" stroke="rgba(255,255,255,0.22)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
-                <YAxis yAxisId="right" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "rgba(148,163,184,0.4)", fontSize: 9, fontFamily: MONO }} tickFormatter={fmtMoney} />
+                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} />
+                <YAxis yAxisId="left" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
+                <YAxis yAxisId="right" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} tickFormatter={fmtMoney} />
                 <Tooltip content={<GlassTooltip />} cursor={{ stroke: `${CYAN}55`, strokeDasharray: "3 3" }} />
                 <Bar yAxisId="right" dataKey="dealValue" fill={CYAN} fillOpacity={0.32} barSize={7} isAnimationActive={false} radius={[2, 2, 0, 0]} />
                 <Area yAxisId="left" type="monotone" dataKey="volume" stroke={PURPLE_LT} strokeWidth={2}
@@ -582,8 +582,8 @@ export default function ExecutiveOverview({ user, onNavigate }) {
         <div
           className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: "1 1 38%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: "1 1 38%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden",
           }}
         >
@@ -604,7 +604,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
                   style={{
                     border: `1px solid ${color}44`, borderRadius: 9, padding: "9px 11px", marginBottom: 9,
                     background: `linear-gradient(135deg, ${color}0e, rgba(0,0,0,0.25))`,
-                    boxShadow: `inset 0 0 20px ${color}0a`,
+                    boxShadow: "none",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
@@ -623,7 +623,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
                         marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5,
                         background: `${RED}18`, border: `1px solid ${RED}66`, borderRadius: 6,
                         color: RED, fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 1,
-                        padding: "4px 9px", cursor: "pointer", boxShadow: `0 0 10px ${RED}33`,
+                        padding: "4px 9px", cursor: "pointer", boxShadow: "none",
                       }}
                     >
                       [ DEPLOY INTERVENTION ] <ArrowRight size={9} />
@@ -639,8 +639,8 @@ export default function ExecutiveOverview({ user, onNavigate }) {
         <div
           className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: "1 1 32%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: "1 1 32%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden",
           }}
         >
@@ -651,7 +651,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
             </span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.8fr", gap: 6, padding: "0 4px 7px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 0.8fr", gap: 6, padding: "0 4px 7px", borderBottom: "1px solid #27272a" }}>
             {["Agent", "Volume", "Close %"].map((h) => (
               <span key={h} className="tracking-wider" style={{ fontFamily: F, fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase" }}>{h}</span>
             ))}
@@ -672,7 +672,7 @@ export default function ExecutiveOverview({ user, onNavigate }) {
                 }}
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                  {i < 3 && <span style={{ width: 6, height: 6, borderRadius: "50%", background: CYAN, boxShadow: `0 0 8px ${CYAN}`, flexShrink: 0, animation: "eoBlink 1.8s ease-in-out infinite" }} />}
+                  {i < 3 && <span style={{ width: 6, height: 6, borderRadius: "50%", background: CYAN, boxShadow: "none", flexShrink: 0, animation: "none" }} />}
                   <span style={{ fontFamily: F, fontSize: 11.5, fontWeight: 700, color: i < 3 ? "#fff" : SLATE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.agent}</span>
                 </span>
                 <span className="font-mono" style={{ fontFamily: MONO, fontSize: 11, color: PURPLE_LT }}>{fmtMoney(a.volume)}</span>
@@ -686,13 +686,13 @@ export default function ExecutiveOverview({ user, onNavigate }) {
         <div
           className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: "1 1 30%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: "1 1 30%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 11 }}>
-            <Radio size={13} color={GREEN} style={{ animation: "eoBlink 1.6s ease-in-out infinite" }} />
+            <Radio size={13} color={GREEN} style={{ animation: "none" }} />
             <span className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase" }}>
               Live Deal Ticker
             </span>
@@ -715,10 +715,10 @@ export default function ExecutiveOverview({ user, onNavigate }) {
                     display: "flex", gap: 9, padding: "8px 4px", borderBottom: "1px solid rgba(255,255,255,0.05)",
                     transition: "transform .18s ease, background .18s ease", cursor: "default",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateX(4px)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = "translateX(4px)"; e.currentTarget.style.background = "#18181b"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = "translateX(0)"; e.currentTarget.style.background = "transparent"; }}
                 >
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", marginTop: 5, flexShrink: 0, background: STAGE_COLOR[d.stage] || SLATE_DIM, boxShadow: `0 0 6px ${STAGE_COLOR[d.stage] || "transparent"}` }} />
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", marginTop: 5, flexShrink: 0, background: STAGE_COLOR[d.stage] || SLATE_DIM, boxShadow: "none"}} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: F, fontSize: 11, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       <strong>{d.agent}</strong> · {d.address}

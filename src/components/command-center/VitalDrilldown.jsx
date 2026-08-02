@@ -33,7 +33,7 @@ function SeatSlice({ soloSeats, whiteLabelDeals }) {
           strokeDasharray={`${soloLen} ${circumference - soloLen}`}
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ filter: `drop-shadow(0 0 6px ${C.indigo})` }}
+          style={{ filter: "none"}}
         />
         <circle
           cx={size / 2}
@@ -46,7 +46,7 @@ function SeatSlice({ soloSeats, whiteLabelDeals }) {
           strokeDashoffset={-soloLen}
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          style={{ filter: `drop-shadow(0 0 6px ${C.violet})` }}
+          style={{ filter: "none"}}
         />
         <text x="50%" y="48%" textAnchor="middle" fill={C.text} fontSize="22" fontFamily={C.F} fontWeight="800">
           {soloSeats + whiteLabelDeals}
@@ -66,7 +66,7 @@ function SeatSlice({ soloSeats, whiteLabelDeals }) {
 function LegendRow({ color, label, value }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div style={{ width: 10, height: 10, borderRadius: 2, background: color, boxShadow: `0 0 6px ${color}` }} />
+      <div style={{ width: 10, height: 10, borderRadius: 2, background: color, boxShadow: "none"}} />
       <span style={{ fontSize: 11, color: C.textMd, fontFamily: C.F }}>{label}</span>
       <span style={{ fontSize: 12, color: C.text, fontFamily: C.F, fontWeight: 700 }}>{value}</span>
     </div>
@@ -108,7 +108,7 @@ export default function VitalDrilldown({ kind, data, onClose }) {
         inset: 0,
         zIndex: 200,
         background: "rgba(2,4,10,0.72)",
-        backdropFilter: "blur(6px)",
+        backdropFilter: "none",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -123,7 +123,7 @@ export default function VitalDrilldown({ kind, data, onClose }) {
           borderRadius: 4,
           padding: "28px 32px",
           minWidth: 380,
-          boxShadow: `0 0 60px rgba(56,240,255,0.08)`,
+          boxShadow: "none",
         }}
       >
         <TypewriterText

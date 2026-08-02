@@ -42,16 +42,16 @@ import {
 } from "./macro";
 
 const BG = "#050505";
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const GREEN = "#22c55e";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 const SLATE_HEX = "#94a3b8";
-const HAIRLINE = "rgba(255,255,255,0.1)";
+const HAIRLINE = "#27272a";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
@@ -107,8 +107,8 @@ function HudCard({ label, value, sub, color, icon: I, format = "int", bar, pulse
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
       minWidth: 0, padding: 15, borderRadius: 13,
-      background: `linear-gradient(135deg,${color}0e,rgba(0,0,0,0.45))`,
-      backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+      background: `#111111`,
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
       animation: pulse ? "miPulseBorder 1.8s ease-in-out infinite" : "none",
     }}>
@@ -121,12 +121,12 @@ function HudCard({ label, value, sub, color, icon: I, format = "int", bar, pulse
       </div>
       <div className="font-mono" style={{
         fontFamily: MONO, fontSize: 25, fontWeight: 800, color: unavailable ? SLATE_DIM : color,
-        textShadow: unavailable ? "none" : `0 0 18px ${color}66`, lineHeight: 1.1,
+        textShadow: "none", lineHeight: 1.1,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>{text}</div>
       {bar != null && (
-        <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginTop: 8 }}>
-          <div style={{ width: `${Math.max(0, Math.min(100, bar))}%`, height: "100%", background: color, boxShadow: `0 0 8px ${color}`, transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
+        <div style={{ height: 5, borderRadius: 3, background: "#27272a", overflow: "hidden", marginTop: 8 }}>
+          <div style={{ width: `${Math.max(0, Math.min(100, bar))}%`, height: "100%", background: color, boxShadow: "none", transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
         </div>
       )}
       <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 5, lineHeight: 1.45 }}>{sub}</div>
@@ -138,8 +138,8 @@ function IntentBar({ value }) {
   const color = value >= 75 ? GREEN : value >= 50 ? CYAN : value >= 30 ? SLATE_HEX : SLATE_DIM;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-      <div style={{ flex: 1, minWidth: 44, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
-        <div style={{ width: `${value}%`, height: "100%", background: color, boxShadow: `0 0 8px ${color}`, transition: "width .5s cubic-bezier(.16,1,.3,1)" }} />
+      <div style={{ flex: 1, minWidth: 44, height: 5, borderRadius: 3, background: "#27272a", overflow: "hidden" }}>
+        <div style={{ width: `${value}%`, height: "100%", background: color, boxShadow: "none", transition: "width .5s cubic-bezier(.16,1,.3,1)" }} />
       </div>
       <span className="font-mono" style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 800, color, minWidth: 26, textAlign: "right" }}>{value}</span>
     </div>
@@ -254,7 +254,7 @@ function CopyBlock({ label, text }) {
         </button>
       </div>
       <pre className="font-mono" style={{
-        margin: 0, background: "rgba(0,0,0,0.6)", border: `1px solid ${HAIRLINE}`, borderRadius: 9,
+        margin: 0, background: "#111111", border: `1px solid ${HAIRLINE}`, borderRadius: 9,
         padding: 11, fontFamily: MONO, fontSize: 10, lineHeight: 1.65, color: SLATE,
         whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 220, overflowY: "auto",
       }}>{text}</pre>
@@ -267,7 +267,7 @@ function LeadDossier({ lead, onClose, onBridge, busy }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 12 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: lead.fresh ? GREEN : CYAN, boxShadow: `0 0 8px ${lead.fresh ? GREEN : CYAN}`, flexShrink: 0, marginTop: 5 }} />
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: lead.fresh ? GREEN : CYAN, boxShadow: "none", flexShrink: 0, marginTop: 5 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase" }}>
             Inbound Telemetry Dossier
@@ -306,7 +306,7 @@ function LeadDossier({ lead, onClose, onBridge, busy }) {
           ))}
         </div>
         {lead.message && (
-          <div style={{ marginTop: 11, padding: 11, borderRadius: 9, border: `1px solid ${HAIRLINE}`, background: "rgba(255,255,255,0.02)" }}>
+          <div style={{ marginTop: 11, padding: 11, borderRadius: 9, border: `1px solid ${HAIRLINE}`, background: "#18181b" }}>
             <div className="tracking-wider" style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.1, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 5 }}>Their words</div>
             <div style={{ fontFamily: F, fontSize: 11.5, color: SLATE, lineHeight: 1.6, fontStyle: "italic" }}>“{lead.message}”</div>
           </div>
@@ -318,7 +318,7 @@ function LeadDossier({ lead, onClose, onBridge, busy }) {
         <div style={{ border: `1px solid ${PURPLE}44`, borderRadius: 11, padding: 13, background: `${PURPLE}0a` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
             <span className="tracking-wider" style={{ flex: 1, fontFamily: MONO, fontSize: 8, letterSpacing: 1.3, color: SLATE_DIM, textTransform: "uppercase" }}>Intent score</span>
-            <span className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: PURPLE_LT, textShadow: `0 0 16px ${PURPLE}88` }}>{lead.intent}</span>
+            <span className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: PURPLE_LT, textShadow: "none"}}>{lead.intent}</span>
           </div>
           <div style={{ display: "grid", gap: 3 }}>
             {lead.intentFactors.map((f, i) => (
@@ -511,7 +511,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
         <style>{MI_KEYFRAMES}</style>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
           <Zap size={46} color={PURPLE_LT} fill={PURPLE_LT}
-            style={{ filter: `drop-shadow(0 0 22px ${PURPLE})`, animation: "miBootPulse 1.5s ease-in-out infinite" }} />
+            style={{ filter: "none", animation: "miBootPulse 1.5s ease-in-out infinite" }} />
           <div className="font-mono tracking-wider text-slate-400" style={{
             fontFamily: MONO, fontSize: 10.5, letterSpacing: 2.2, color: SLATE_DIM,
             textAlign: "center", padding: "0 24px", lineHeight: 1.7, maxWidth: 480,
@@ -534,7 +534,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
 
       <div className="w-full p-6 md:p-8" style={{
         flex: 1, overflowY: "auto", minHeight: 0, width: "100%", padding: pad, boxSizing: "border-box",
-        scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent",
+        scrollbarWidth: "thin", scrollbarColor: "#27272a transparent",
       }}>
         {/* header */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
@@ -546,7 +546,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
               <Radio size={10} color={GREEN} /> Macro-Intelligence &amp; Autonomous Inbound Terminal
             </div>
             <div style={{ fontFamily: F, fontSize: 21, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
-              <span className="font-mono" style={{ fontFamily: MONO, color: GREEN, textShadow: `0 0 20px ${GREEN}88` }}>
+              <span className="font-mono" style={{ fontFamily: MONO, color: GREEN, textShadow: "none"}}>
                 {leads.length}
               </span>{" "}
               INBOUND IN QUEUE
@@ -560,7 +560,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 11, background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}`, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 11, background: "#111111", border: `1px solid ${HAIRLINE}`, flexWrap: "wrap" }}>
             {VIEWS.map((v) => {
               const I = v.icon;
               const on = view === v.id;
@@ -571,7 +571,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
                   background: on ? `${v.color}1e` : "transparent",
                   border: `1px solid ${on ? `${v.color}88` : "transparent"}`,
                   color: on ? v.color : SLATE_DIM,
-                  boxShadow: on ? `0 0 12px ${v.color}44` : "none", whiteSpace: "nowrap",
+                  boxShadow: "none", whiteSpace: "nowrap",
                 }}>
                   <I size={11} /> [ {v.label} ]
                 </button>
@@ -615,7 +615,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
           <>
             <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
               display: "flex", alignItems: "center", gap: 8, padding: "0 12px", height: 38, borderRadius: 10,
-              background: "rgba(0,0,0,0.55)", border: `1px solid ${HAIRLINE}`, marginBottom: 14, maxWidth: 380,
+              background: "#111111", border: `1px solid ${HAIRLINE}`, marginBottom: 14, maxWidth: 380,
             }}>
               <Search size={13} color={SLATE_DIM} style={{ flexShrink: 0 }} />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, property, source…"
@@ -624,11 +624,11 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
               {query && <button onClick={() => setQuery("")} style={{ background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}><X size={12} /></button>}
             </div>
 
-            <div className="w-full" style={{ width: "100%", border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: "hidden", background: "rgba(0,0,0,0.5)" }}>
+            <div className="w-full" style={{ width: "100%", border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: "hidden", background: "#111111" }}>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", minWidth: 880, borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "rgba(255,255,255,0.035)" }}>
+                    <tr style={{ background: "#18181b" }}>
                       {[["time", "Time"], ["source", "Source"], ["name", "Name"], ["property", "Target Property"], ["intent", "AI Intent Score"]].map(([col, label]) => (
                         <th key={col} onClick={() => setSort((s) => ({ col, dir: s.col === col && s.dir === "desc" ? "asc" : "desc" }))}
                           className="tracking-wider" style={{
@@ -648,9 +648,9 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
                   <tbody>
                     {rows.map((l) => (
                       <tr key={l.id} onClick={() => setSelected(l)} className="mi-row" style={{
-                        cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        cursor: "pointer", borderBottom: "1px solid #18181b",
                         // Pulsing green rail on uncontacted leads under 5 minutes old.
-                        boxShadow: l.fresh ? `inset 3px 0 0 ${GREEN}` : "none",
+                        boxShadow: "none",
                         animation: l.fresh ? "miFreshRow 1.8s ease-in-out infinite" : "none",
                       }}>
                         <td className="font-mono" style={{ padding: "11px 14px", fontFamily: MONO, fontSize: 10.5, whiteSpace: "nowrap", color: l.fresh ? GREEN : SLATE }}>
@@ -698,7 +698,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
               gridTemplateColumns: wide ? "minmax(0,2fr) minmax(0,1fr)" : "minmax(0,1fr)", alignItems: "start",
             }}>
               <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-                padding: 16, borderRadius: 13, background: "rgba(0,0,0,0.55)", border: `1px solid ${HAIRLINE}`, minWidth: 0,
+                padding: 16, borderRadius: 13, background: "#111111", border: `1px solid ${HAIRLINE}`, minWidth: 0,
               }}>
                 <div className="tracking-wider" style={{
                   fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.8, color: CYAN,
@@ -707,15 +707,15 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
                 <div style={{ height: 260, width: "100%", flexShrink: 0 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={series} margin={{ top: 4, right: 8, bottom: 0, left: -12 }}>
-                      <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fill: SLATE_DIM, fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="l" tick={{ fill: SLATE_DIM, fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="r" orientation="right" tick={{ fill: SLATE_DIM, fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
+                      <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                      <XAxis dataKey="month" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="l" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="r" orientation="right" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} axisLine={false} tickLine={false} />
                       {/* Rate needs its own scale. Sharing the inventory axis
                           (1200-1600) rendered a 6.2% line flat along the floor,
                           which read as "no data" rather than a rate. */}
                       <YAxis yAxisId="rate" hide domain={["dataMin - 0.6", "dataMax + 0.6"]} />
-                      <Tooltip contentStyle={{ background: "rgba(6,6,12,0.96)", border: `1px solid ${HAIRLINE}`, borderRadius: 9, fontFamily: MONO, fontSize: 11 }}
+                      <Tooltip contentStyle={{ background: "#111111", border: `1px solid ${HAIRLINE}`, borderRadius: 9, fontFamily: MONO, fontSize: 11 }}
                         labelStyle={{ color: SLATE_DIM }} />
                       <Legend wrapperStyle={{ fontFamily: MONO, fontSize: 9, color: SLATE_DIM }} />
                       {/* isAnimationActive={false} on every series — the animation
@@ -746,7 +746,7 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
                     ["30-year rate", `${latest.rate}%`, `${(latest.rate - first.rate).toFixed(2)} pts YoY`, latest.rate < first.rate ? GREEN : RED],
                   ].map(([l, v, d, c]) => (
                     <div key={l} className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-                      padding: 14, borderRadius: 12, background: "rgba(0,0,0,0.55)", border: `1px solid ${HAIRLINE}`,
+                      padding: 14, borderRadius: 12, background: "#111111", border: `1px solid ${HAIRLINE}`,
                     }}>
                       <div className="tracking-wider" style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.3, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 5 }}>{l}</div>
                       <div className="font-mono" style={{ fontFamily: MONO, fontSize: 21, fontWeight: 800, color: "#fff" }}>{v}</div>
@@ -766,10 +766,10 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
               <button onClick={genUpdate} disabled={updating} style={{
                 width: "100%", padding: "15px 16px", borderRadius: 12,
                 cursor: updating ? "default" : "pointer",
-                background: updating ? `${PURPLE}22` : `linear-gradient(135deg,#7c3aed,${PURPLE})`,
+                background: updating ? `${PURPLE}22` : `#8b5cf6`,
                 border: `1px solid ${PURPLE}`, color: "#fff",
                 fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase",
-                boxShadow: updating ? "none" : `0 0 26px ${PURPLE}77`,
+                boxShadow: "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 9,
               }}>
                 {updating ? <Loader2 size={14} style={{ animation: "miSpin 1s linear infinite" }} /> : <Send size={14} />}
@@ -790,8 +790,8 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
               const heat = ratio >= 40 ? GREEN : ratio >= 20 ? CYAN : AMBER;
               return (
                 <div key={f.id} className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-                  padding: 15, borderRadius: 13, background: "rgba(0,0,0,0.55)",
-                  backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+                  padding: 15, borderRadius: 13, background: "#111111",
+                  backdropFilter: "none", WebkitBackdropFilter: "none",
                   border: `1px solid ${HAIRLINE}`, minWidth: 0,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
@@ -817,8 +817,8 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
                     </div>
                   </div>
 
-                  <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.07)", overflow: "hidden", marginBottom: 12 }}>
-                    <div style={{ width: `${Math.min(100, ratio)}%`, height: "100%", background: heat, boxShadow: `0 0 8px ${heat}`, transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
+                  <div style={{ height: 5, borderRadius: 3, background: "#27272a", overflow: "hidden", marginBottom: 12 }}>
+                    <div style={{ width: `${Math.min(100, ratio)}%`, height: "100%", background: heat, boxShadow: "none", transition: "width .6s cubic-bezier(.16,1,.3,1)" }} />
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 9, paddingTop: 10, borderTop: `1px solid ${HAIRLINE}` }}>
@@ -840,15 +840,15 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
       {selected && (
         <>
           <div onClick={() => setSelected(null)} style={{
-            position: "absolute", inset: 0, zIndex: 120, background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+            position: "absolute", inset: 0, zIndex: 120, background: "#111111",
+            backdropFilter: "none", WebkitBackdropFilter: "none",
           }} />
           {/* Mount keyframe, not a framer-motion entrance — see header note 2. */}
           <div key={selected.id} className="backdrop-blur-2xl bg-black/60 border-l border-white/10" style={{
             position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 130,
             width: "min(468px, 100%)", overflowY: "auto",
             animation: "miSlideIn .28s cubic-bezier(.16,1,.3,1) both",
-            background: "rgba(6,6,10,0.96)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             borderLeft: `1px solid ${HAIRLINE}`, padding: 20, boxSizing: "border-box",
           }}>
             <LeadDossier lead={selected} onClose={() => setSelected(null)} onBridge={bridge} busy={busy} />
@@ -860,13 +860,13 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
       {update && (
         <div onClick={() => setUpdate(null)} style={{
           position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.82)",
-          backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)",
+          backdropFilter: "none", WebkitBackdropFilter: "none",
           display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
         }}>
           <div onClick={(e) => e.stopPropagation()} className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
             width: "min(760px,100%)", maxHeight: "88%", overflowY: "auto",
-            background: "rgba(6,6,12,0.96)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: `1px solid ${PURPLE}55`, borderRadius: 15, padding: 22, boxShadow: `0 0 52px ${PURPLE}44`,
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: `1px solid ${PURPLE}55`, borderRadius: 15, padding: 22, boxShadow: "none",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 3 }}>
               <FileText size={16} color={PURPLE_LT} />
@@ -884,9 +884,9 @@ export default function MacroIntelligence({ user, isMobile, onNavigate, onOpenTo
       {toast && (
         <div className="backdrop-blur-2xl" style={{
           position: "absolute", bottom: 22, left: "50%", transform: "translateX(-50%)", zIndex: 250,
-          background: "rgba(6,6,12,0.95)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: `1px solid ${GREEN}88`, borderRadius: 10, padding: "10px 18px", color: "#fff",
-          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: `0 0 24px ${GREEN}55`,
+          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: "none",
           maxWidth: "86%", textAlign: "center",
         }}>{toast}</div>
       )}
@@ -902,5 +902,5 @@ const MI_KEYFRAMES = `
 @keyframes miPulseBorder{0%,100%{border-color:${AMBER}55;box-shadow:0 0 0 rgba(255,176,32,0)}50%{border-color:${AMBER};box-shadow:0 0 18px rgba(255,176,32,.3)}}
 @keyframes miFreshRow{0%,100%{box-shadow:inset 3px 0 0 ${GREEN},0 0 0 rgba(34,197,94,0)}50%{box-shadow:inset 3px 0 0 ${GREEN},inset 0 0 22px rgba(34,197,94,.09)}}
 .mi-input::placeholder{color:rgba(148,163,184,0.45)}
-.mi-row:hover{background:rgba(255,255,255,0.03)}
+.mi-row:hover{background:#18181b}
 `;

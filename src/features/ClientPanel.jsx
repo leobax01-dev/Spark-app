@@ -12,10 +12,10 @@ import { Card, Label, Button, CopyButton } from "../components/UI";
 // DESIGN TOKENS
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
-  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
-  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
-  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
+  bg:"#0a0a0a", surface:"#111111", surfaceUp:"#18181b", surfaceHigh:"#18181b",
+  border:"#27272a", borderMd:"#27272a",
+  indigo:"#8b5cf6", indigoLt:"#a78bfa", violet:"#7c3aed",
+  cyan:"#38bdf8", emerald:"#10b981", amber:"#f59e0b", rose:"#ef4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -296,7 +296,7 @@ Return ONLY valid JSON:
               </div>
             ))}
           </div>
-          {client.notes&&<div style={{marginTop:12,padding:"10px 12px",background:"rgba(255,255,255,.02)",borderRadius:8,fontFamily:C.F,fontSize:11,color:C.textMd,lineHeight:1.6}}>{client.notes}</div>}
+          {client.notes&&<div style={{marginTop:12,padding:"10px 12px",background:"#18181b",borderRadius:8,fontFamily:C.F,fontSize:11,color:C.textMd,lineHeight:1.6}}>{client.notes}</div>}
         </CCard>
 
         {/* AI Next Action */}
@@ -370,7 +370,7 @@ Return ONLY valid JSON:
               <span style={{display:"flex",alignItems:"center",gap:3}}>
                 <div style={{width:5,height:5,borderRadius:"50%",
                   background:syncStatus==="synced"?C.emerald:syncStatus==="syncing"?C.amber:syncStatus==="offline"?C.rose:C.textDim,
-                  boxShadow:syncStatus==="synced"?`0 0 5px ${C.emerald}`:"none"}}/>
+                  boxShadow: "none"}}/>
                 <span style={{fontSize:8,color:C.textDim}}>
                   {syncStatus==="synced"?"Synced":syncStatus==="syncing"?"Syncing...":syncStatus==="offline"?"Offline":""}
                 </span>
@@ -814,7 +814,7 @@ Return ONLY valid JSON:
         <div style={{animation:"scaleIn .25s ease"}}>
           {/* Header */}
           <div style={{
-            background:`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`,
+            background:`#18181b`,
             border:`1px solid ${C.indigo}28`,borderRadius:14,
             padding:"20px 18px",marginBottom:14}}>
             <div style={{fontSize:9,color:C.indigoLt,letterSpacing:2.5,fontFamily:C.F,
@@ -864,7 +864,7 @@ Return ONLY valid JSON:
                 <div key={i} style={{display:"flex",gap:8,padding:"8px 0",
                   borderBottom:i<briefing.follow_up_alerts.length-1?`1px solid ${C.border}`:"none"}}>
                   <div style={{width:6,height:6,borderRadius:"50%",background:C.rose,
-                    marginTop:5,flexShrink:0,boxShadow:`0 0 5px ${C.rose}`}}/>
+                    marginTop:5,flexShrink:0,boxShadow: "none"}}/>
                   <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:0,lineHeight:1.5}}>{alert}</p>
                 </div>
               ))}
@@ -980,7 +980,7 @@ function ClientTasksSection({ client, onAdd, onToggle, onDelete }){
             const overdue = t.dueDate && t.dueDate<todayStr;
             return(
               <div key={t.id} style={{display:"flex",alignItems:"center",gap:9,
-                background:overdue?"rgba(244,63,94,.05)":"rgba(255,255,255,.02)",
+                background:overdue?"rgba(244,63,94,.05)":"#18181b",
                 border:`1px solid ${overdue?C.rose+"20":C.border}`,borderRadius:8,padding:"8px 10px"}}>
                 <button onClick={()=>onToggle(t.id)}
                   style={{width:16,height:16,borderRadius:5,border:`1.5px solid ${C.amber}60`,
@@ -1332,7 +1332,7 @@ function ClientImport({ user, onImported }){
               Start over
             </button>
             <button onClick={()=>setStep("preview")}
-              style={{flex:1,background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,border:"none",
+              style={{flex:1,background:`${C.emerald}`,border:"none",
                 color:"#fff",borderRadius:8,padding:"9px 16px",cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:12}}>
               Preview Import →
             </button>
@@ -1397,7 +1397,7 @@ function ClientImport({ user, onImported }){
               </button>
             )}
             <button onClick={()=>handleImport(false)} disabled={importing}
-              style={{flex:1,background:importing?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+              style={{flex:1,background:importing?"rgba(255,255,255,.05)":`${C.emerald}`,
                 border:"none",color:importing?C.textDim:"#fff",borderRadius:8,padding:"9px 16px",
                 cursor:importing?"default":"pointer",fontFamily:C.F,fontWeight:700,fontSize:12}}>
               {importing?"Importing...":`Import ${validCount} Clients`}
@@ -1451,13 +1451,13 @@ function RelationshipManagerHeader(){
       : `Watching ${clients.length} client${clients.length!==1?"s":""} — everyone's been heard from recently.`;
 
   return(
-    <div style={{background:`linear-gradient(135deg,${C.indigo}10,${C.violet}06)`,
+    <div style={{background:`#18181b`,
       border:`1px solid ${C.indigo}22`,borderRadius:14,padding:"14px 16px",marginBottom:18,
       display:"flex",alignItems:"center",gap:12}}>
       <div style={{width:38,height:38,borderRadius:10,flexShrink:0,
-        background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+        background:`#8b5cf6`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:`0 4px 14px ${C.indigo}40`}}>
+        boxShadow: "none"}}>
         <Icon.Clients size={18} color="#fff"/>
       </div>
       <div>
@@ -1670,7 +1670,7 @@ function SmartIntake({ user, isMobile }){
           <div style={{fontFamily:C.F,fontSize:13,color:C.text,fontWeight:600,marginBottom:10}}>
             {proposal.summary}
           </div>
-          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:12}}>
+          <div style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:12}}>
             {Object.entries(proposal.updates||{}).filter(([k,v])=>v&&String(v).trim()).map(([k,v])=>(
               <div key={k} style={{display:"flex",gap:8,fontFamily:C.F,fontSize:11,marginBottom:4}}>
                 <span style={{color:C.textDim,minWidth:80,textTransform:"capitalize"}}>{k.replace(/([A-Z])/g," $1")}:</span>
@@ -1799,7 +1799,7 @@ export default function ClientPanel({ user, planKey, isMobile, onNavigate }){
       <button onClick={()=>setTool("sphere")}
         style={{display:"flex",alignItems:"center",gap:7,marginBottom:14,padding:"8px 13px",
           borderRadius:9,cursor:"pointer",background:"rgba(34,211,238,.1)",
-          border:"1px solid rgba(34,211,238,.4)",color:"#22d3ee",
+          border:"1px solid rgba(34,211,238,.4)",color:"#38bdf8",
           fontFamily:C.F,fontSize:10.5,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
         ← Back to Sphere Terminal
       </button>
@@ -1811,7 +1811,7 @@ export default function ClientPanel({ user, planKey, isMobile, onNavigate }){
           <div key={t.id} onClick={()=>setTool(t.id)}
             style={{padding:"13px 10px",borderRadius:12,cursor:"pointer",textAlign:"center",
               border:`1px solid ${tool===t.id?t.color+"50":C.border}`,
-              background:tool===t.id?`${t.color}0e`:"rgba(255,255,255,.015)",
+              background:tool===t.id?`${t.color}0e`:"#18181b",
               transition:"all .16s ease"}}>
             <div style={{display:"flex",justifyContent:"center",marginBottom:6,color:tool===t.id?t.color:C.textMd}}>
               {TIcon&&<TIcon size={19}/>}
@@ -1841,7 +1841,7 @@ export default function ClientPanel({ user, planKey, isMobile, onNavigate }){
             Column mapping, duplicate detection and the commit gate all live there now.
           </p>
           <button onClick={()=>setTool("sphere")} style={{padding:"12px 22px",borderRadius:10,cursor:"pointer",
-            background:"rgba(168,85,247,.12)",border:"1px solid rgba(168,85,247,.5)",color:"#c084fc",
+            background:"rgba(168,85,247,.12)",border:"1px solid rgba(168,85,247,.5)",color:"#a78bfa",
             fontFamily:C.F,fontSize:11,fontWeight:800,letterSpacing:1,textTransform:"uppercase"}}>
             [ Open Migration Command Center ]
           </button>

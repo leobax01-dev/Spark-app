@@ -15,7 +15,7 @@ export default function CommandLogsDrawer({ open, feed, onClose }) {
         inset: 0,
         zIndex: 210,
         background: "rgba(2,4,10,0.5)",
-        backdropFilter: "blur(4px)",
+        backdropFilter: "none",
         animation: "cc-fade-in .2s ease both",
       }}
     >
@@ -28,10 +28,10 @@ export default function CommandLogsDrawer({ open, feed, onClose }) {
           bottom: 0,
           maxHeight: "58vh",
           background: "rgba(6,10,22,0.55)",
-          backdropFilter: "blur(26px) saturate(140%)",
-          WebkitBackdropFilter: "blur(26px) saturate(140%)",
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
           borderTop: `1px solid ${C.amber}33`,
-          boxShadow: "0 -20px 60px rgba(0,0,0,0.5)",
+          boxShadow: "none",
           display: "flex",
           flexDirection: "column",
           animation: "cc-slide-up .3s cubic-bezier(.2,.8,.2,1) both",

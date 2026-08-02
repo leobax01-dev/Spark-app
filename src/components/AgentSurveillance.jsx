@@ -63,12 +63,12 @@ const RENTCAST_KEY = import.meta.env.VITE_RENTCAST_API_KEY;
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const RED = "#ff3b5c";
-const GREEN = "#22C55E";
-const AMBER = "#ffb020";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const RED = "#ef4444";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 
@@ -386,12 +386,12 @@ function PulseNode({ node, selected, dimmed, onPick }) {
       }} title={node.address}>
         <span style={{
           position: "absolute", inset: -6, borderRadius: "50%", border: `1.5px solid ${meta.color}`,
-          animation: `asPulse 2.4s cubic-bezier(.2,.6,.4,1) infinite`, animationDelay: `${(node.lat * 7) % 2}s`,
+          animation: "none", animationDelay: `${(node.lat * 7) % 2}s`,
         }} />
         <span style={{
           position: "absolute", inset: 0, borderRadius: "50%", background: meta.color,
-          boxShadow: `0 0 ${isSel ? 22 : 12}px ${meta.color}, 0 0 4px #000`,
-          border: isSel ? "2px solid #fff" : `1px solid rgba(0,0,0,0.5)`,
+          boxShadow: "none",
+          border: isSel ? "2px solid #fff" : `1px solid #111111`,
           transform: isSel ? "scale(1.35)" : "scale(1)", transition: "transform .16s ease, box-shadow .16s ease",
         }} />
       </div>
@@ -739,7 +739,7 @@ export default function AgentSurveillance({ user }) {
     window.addEventListener("resize", onResize);
     map.once("remove", () => window.removeEventListener("resize", onResize));
     try {
-      map.setFog({ color: "#050505", "high-color": "#0b0b1a", "horizon-blend": 0.05, "space-color": "#020204", "star-intensity": 0.1 });
+      map.setFog({ color: "#050505", "high-color": "#111111", "horizon-blend": 0.03, "space-color": "#050505", "star-intensity": 0 });
     } catch { /* style variant without fog — cosmetic only */ }
   }, []);
 
@@ -833,7 +833,7 @@ export default function AgentSurveillance({ user }) {
             backgroundImage: `linear-gradient(${CYAN}0c 1px, transparent 1px), linear-gradient(90deg, ${CYAN}0c 1px, transparent 1px)`,
             backgroundSize: "68px 68px",
           }} />
-          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: `inset 0 0 140px rgba(0,0,0,0.75)` }} />
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 2, boxShadow: "none"}} />
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", pointerEvents: "none", zIndex: 3, opacity: 0.3 }}>
             <Crosshair size={26} color={CYAN} />
           </div>
@@ -859,16 +859,16 @@ export default function AgentSurveillance({ user }) {
           <div className="tracking-wider" style={{
             fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 2.2, color: SLATE_DIM,
             textTransform: "uppercase", textAlign: "center", marginBottom: 5,
-            textShadow: "0 1px 6px rgba(0,0,0,0.9)",
+            textShadow: "none",
           }}>
             [ Search Market Coordinates ]
           </div>
 
           <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
             display: "flex", alignItems: "center", gap: 9, padding: "0 12px", height: 42,
-            background: "rgba(0,0,0,0.62)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: `1px solid ${suggestOpen && suggests.length ? `${CYAN}66` : "rgba(255,255,255,0.12)"}`,
-            borderRadius: 11, boxShadow: `0 0 26px rgba(0,0,0,0.7)`,
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: `1px solid ${suggestOpen && suggests.length ? `${CYAN}66` : "#27272a"}`,
+            borderRadius: 11, boxShadow: "none",
           }}>
             {geoBusy || scanning
               ? <Loader2 size={14} color={CYAN} style={{ animation: "asSpin 1s linear infinite", flexShrink: 0 }} />
@@ -893,7 +893,7 @@ export default function AgentSurveillance({ user }) {
                 flexShrink: 0, fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.2,
                 textTransform: "uppercase", padding: "6px 11px", borderRadius: 7,
                 background: query.trim() ? `${CYAN}1e` : "transparent",
-                border: `1px solid ${query.trim() ? `${CYAN}88` : "rgba(255,255,255,0.1)"}`,
+                border: `1px solid ${query.trim() ? `${CYAN}88` : "#27272a"}`,
                 color: query.trim() ? CYAN : SLATE_DIM,
                 cursor: query.trim() && !scanning ? "pointer" : "default",
               }}>Scan</button>
@@ -903,9 +903,9 @@ export default function AgentSurveillance({ user }) {
           {suggestOpen && suggests.length > 0 && (
             <div className="backdrop-blur-2xl bg-black/80 border border-white/10" style={{
               position: "absolute", top: 48 + 18, left: 0, right: 0, zIndex: 45,
-              background: "rgba(6,6,12,0.94)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 11, overflow: "hidden",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.8)",
+              background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+              border: "1px solid #27272a", borderRadius: 11, overflow: "hidden",
+              boxShadow: "none",
             }}>
               {suggests.map((s) => (
                 <button key={s.id} onClick={() => submitSearch(s)}
@@ -929,8 +929,8 @@ export default function AgentSurveillance({ user }) {
         <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
           display: "flex", flexWrap: "wrap", justifyContent: "center", maxWidth: "100%",
           gap: 4, padding: 4, pointerEvents: "auto",
-          background: "rgba(0,0,0,0.58)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, boxShadow: "0 0 22px rgba(0,0,0,0.65)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 10, boxShadow: "none",
         }}>
           {FILTERS.map((f) => {
             const on = filter === f.key;
@@ -944,7 +944,7 @@ export default function AgentSurveillance({ user }) {
                   background: on ? `${f.color}1e` : "transparent",
                   border: `1px solid ${on ? `${f.color}88` : "transparent"}`,
                   color: on ? (f.key === "ALL" ? "#fff" : f.color) : SLATE_DIM,
-                  boxShadow: on && f.key !== "ALL" ? `0 0 12px ${f.color}44` : "none",
+                  boxShadow: "none",
                   transition: "background .2s ease, color .2s ease, border-color .2s ease",
                 }}>
                 [ {f.label} ]
@@ -959,13 +959,13 @@ export default function AgentSurveillance({ user }) {
       <div className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
           position: "absolute", top: 16, left: 16, zIndex: 20, width: 246,
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 14,
-          boxShadow: `0 0 22px rgba(0,0,0,0.6)`,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 12, padding: 14,
+          boxShadow: "none",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
           <Zap size={15} color={PURPLE_LT} fill={PURPLE_LT}
-            style={{ filter: "drop-shadow(0 0 10px rgba(168,85,247,0.6))", animation: "asBlink 2.2s ease-in-out infinite" }} />
+            style={{ filter: "none", animation: "none" }} />
           <span style={{ fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.6, color: "#fff" }}>SPARK OS</span>
         </div>
         <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 7.5, fontWeight: 700, letterSpacing: 2.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4 }}>
@@ -988,8 +988,8 @@ export default function AgentSurveillance({ user }) {
                 opacity: active ? 1 : 0.4, transition: "opacity .2s ease, background .2s ease",
               }}>
               <span style={{ position: "relative", width: 9, height: 9, flexShrink: 0 }}>
-                <span style={{ position: "absolute", inset: -4, borderRadius: "50%", border: `1px solid ${m.color}`, animation: "asPulse 2.4s cubic-bezier(.2,.6,.4,1) infinite" }} />
-                <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: m.color, boxShadow: `0 0 8px ${m.color}` }} />
+                <span style={{ position: "absolute", inset: -4, borderRadius: "50%", border: `1px solid ${m.color}`, animation: "none" }} />
+                <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: m.color, boxShadow: "none"}} />
               </span>
               <span style={{ flex: 1, fontFamily: F, fontSize: 10, color: SLATE, whiteSpace: "nowrap" }}>{m.label}</span>
               <span className="font-mono" style={{ fontFamily: MONO, fontSize: 10, fontWeight: 800, color: m.color }}>{counts[m.key]}</span>
@@ -1024,7 +1024,7 @@ export default function AgentSurveillance({ user }) {
                   flex: 1, fontFamily: MONO, fontSize: 8, fontWeight: 800, letterSpacing: 1, padding: "6px 0",
                   borderRadius: 7, cursor: "pointer", textTransform: "uppercase",
                   background: styleId === s.id ? `${CYAN}1e` : "transparent",
-                  border: `1px solid ${styleId === s.id ? CYAN : "rgba(255,255,255,0.12)"}`,
+                  border: `1px solid ${styleId === s.id ? CYAN : "#27272a"}`,
                   color: styleId === s.id ? CYAN : SLATE_DIM,
                 }}>
                 <Icon size={9} style={{ verticalAlign: -1, marginRight: 4 }} />{s.label}
@@ -1048,9 +1048,9 @@ export default function AgentSurveillance({ user }) {
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
           style={{
             position: "absolute", bottom: 22, left: `calc((100% - ${PANEL_W}px) / 2)`, transform: "translateX(-50%)", zIndex: 90,
-            background: "rgba(6,6,12,0.94)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             border: `1px solid ${CYAN}88`, borderRadius: 10, padding: "10px 18px", color: "#fff",
-            fontFamily: F, fontSize: 12, fontWeight: 700, boxShadow: `0 0 24px ${CYAN}55`, whiteSpace: "nowrap",
+            fontFamily: F, fontSize: 12, fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap",
           }}>{toast}</motion.div>
       )}
 
@@ -1058,12 +1058,12 @@ export default function AgentSurveillance({ user }) {
       <div className="w-96 backdrop-blur-2xl bg-black/60 border-l border-white/10 flex flex-col h-full z-10"
         style={{
           position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL_W, zIndex: 10,
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          borderLeft: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          borderLeft: "1px solid #27272a", display: "flex", flexDirection: "column",
           padding: 18, boxSizing: "border-box", overflowY: "auto",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-          <RadarIcon size={14} color={selMeta ? selMeta.color : PURPLE_LT} style={{ filter: `drop-shadow(0 0 6px ${selMeta ? selMeta.color : PURPLE}aa)` }} />
+          <RadarIcon size={14} color={selMeta ? selMeta.color : PURPLE_LT} style={{ filter: "none"}} />
           <span style={{ fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.7, color: "#fff" }}>
             {selected ? "ACQUISITION DOSSIER" : "ACQUISITION GRID"}
           </span>
@@ -1080,12 +1080,12 @@ export default function AgentSurveillance({ user }) {
           <>
             <div style={{
               position: "relative", height: 108, borderRadius: 10, overflow: "hidden", marginBottom: 16,
-              border: "1px dashed rgba(255,255,255,0.12)",
+              border: "1px dashed #27272a",
               backgroundImage: "linear-gradient(rgba(148,163,184,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.07) 1px,transparent 1px)",
               backgroundSize: "16px 16px",
             }}>
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
-                <Crosshair size={22} color={CYAN} style={{ filter: `drop-shadow(0 0 10px ${CYAN})`, animation: "asBlink 2s ease-in-out infinite" }} />
+                <Crosshair size={22} color={CYAN} style={{ filter: "none", animation: "none" }} />
                 <span className="font-mono" style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 2, color: SLATE_DIM }}>
                   {scanning ? "SCANNING MARKET…" : "AWAITING TARGET LOCK"}
                 </span>
@@ -1101,17 +1101,17 @@ export default function AgentSurveillance({ user }) {
               ["AI Predicted Sellers", counts.PREDICTED, PURPLE],
               ["$5M+ Luxury Band", counts.LUXURY, AMBER]].map(([l, v, c]) => (
               <div key={l} style={{ display: "flex", alignItems: "center", gap: 9, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: c, boxShadow: `0 0 7px ${c}`, flexShrink: 0 }} />
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: c, boxShadow: "none", flexShrink: 0 }} />
                 <span style={{ flex: 1, fontFamily: F, fontSize: 11, color: SLATE }}>{l}</span>
                 <span className="font-mono" style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800, color: c }}>{v}</span>
               </div>
             ))}
 
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #27272a" }}>
               <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.6, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 6 }}>
                 Total Grid Opportunity
               </div>
-              <div className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: "#fff", textShadow: `0 0 16px ${PURPLE}88` }}>
+              <div className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: "#fff", textShadow: "none"}}>
                 {fmtMoney(nodes.filter((n) => !n.mine).reduce((s, n) => s + n.value * COMMISSION_RATE, 0))}
               </div>
               <div className="font-mono" style={{ fontFamily: MONO, fontSize: 8.5, color: SLATE_DIM, marginTop: 3 }}>
@@ -1120,7 +1120,7 @@ export default function AgentSurveillance({ user }) {
             </div>
 
             {watchlist.length > 0 && (
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #27272a" }}>
                 <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.6, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 8 }}>
                   Watchlist · {watchlist.length}
                 </div>
@@ -1140,7 +1140,7 @@ export default function AgentSurveillance({ user }) {
           <>
             <div style={{
               border: `1px solid ${selMeta.color}44`, borderRadius: 12, padding: 14, marginBottom: 13,
-              background: "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 26px ${selMeta.color}0d`,
+              background: "#18181b", boxShadow: "none",
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 9 }}>
                 <MapPin size={14} color={selMeta.color} style={{ marginTop: 2, flexShrink: 0 }} />
@@ -1150,7 +1150,7 @@ export default function AgentSurveillance({ user }) {
                 <span style={{
                   fontFamily: MONO, fontSize: 8, fontWeight: 800, letterSpacing: 0.8, color: selMeta.color,
                   background: `${selMeta.color}14`, border: `1px solid ${selMeta.color}55`, borderRadius: 999,
-                  padding: "3px 9px", boxShadow: `0 0 8px ${selMeta.color}33`,
+                  padding: "3px 9px", boxShadow: "none",
                 }}>{selMeta.short}</span>
                 {selected.mine && (
                   <span className="font-mono" style={{ fontFamily: MONO, fontSize: 7, color: GREEN, border: `1px solid ${GREEN}55`, borderRadius: 4, padding: "2px 5px" }}>YOURS</span>
@@ -1161,7 +1161,7 @@ export default function AgentSurveillance({ user }) {
                 <span style={{ fontFamily: F, fontSize: 10, color: SLATE_DIM, marginLeft: "auto" }}>{selected.propertyType}</span>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, paddingTop: 10, borderTop: "1px solid #27272a" }}>
                 {/* Owner spans both columns and wraps — the string is a sentence, not a metric. */}
                 {[["Estimated Value", fmtMoney(selected.value), "#fff", false],
                   ["Days on Market", selected.dom != null ? `${selected.dom}d` : "OFF-MARKET", (selected.dom || 0) > HIGH_DOM ? RED : SLATE, false],
@@ -1178,7 +1178,7 @@ export default function AgentSurveillance({ user }) {
               </div>
 
               {/* Property telemetry */}
-              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid #27272a" }}>
                 <div className="tracking-wider" style={{ fontFamily: F, fontSize: 7.5, letterSpacing: 1, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 7 }}>
                   Property Telemetry
                 </div>
@@ -1204,7 +1204,7 @@ export default function AgentSurveillance({ user }) {
               </div>
 
               {selected.signal && (
-                <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <div style={{ marginTop: 11, paddingTop: 10, borderTop: "1px solid #27272a" }}>
                   <div className="tracking-wider" style={{ fontFamily: F, fontSize: 7.5, letterSpacing: 1, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 3 }}>Predictive Signal</div>
                   <div className="font-mono" style={{ fontFamily: MONO, fontSize: 10, color: PURPLE_LT }}>{selected.signal}</div>
                 </div>
@@ -1214,10 +1214,10 @@ export default function AgentSurveillance({ user }) {
             {/* Projected GCI */}
             <div style={{
               border: `1px solid ${GREEN}44`, borderRadius: 11, padding: 13, marginBottom: 13,
-              background: `linear-gradient(135deg,${GREEN}10,rgba(0,0,0,0.25))`,
+              background: `#111111`,
             }}>
               <div className="tracking-wider" style={{ fontFamily: F, fontSize: 8, letterSpacing: 1.5, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4 }}>Projected GCI</div>
-              <div className="font-mono" style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: GREEN, textShadow: `0 0 16px ${GREEN}88` }}>
+              <div className="font-mono" style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: GREEN, textShadow: "none"}}>
                 {fmtFull(projectedGci)}
               </div>
               <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, color: SLATE_DIM, marginTop: 3 }}>
@@ -1228,11 +1228,11 @@ export default function AgentSurveillance({ user }) {
             {/* AI tactical directive */}
             <button onClick={runDirective} disabled={decrypting}
               style={{
-                width: "100%", background: decrypting ? `${PURPLE}22` : `linear-gradient(135deg,#7c3aed,${PURPLE})`,
+                width: "100%", background: decrypting ? `${PURPLE}22` : `#8b5cf6`,
                 border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "11px 14px",
                 fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                 color: "#fff", cursor: decrypting ? "default" : "pointer",
-                boxShadow: decrypting ? "none" : `0 0 15px ${PURPLE}88`,
+                boxShadow: "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12,
               }}>
               {decrypting ? <Loader2 size={13} style={{ animation: "asSpin 1s linear infinite" }} /> : <Zap size={13} />}
@@ -1248,12 +1248,12 @@ export default function AgentSurveillance({ user }) {
             )}
 
             {/* Offensive action bridges */}
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 13, display: "flex", flexDirection: "column", gap: 9 }}>
+            <div style={{ borderTop: "1px solid #27272a", paddingTop: 13, display: "flex", flexDirection: "column", gap: 9 }}>
               <button onClick={() => setCmaOpen(true)}
                 style={{
                   width: "100%", background: `${CYAN}1c`, border: `1px solid ${CYAN}77`, borderRadius: 10,
                   padding: "11px 14px", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1,
-                  textTransform: "uppercase", color: CYAN, cursor: "pointer", boxShadow: `0 0 14px ${CYAN}55`,
+                  textTransform: "uppercase", color: CYAN, cursor: "pointer", boxShadow: "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}>
                 <FileText size={13} /> [ Generate Instant CMA ]
@@ -1262,7 +1262,7 @@ export default function AgentSurveillance({ user }) {
                 style={{
                   width: "100%", background: `${PURPLE}1c`, border: `1px solid ${PURPLE}88`, borderRadius: 10,
                   padding: "11px 14px", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1,
-                  textTransform: "uppercase", color: PURPLE_LT, cursor: "pointer", boxShadow: `0 0 14px ${PURPLE}66`,
+                  textTransform: "uppercase", color: PURPLE_LT, cursor: "pointer", boxShadow: "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}>
                 <MessageSquare size={13} /> [ Draft Outreach Script ]
@@ -1285,13 +1285,13 @@ export default function AgentSurveillance({ user }) {
       {/* ── Instant CMA & Comp Analysis modal ── */}
       {cmaOpen && selected && cma && (
         <div onClick={() => setCmaOpen(false)}
-          style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.74)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.74)", backdropFilter: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()}
             className="backdrop-blur-2xl bg-black/60 border border-white/10"
             style={{
               width: "min(620px, 100%)", maxHeight: "86%", overflowY: "auto",
-              background: "rgba(6,6,12,0.94)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-              border: `1px solid ${CYAN}55`, borderRadius: 14, padding: 20, boxShadow: `0 0 46px ${CYAN}33`,
+              background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+              border: `1px solid ${CYAN}55`, borderRadius: 14, padding: 20, boxShadow: "none",
             }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
               <FileText size={15} color={CYAN} />
@@ -1304,14 +1304,14 @@ export default function AgentSurveillance({ user }) {
 
             {/* Subject vs fair market value */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 11, marginBottom: 13 }}>
-              <div style={{ border: "1px solid rgba(255,255,255,0.12)", borderRadius: 11, padding: 13, background: "rgba(255,255,255,0.02)" }}>
+              <div style={{ border: "1px solid #27272a", borderRadius: 11, padding: 13, background: "#18181b" }}>
                 <div className="tracking-wider" style={{ fontFamily: F, fontSize: 7.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4 }}>Subject Target Price</div>
                 <div className="font-mono" style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: "#fff" }}>{fmtFull(selected.value)}</div>
                 <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, color: SLATE_DIM, marginTop: 3 }}>{fmtPsf(selected.psf)}/sf · {fmtInt(selected.sqft)} sf</div>
               </div>
               <div style={{ border: `1px solid ${CYAN}44`, borderRadius: 11, padding: 13, background: `linear-gradient(135deg,${CYAN}0e,rgba(0,0,0,0.25))` }}>
                 <div className="tracking-wider" style={{ fontFamily: F, fontSize: 7.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4 }}>Estimated Fair Market Value</div>
-                <div className="font-mono" style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: CYAN, textShadow: `0 0 14px ${CYAN}66` }}>{fmtFull(cma.fmv)}</div>
+                <div className="font-mono" style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: CYAN, textShadow: "none"}}>{fmtFull(cma.fmv)}</div>
                 <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, marginTop: 3, color: cma.overPct >= 0 ? AMBER : GREEN }}>
                   SUBJECT {cma.overPct >= 0 ? "+" : ""}{cma.overPct.toFixed(1)}% VS FMV
                 </div>
@@ -1322,10 +1322,10 @@ export default function AgentSurveillance({ user }) {
             <div className="tracking-wider" style={{ fontFamily: F, fontSize: 8, letterSpacing: 1.5, color: CYAN, textTransform: "uppercase", marginBottom: 7 }}>
               Comparable Sales · {cma.comps.length}
             </div>
-            <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, overflow: "hidden", marginBottom: 13 }}>
+            <div style={{ border: "1px solid #27272a", borderRadius: 10, overflow: "hidden", marginBottom: 13 }}>
               <div className="font-mono" style={{
                 display: "grid", gridTemplateColumns: "1fr 78px 68px 54px", gap: 8, padding: "7px 11px",
-                background: "rgba(255,255,255,0.04)", fontFamily: MONO, fontSize: 7.5, letterSpacing: 1,
+                background: "#18181b", fontFamily: MONO, fontSize: 7.5, letterSpacing: 1,
                 color: SLATE_DIM, textTransform: "uppercase",
               }}>
                 <span>Address</span><span style={{ textAlign: "right" }}>Sold</span>
@@ -1372,7 +1372,7 @@ export default function AgentSurveillance({ user }) {
                   </div>
                 ))}
               </div>
-              <div style={{ fontFamily: F, fontSize: 10.5, lineHeight: 1.6, color: SLATE, borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 9 }}>
+              <div style={{ fontFamily: F, fontSize: 10.5, lineHeight: 1.6, color: SLATE, borderTop: "1px solid #27272a", paddingTop: 9 }}>
                 {selected.type === "EXPIRING"
                   ? `The market has already rejected ${fmtMoney(selected.value)} over ${selected.dom ?? "—"} days. Re-entering at ${fmtFull(cma.recommended)} prices ${Math.abs(cma.overPct).toFixed(1)}% of dead air out of the ask and should clear in roughly ${cma.domAtRec} days versus ${cma.domAtAsk} at the current number.`
                   : selected.type === "PREDICTED"
@@ -1392,11 +1392,11 @@ export default function AgentSurveillance({ user }) {
 
             <button onClick={copyTearSheet}
               style={{
-                width: "100%", background: sheetCopied ? `${GREEN}1e` : `linear-gradient(135deg,#0891b2,${CYAN})`,
+                width: "100%", background: sheetCopied ? `${GREEN}1e` : `#38bdf8`,
                 border: `1px solid ${sheetCopied ? GREEN : CYAN}88`, borderRadius: 10, padding: "12px 14px",
                 fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                 color: sheetCopied ? GREEN : "#04222b", cursor: "pointer",
-                boxShadow: sheetCopied ? "none" : `0 0 16px ${CYAN}66`,
+                boxShadow: "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               }}>
               {sheetCopied ? <Check size={13} /> : <Copy size={13} />}
@@ -1409,14 +1409,14 @@ export default function AgentSurveillance({ user }) {
       {/* ── Outreach script modal ── */}
       {scriptOpen && selected && (
         <div onClick={() => setScriptOpen(false)}
-          style={{ position: "absolute", inset: 0, zIndex: 70, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          style={{ position: "absolute", inset: 0, zIndex: 70, background: "#111111", backdropFilter: "none", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()}
             className="backdrop-blur-2xl bg-black/60 border border-white/10"
             style={{
               width: "min(560px, 100%)", maxHeight: "82%", overflowY: "auto",
-              background: "rgba(6,6,12,0.92)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+              background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
               border: `1px solid ${PURPLE}55`, borderRadius: 14, padding: 20,
-              boxShadow: `0 0 46px ${PURPLE}44`,
+              boxShadow: "none",
             }}>
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4 }}>
               <MessageSquare size={15} color={PURPLE_LT} />
@@ -1427,17 +1427,17 @@ export default function AgentSurveillance({ user }) {
               {selected.address}
             </div>
             <pre className="bg-black/80 font-mono text-xs" style={{
-              background: "rgba(0,0,0,0.7)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10,
+              background: "rgba(0,0,0,0.7)", border: "1px solid #27272a", borderRadius: 10,
               padding: 14, fontFamily: MONO, fontSize: 11, lineHeight: 1.65, color: SLATE,
               whiteSpace: "pre-wrap", wordBreak: "break-word", margin: "0 0 15px",
             }}>{buildOutreach(selected)}</pre>
             <button onClick={copyScript}
               style={{
-                width: "100%", background: copied ? `${GREEN}1e` : `linear-gradient(135deg,#7c3aed,${PURPLE})`,
+                width: "100%", background: copied ? `${GREEN}1e` : `#8b5cf6`,
                 border: `1px solid ${copied ? GREEN : PURPLE}88`, borderRadius: 10, padding: "12px 14px",
                 fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                 color: copied ? GREEN : "#fff", cursor: "pointer",
-                boxShadow: copied ? "none" : `0 0 16px ${PURPLE}88`,
+                boxShadow: "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               }}>
               {copied ? <Check size={13} /> : <Copy size={13} />}

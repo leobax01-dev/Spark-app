@@ -25,7 +25,7 @@ export default function ScanlineOverlay({ glitch = false }) {
           right: 0,
           height: "18%",
           background: "linear-gradient(180deg, transparent, rgba(140,220,255,0.05), transparent)",
-          animation: "cc-scan-sweep 9s linear infinite",
+          animation: "none",
         }}
       />
       {/* Vignette */}

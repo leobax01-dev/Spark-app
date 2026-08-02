@@ -43,16 +43,16 @@ const GLOBE_IDLE = { longitude: -60, latitude: 22, zoom: 1.6, pitch: 0, bearing:
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const CYAN = "#22d3ee";
-const GREEN = "#22C55E";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const CYAN = "#38bdf8";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 
-const CATEGORY_COLOR = { fresh: CYAN, price_cut: RED, stale: AMBER, standard: "#8CA0FF" };
+const CATEGORY_COLOR = { fresh: CYAN, price_cut: RED, stale: AMBER, standard: "#a78bfa" };
 const CATEGORY_LABEL = {
   fresh: "Fresh Capital (< 7 days)",
   price_cut: "Distressed (price cut)",
@@ -114,7 +114,7 @@ function StatTile({ label, value, accent = "#fff" }) {
       <div style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 3, whiteSpace: "nowrap" }}>
         {label}
       </div>
-      <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 800, color: accent, textShadow: accent !== "#fff" ? `0 0 12px ${accent}66` : "none", whiteSpace: "nowrap" }}>
+      <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 800, color: accent, textShadow: "none", whiteSpace: "nowrap" }}>
         {value}
       </div>
     </div>
@@ -127,11 +127,11 @@ function Directive({ color, label, text }) {
       style={{
         border: `1px solid ${color}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 10,
         background: `linear-gradient(135deg, ${color}10, rgba(0,0,0,0.3))`,
-        boxShadow: `inset 0 0 22px ${color}0d, 0 0 12px ${color}1a`,
+        boxShadow: "none",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}`, animation: "srBlink 1.6s ease-in-out infinite" }} />
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: "none", animation: "none" }} />
         <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 800, letterSpacing: 2, color, textTransform: "uppercase" }}>{label}</span>
       </div>
       <div className="sr-scanline" style={{ fontFamily: MONO, fontSize: 10.5, lineHeight: 1.55, color: SLATE }}>
@@ -147,7 +147,7 @@ function AwaitingScan() {
     <div
       style={{
         position: "relative", height: 110, borderRadius: 10, overflow: "hidden", marginBottom: 4,
-        border: "1px dashed rgba(255,255,255,0.12)",
+        border: "1px dashed #27272a",
         backgroundImage:
           "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)",
         backgroundSize: "18px 18px",
@@ -157,8 +157,8 @@ function AwaitingScan() {
         style={{
           position: "absolute", left: 0, right: 0, height: 2, top: 0,
           background: `linear-gradient(90deg, transparent, ${PURPLE}cc, transparent)`,
-          boxShadow: `0 0 12px ${PURPLE}`,
-          animation: "srLaser 2.6s ease-in-out infinite",
+          boxShadow: "none",
+          animation: "none",
         }}
       />
       <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: 9.5, letterSpacing: 2, color: SLATE_DIM }}>
@@ -252,10 +252,10 @@ export default function SurveillanceRadar({ user }) {
     try {
       map.setFog({
         color: "#050505",
-        "high-color": "#0b0b1a",
-        "horizon-blend": 0.04,
-        "space-color": "#020204",
-        "star-intensity": 0.15,
+        "high-color": "#111111",
+        "horizon-blend": 0.03,
+        "space-color": "#050505",
+        "star-intensity": 0,
       });
     } catch { /* fog unsupported on this style version — cosmetic only */ }
 
@@ -576,10 +576,10 @@ export default function SurveillanceRadar({ user }) {
         <div
           style={{
             position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", zIndex: 40,
-            background: "rgba(8,8,14,0.92)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            background: "rgba(8,8,14,0.92)", backdropFilter: "none", WebkitBackdropFilter: "none",
             border: `1px solid ${toast.startsWith("Deploy failed") ? RED : PURPLE}88`,
             borderRadius: 10, padding: "10px 18px", color: "#fff", fontFamily: F, fontSize: 12, fontWeight: 700,
-            boxShadow: `0 0 22px ${toast.startsWith("Deploy failed") ? RED : PURPLE}55`, whiteSpace: "nowrap",
+            boxShadow: "none", whiteSpace: "nowrap",
           }}
         >
           {toast}
@@ -618,7 +618,7 @@ export default function SurveillanceRadar({ user }) {
                     type="circle"
                     paint={{
                       "circle-radius": 15,
-                      "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
+                      "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#a78bfa"],
                       "circle-blur": 1.1,
                       "circle-opacity": 0.4,
                     }}
@@ -629,7 +629,7 @@ export default function SurveillanceRadar({ user }) {
                     type="circle"
                     paint={{
                       "circle-radius": 6,
-                      "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#8CA0FF"],
+                      "circle-color": ["match", ["get", "category"], "fresh", CYAN, "price_cut", RED, "stale", AMBER, "#a78bfa"],
                       "circle-stroke-width": 1.5,
                       "circle-stroke-color": "rgba(0,0,0,0.7)",
                       "circle-opacity": 0.95,
@@ -716,9 +716,9 @@ export default function SurveillanceRadar({ user }) {
       <div
         style={{
           position: "absolute", top: 16, left: 16, zIndex: 20, display: "flex", alignItems: "center", gap: 9,
-          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: "1px solid rgba(168,85,247,0.35)", borderRadius: 12, padding: "9px 14px",
-          boxShadow: "0 0 18px rgba(168,85,247,0.25)",
+          boxShadow: "none",
         }}
       >
         <Zap
@@ -726,7 +726,7 @@ export default function SurveillanceRadar({ user }) {
           className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)] animate-pulse"
           color={PURPLE_LT}
           fill={PURPLE_LT}
-          style={{ filter: "drop-shadow(0 0 10px rgba(168,85,247,0.8))", animation: "srBlink 2.2s ease-in-out infinite" }}
+          style={{ filter: "none", animation: "none" }}
         />
         <div>
           <div style={{ fontFamily: F, fontSize: 13, fontWeight: 800, letterSpacing: 2, color: "#fff", lineHeight: 1.1 }}>SPARK OS</div>
@@ -740,8 +740,8 @@ export default function SurveillanceRadar({ user }) {
         className="absolute z-10 bg-black/50 backdrop-blur-md border border-white/10 rounded-xl p-2 flex gap-2"
         style={{
           position: "absolute", top: 76, left: 16, zIndex: 10,
-          background: "rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-          border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: 8,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 12, padding: 8,
           display: "flex", gap: 8, alignItems: "center",
         }}
       >
@@ -751,7 +751,7 @@ export default function SurveillanceRadar({ user }) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="City, ST or ZIP…"
           style={{
-            background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8,
+            background: "rgba(255,255,255,0.06)", border: "1px solid #27272a", borderRadius: 8,
             color: "#fff", fontFamily: F, fontSize: 12, padding: "8px 10px", outline: "none", width: 160,
           }}
         />
@@ -762,7 +762,7 @@ export default function SurveillanceRadar({ user }) {
             background: scanning ? "rgba(168,85,247,0.15)" : "rgba(168,85,247,0.3)",
             border: `1px solid ${PURPLE}66`, color: PURPLE_LT, fontFamily: F, fontSize: 10.5, fontWeight: 800,
             letterSpacing: 1, borderRadius: 8, padding: "8px 12px", cursor: scanning ? "default" : "pointer",
-            textTransform: "uppercase", whiteSpace: "nowrap", boxShadow: scanning ? "none" : "0 0 15px rgba(168,85,247,0.5)",
+            textTransform: "uppercase", whiteSpace: "nowrap", boxShadow: "none",
           }}
         >
           {scanning ? "Scanning…" : "Scan Sector"}
@@ -791,9 +791,9 @@ export default function SurveillanceRadar({ user }) {
             onClick={() => setLayerMenuOpen((o) => !o)}
             className="bg-black/50 backdrop-blur-md border border-white/10"
             style={{
-              display: "flex", alignItems: "center", gap: 8, background: "rgba(0,0,0,0.5)",
-              backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "9px 13px",
+              display: "flex", alignItems: "center", gap: 8, background: "#111111",
+              backdropFilter: "none", WebkitBackdropFilter: "none",
+              border: "1px solid #27272a", borderRadius: 10, padding: "9px 13px",
               color: "#fff", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8,
               textTransform: "uppercase", cursor: "pointer",
             }}
@@ -804,8 +804,8 @@ export default function SurveillanceRadar({ user }) {
           {layerMenuOpen && (
             <div
               style={{
-                marginTop: 6, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-                border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden", width: 230,
+                marginTop: 6, background: "rgba(0,0,0,0.7)", backdropFilter: "none", WebkitBackdropFilter: "none",
+                border: "1px solid #27272a", borderRadius: 10, overflow: "hidden", width: 230,
               }}
             >
               {INTEL_LAYERS.map((l) => (
@@ -830,13 +830,13 @@ export default function SurveillanceRadar({ user }) {
           onClick={sectorPolygon || drawing ? clearSector : startLasso}
           title={sectorPolygon ? "Clear drawn sector" : "Draw a polygon to isolate a micro-market"}
           style={{
-            display: "flex", alignItems: "center", gap: 7, background: sectorPolygon ? "rgba(255,59,92,0.18)" : drawing ? "rgba(168,85,247,0.25)" : "rgba(0,0,0,0.5)",
-            backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            border: `1px solid ${sectorPolygon ? RED : drawing ? PURPLE : "rgba(255,255,255,0.12)"}88`,
+            display: "flex", alignItems: "center", gap: 7, background: sectorPolygon ? "rgba(255,59,92,0.18)" : drawing ? "rgba(168,85,247,0.25)" : "#111111",
+            backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: `1px solid ${sectorPolygon ? RED : drawing ? PURPLE : "#27272a"}88`,
             borderRadius: 10, padding: "9px 13px",
             color: sectorPolygon ? RED : drawing ? PURPLE_LT : "#fff", fontFamily: F, fontSize: 10.5, fontWeight: 800,
             letterSpacing: 0.8, textTransform: "uppercase", cursor: "pointer",
-            boxShadow: sectorPolygon ? `0 0 14px ${RED}44` : drawing ? `0 0 14px ${PURPLE}55` : "none",
+            boxShadow: "none",
           }}
         >
           {sectorPolygon ? <Eraser size={13} /> : <PenTool size={13} />}
@@ -849,14 +849,14 @@ export default function SurveillanceRadar({ user }) {
         className="w-96 backdrop-blur-2xl bg-black/60 border-l border-white/10 flex flex-col h-full z-10"
         style={{
           position: "absolute", right: 0, top: 0, bottom: 0, width: PANEL_W, zIndex: 10,
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          borderLeft: "1px solid rgba(255,255,255,0.1)", display: "flex", flexDirection: "column",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          borderLeft: "1px solid #27272a", display: "flex", flexDirection: "column",
           padding: 18, boxSizing: "border-box", overflowY: "auto",
         }}
       >
         {/* Panel header */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <RadarIcon size={14} color={PURPLE_LT} style={{ filter: `drop-shadow(0 0 6px ${PURPLE}aa)` }} />
+          <RadarIcon size={14} color={PURPLE_LT} style={{ filter: "none"}} />
           <span style={{ fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.8, color: "#fff" }}>
             {selected ? "TARGET LOCK DOSSIER" : "SECTOR TELEMETRY"}
           </span>
@@ -871,7 +871,7 @@ export default function SurveillanceRadar({ user }) {
         </div>
         {!selected && sectorPolygon && (
           <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: 1, color: PURPLE_LT, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: PURPLE, boxShadow: `0 0 6px ${PURPLE}`, animation: "srBlink 1.4s infinite" }} />
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: PURPLE, boxShadow: "none", animation: "none" }} />
             MICRO-MARKET ISOLATED · {sectorFeatures.length} OF {geojson.features.length} NODES
           </div>
         )}
@@ -903,8 +903,8 @@ export default function SurveillanceRadar({ user }) {
                     <AreaChart data={sparkData} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
                       <defs>
                         <linearGradient id="srSpark" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor={PURPLE} stopOpacity={0.6} />
-                          <stop offset="100%" stopColor={PURPLE} stopOpacity={0.02} />
+                          <stop offset="0%" stopColor={PURPLE} stopOpacity={0.4} />
+                          <stop offset="100%" stopColor={PURPLE} stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <Area type="monotone" dataKey="count" stroke={PURPLE_LT} strokeWidth={1.5} fill="url(#srSpark)" isAnimationActive={false} dot={false} />
@@ -931,7 +931,7 @@ export default function SurveillanceRadar({ user }) {
             </div>
             {Object.entries(CATEGORY_LABEL).map(([key, label]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, fontSize: 10.5, fontFamily: F, color: SLATE }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: CATEGORY_COLOR[key], boxShadow: `0 0 6px ${CATEGORY_COLOR[key]}` }} />
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: CATEGORY_COLOR[key], boxShadow: "none"}} />
                 {label}
               </div>
             ))}
@@ -948,7 +948,7 @@ export default function SurveillanceRadar({ user }) {
             <div
               style={{
                 border: `1px solid ${selColor}55`, borderRadius: 12, padding: 14, marginBottom: 14,
-                background: "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 26px ${selColor}0d`,
+                background: "#18181b", boxShadow: "none",
               }}
             >
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
@@ -973,11 +973,11 @@ export default function SurveillanceRadar({ user }) {
               disabled={decrypting}
               className="shadow-[0_0_15px_rgba(168,85,247,0.5)]"
               style={{
-                width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "#8b5cf6",
                 border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "12px 14px",
                 fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                 color: "#fff", cursor: decrypting ? "default" : "pointer",
-                boxShadow: decrypting ? "none" : "0 0 15px rgba(168,85,247,0.5)",
+                boxShadow: "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12,
               }}
             >
@@ -999,7 +999,7 @@ export default function SurveillanceRadar({ user }) {
             )}
 
             {/* Pipeline assignment */}
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 14 }}>
+            <div style={{ borderTop: "1px solid #27272a", paddingTop: 14 }}>
               <div style={{ fontFamily: F, fontSize: 9, letterSpacing: 1.5, color: SLATE_DIM, marginBottom: 8, textTransform: "uppercase" }}>
                 Delegate to Field Agent
               </div>
@@ -1015,7 +1015,7 @@ export default function SurveillanceRadar({ user }) {
               >
                 {agents.length ? (
                   agents.map((a) => (
-                    <option key={a.id} value={a.id} style={{ background: "#0a0a0d" }}>{firstName(a.email)} — {a.email}</option>
+                    <option key={a.id} value={a.id} style={{ background: "#0a0a0a" }}>{firstName(a.email)} — {a.email}</option>
                   ))
                 ) : (
                   <option value="">No agents available</option>
@@ -1029,7 +1029,7 @@ export default function SurveillanceRadar({ user }) {
                   border: `1px solid ${CYAN}77`, borderRadius: 10, padding: "11px 14px",
                   fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                   color: CYAN, cursor: !selectedAgentId || deploying ? "default" : "pointer",
-                  boxShadow: deploying ? "none" : `0 0 14px ${CYAN}44`,
+                  boxShadow: "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   opacity: !selectedAgentId ? 0.5 : 1,
                 }}

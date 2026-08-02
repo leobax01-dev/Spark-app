@@ -31,15 +31,15 @@ import {
 import { lsGet, lsSet, cloudSync } from "../utils/storage";
 import { parseCSV, autoDetectMapping, aiMapHeaders, buildClients, MAPPABLE_FIELDS } from "./csvImport";
 
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
-const GREEN = "#22c55e";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
+const GREEN = "#10b981";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
-const HAIRLINE = "rgba(255,255,255,0.1)";
+const HAIRLINE = "#27272a";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
@@ -200,14 +200,14 @@ export default function MigrationCenter({ user, onClose, onImported }) {
   return (
     <div onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: 400, background: "rgba(0,0,0,0.82)",
-      backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)",
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <style>{MC_KEYFRAMES}</style>
       <div onClick={(e) => e.stopPropagation()} className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
         width: "min(880px, 100%)", maxHeight: "90%", overflowY: "auto",
-        background: "rgba(6,6,12,0.96)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-        border: `1px solid ${PURPLE}44`, borderRadius: 16, padding: 24, boxShadow: `0 0 60px ${PURPLE}33`,
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+        border: `1px solid ${PURPLE}44`, borderRadius: 16, padding: 24, boxShadow: "none",
       }}>
         {/* header */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 3 }}>
@@ -247,7 +247,7 @@ export default function MigrationCenter({ user, onClose, onImported }) {
                 ["Importable", importable.length, GREEN],
                 ["Duplicates skipped", result.dupes, AMBER],
               ].map(([l, v, c]) => (
-                <div key={l} style={{ flex: "1 1 150px", border: `1px solid ${HAIRLINE}`, borderRadius: 10, padding: 12, background: "rgba(255,255,255,0.02)" }}>
+                <div key={l} style={{ flex: "1 1 150px", border: `1px solid ${HAIRLINE}`, borderRadius: 10, padding: 12, background: "#18181b" }}>
                   <div className="tracking-wider" style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4 }}>{l}</div>
                   <div className="font-mono" style={{ fontFamily: MONO, fontSize: 20, fontWeight: 800, color: c }}>{v}</div>
                 </div>
@@ -275,7 +275,7 @@ export default function MigrationCenter({ user, onClose, onImported }) {
               <div style={{ overflowX: "auto", maxHeight: 260, overflowY: "auto" }}>
                 <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ background: "rgba(255,255,255,0.04)", position: "sticky", top: 0 }}>
+                    <tr style={{ background: "#18181b", position: "sticky", top: 0 }}>
                       {["Row", "Name", "Email", "Phone", "Type", "Stage"].map((h) => (
                         <th key={h} className="tracking-wider" style={{
                           textAlign: "left", padding: "9px 12px", fontFamily: MONO, fontSize: 7.5,
@@ -287,7 +287,7 @@ export default function MigrationCenter({ user, onClose, onImported }) {
                   </thead>
                   <tbody>
                     {result.clients.slice(0, 60).map((c, i) => (
-                      <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: c.duplicate ? 0.4 : 1 }}>
+                      <tr key={i} style={{ borderBottom: "1px solid #18181b", opacity: c.duplicate ? 0.4 : 1 }}>
                         <td className="font-mono" style={{ padding: "8px 12px", fontFamily: MONO, fontSize: 9, color: SLATE_DIM }}>{c._row}</td>
                         <td style={{ padding: "8px 12px", fontFamily: F, fontSize: 11, color: "#fff", whiteSpace: "nowrap" }}>
                           {c.name}
@@ -327,11 +327,11 @@ export default function MigrationCenter({ user, onClose, onImported }) {
                 style={{
                   flex: "2 1 260px", padding: "15px 16px", borderRadius: 11,
                   cursor: importable.length ? "pointer" : "default",
-                  background: importable.length ? `linear-gradient(135deg,#7c3aed,${PURPLE})` : "rgba(255,255,255,0.05)",
+                  background: importable.length ? `#8b5cf6` : "rgba(255,255,255,0.05)",
                   border: `1px solid ${importable.length ? PURPLE : HAIRLINE}`,
                   color: importable.length ? "#fff" : SLATE_DIM,
                   fontFamily: F, fontSize: 12.5, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase",
-                  boxShadow: importable.length ? `0 0 24px ${PURPLE}88` : "none",
+                  boxShadow: "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}>
                 <Zap size={14} /> [ Commit {importable.length} to Sphere Ledger ]
@@ -350,7 +350,7 @@ export default function MigrationCenter({ user, onClose, onImported }) {
                 border: `1.5px dashed ${drag ? PURPLE : phase === "parsing" ? PURPLE : HAIRLINE}`,
                 borderRadius: 14, padding: "38px 20px", textAlign: "center",
                 cursor: phase === "parsing" ? "default" : "pointer",
-                background: drag ? `${PURPLE}12` : "rgba(255,255,255,0.02)",
+                background: drag ? `${PURPLE}12` : "#18181b",
                 transition: "border-color .18s ease, background .18s ease",
                 animation: phase === "idle" ? "mcBreathe 2.6s ease-in-out infinite" : "none",
                 position: "relative", overflow: "hidden", marginBottom: 16,
@@ -382,7 +382,7 @@ export default function MigrationCenter({ user, onClose, onImported }) {
 
             {/* live readout */}
             {phase === "parsing" && (
-              <div style={{ border: `1px solid ${PURPLE}33`, borderRadius: 11, padding: 14, marginBottom: 16, background: "rgba(0,0,0,0.5)" }}>
+              <div style={{ border: `1px solid ${PURPLE}33`, borderRadius: 11, padding: 14, marginBottom: 16, background: "#111111" }}>
                 {STEPS.map((s, i) => (
                   <div key={s} className="font-mono" style={{
                     display: "flex", alignItems: "center", gap: 8, fontFamily: MONO, fontSize: 10,
@@ -431,7 +431,7 @@ export default function MigrationCenter({ user, onClose, onImported }) {
                       style={{
                         width: "100%", padding: "12px 14px", borderRadius: 10,
                         cursor: c.available ? "pointer" : "not-allowed",
-                        background: c.available ? `${c.color}16` : "rgba(255,255,255,0.02)",
+                        background: c.available ? `${c.color}16` : "#18181b",
                         border: `1px solid ${c.available ? `${c.color}66` : HAIRLINE}`,
                         color: c.available ? c.color : SLATE_DIM,
                         fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 0.9, textTransform: "uppercase",
@@ -462,5 +462,5 @@ const MC_KEYFRAMES = `
 @keyframes mcSpin{to{transform:rotate(360deg)}}
 @keyframes mcBlink{0%,100%{opacity:1}50%{opacity:.45}}
 @keyframes mcSweep{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
-@keyframes mcBreathe{0%,100%{border-color:rgba(255,255,255,0.1);box-shadow:0 0 0 rgba(168,85,247,0)}50%{border-color:rgba(168,85,247,0.45);box-shadow:0 0 26px rgba(168,85,247,0.14)}}
+@keyframes mcBreathe{0%,100%{border-color:#27272a;box-shadow:0 0 0 rgba(168,85,247,0)}50%{border-color:rgba(168,85,247,0.45);box-shadow:0 0 26px rgba(168,85,247,0.14)}}
 `;

@@ -29,7 +29,7 @@ export default function LiveFeed({ feed }) {
             style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.panelBorder}` }}
           >
             <div style={{ fontSize: 10, fontWeight: 700, color, marginBottom: 4, fontFamily: C.F, display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: `0 0 6px ${color}` }} />
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, boxShadow: "none"}} />
               {entry.date}
             </div>
             <TypewriterText

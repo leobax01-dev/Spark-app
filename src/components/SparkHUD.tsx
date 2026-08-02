@@ -38,7 +38,7 @@ const C = {
   border: "rgba(99,102,241,0.3)", // indigo-500/30
   borderStrong: "rgba(99,102,241,0.55)",
   indigo: "#6366F1",
-  cyan: "#22D3EE",
+  cyan: "#38bdf8",
   text: "rgba(244,244,245,0.96)",
   textMd: "rgba(212,212,216,0.65)",
   textDim: "rgba(161,161,170,0.45)",
@@ -247,9 +247,9 @@ export default function SparkHUD() {
             background: C.bg,
             border: `1px solid ${C.border}`,
             borderRadius: 18,
-            backdropFilter: "blur(20px)",
+            backdropFilter: "none",
             WebkitBackdropFilter: "blur(20px)",
-            boxShadow: `0 20px 60px rgba(0,0,0,0.55), 0 0 40px ${C.indigo}22`,
+            boxShadow: "none",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden",
@@ -418,9 +418,9 @@ export default function SparkHUD() {
           border: `1px solid ${open ? C.borderStrong : C.border}`,
           borderRadius: 999,
           padding: "10px 16px",
-          backdropFilter: "blur(20px)",
+          backdropFilter: "none",
           WebkitBackdropFilter: "blur(20px)",
-          boxShadow: `0 8px 30px rgba(0,0,0,0.5), 0 0 24px ${C.indigo}1a`,
+          boxShadow: "none",
           cursor: "pointer",
         }}
       >
@@ -449,7 +449,7 @@ function StatusPulse({ active, color, small }: { active: boolean; color: string;
           }}
         />
       )}
-      <span style={{ position: "relative", width: size, height: size, borderRadius: "50%", background: color, boxShadow: `0 0 8px ${color}` }} />
+      <span style={{ position: "relative", width: size, height: size, borderRadius: "50%", background: color, boxShadow: "none" }} />
       <style>{`
         @keyframes spark-hud-ping {
           0% { transform: scale(1); opacity: 0.6; }

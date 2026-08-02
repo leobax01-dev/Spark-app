@@ -54,9 +54,9 @@ export default function CommandInput({ onDispatched, sound, onSpeak }) {
           placeholder="Ask Alfred, or issue a directive…"
           style={{
             flex: 1,
-            background: "rgba(255,255,255,0.04)",
+            background: "#18181b",
             border: "none",
-            boxShadow: "0 0 0 1px rgba(140,200,255,0.12) inset",
+            boxShadow: "none",
             color: C.text,
             fontFamily: C.F,
             fontSize: 11,
@@ -71,7 +71,7 @@ export default function CommandInput({ onDispatched, sound, onSpeak }) {
           style={{
             background: "transparent",
             border: "none",
-            boxShadow: `0 0 0 1px ${C.cyan}55 inset`,
+            boxShadow: "none",
             color: C.cyan,
             fontFamily: C.F,
             fontSize: 10,

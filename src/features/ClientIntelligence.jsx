@@ -42,16 +42,16 @@ import {
 } from "./sphere";
 
 const BG = "#050505";
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
-const GREEN = "#22c55e";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
+const GREEN = "#10b981";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 const SLATE_HEX = "#94a3b8";
-const HAIRLINE = "rgba(255,255,255,0.1)";
+const HAIRLINE = "#27272a";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
@@ -117,10 +117,10 @@ function HudCard({ label, value, sub, color, format = "money", pulse, icon: I })
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
       minWidth: 0, padding: 15, borderRadius: 13,
-      background: `linear-gradient(135deg,${color}0e,rgba(0,0,0,0.45))`,
-      backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+      background: `#111111`,
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
-      animation: pulse ? "ciPulseBorder 1.8s ease-in-out infinite" : "none",
+      animation: pulse ? "none" : "none",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
         {I && <I size={11} color={color} />}
@@ -130,7 +130,7 @@ function HudCard({ label, value, sub, color, format = "money", pulse, icon: I })
         }}>[ {label} ]</span>
       </div>
       <div className="font-mono" style={{
-        fontFamily: MONO, fontSize: 25, fontWeight: 800, color, textShadow: `0 0 18px ${color}66`,
+        fontFamily: MONO, fontSize: 25, fontWeight: 800, color, textShadow: "none",
         lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>{text}</div>
       <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 4, lineHeight: 1.45 }}>{sub}</div>
@@ -143,15 +143,15 @@ function ProbBar({ value, hot }) {
   const color = value >= 80 ? PURPLE_LT : value >= 55 ? CYAN : value >= 30 ? SLATE_HEX : SLATE_DIM;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-      <div style={{ flex: 1, minWidth: 46, height: 5, borderRadius: 3, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+      <div style={{ flex: 1, minWidth: 46, height: 5, borderRadius: 3, background: "#27272a", overflow: "hidden" }}>
         <div style={{
-          width: `${value}%`, height: "100%", background: color, boxShadow: `0 0 8px ${color}`,
+          width: `${value}%`, height: "100%", background: color, boxShadow: "none",
           transition: "width .5s cubic-bezier(.16,1,.3,1)",
         }} />
       </div>
       <span className="font-mono" style={{
         fontFamily: MONO, fontSize: 10.5, fontWeight: 800, color, minWidth: 30, textAlign: "right",
-        animation: hot ? "ciBlink 1.6s ease-in-out infinite" : "none",
+        animation: hot ? "none" : "none",
       }}>{value}%</span>
     </div>
   );
@@ -268,9 +268,9 @@ function OmniIntake({ onParsed, pad }) {
         className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
           display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 13,
-          background: "rgba(0,0,0,0.62)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: `1px solid ${listening ? `${RED}77` : parsing ? `${PURPLE}88` : HAIRLINE}`,
-          boxShadow: listening ? `0 0 26px ${RED}33` : parsing ? `0 0 26px ${PURPLE}44` : "none",
+          boxShadow: "none",
           position: "relative", overflow: "hidden",
         }}>
         {parsing && (
@@ -301,7 +301,7 @@ function OmniIntake({ onParsed, pad }) {
         {parsing && (
           <span className="font-mono tracking-wider" style={{
             fontFamily: MONO, fontSize: 8, letterSpacing: 1.4, color: PURPLE_LT, whiteSpace: "nowrap", flexShrink: 0,
-            animation: "ciBlink 1.1s ease-in-out infinite",
+            animation: "none",
           }}>EXTRACTING CLIENT INTELLIGENCE…</span>
         )}
 
@@ -347,13 +347,13 @@ function CommitModal({ proposal, busy, onDiscard, onCommit }) {
   return (
     <div onClick={onDiscard} style={{
       position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.8)",
-      backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)",
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <div onClick={(e) => e.stopPropagation()} className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
         width: "min(560px,100%)", maxHeight: "88%", overflowY: "auto",
-        background: "rgba(6,6,12,0.95)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-        border: `1px solid ${PURPLE}55`, borderRadius: 15, padding: 20, boxShadow: `0 0 52px ${PURPLE}44`,
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+        border: `1px solid ${PURPLE}55`, borderRadius: 15, padding: 20, boxShadow: "none",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 3 }}>
           <AlertTriangle size={15} color={PURPLE_LT} />
@@ -413,11 +413,11 @@ function CommitModal({ proposal, busy, onDiscard, onCommit }) {
           <button onClick={onCommit} disabled={busy || fields.length === 0} style={{
             flex: "2 1 220px", padding: "14px 16px", borderRadius: 11,
             cursor: busy || fields.length === 0 ? "default" : "pointer",
-            background: fields.length ? `linear-gradient(135deg,#7c3aed,${PURPLE})` : "rgba(255,255,255,0.05)",
+            background: fields.length ? `#8b5cf6` : "rgba(255,255,255,0.05)",
             border: `1px solid ${fields.length ? PURPLE : HAIRLINE}`,
             color: fields.length ? "#fff" : SLATE_DIM,
             fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase",
-            boxShadow: fields.length && !busy ? `0 0 22px ${PURPLE}88` : "none",
+            boxShadow: "none",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: busy ? 0.7 : 1,
           }}>
             {busy ? <Loader2 size={14} style={{ animation: "ciSpin 1s linear infinite" }} /> : <Zap size={14} />}
@@ -451,7 +451,7 @@ function Dossier({ client, allClients, onClose, onOpenClient, onBridge, bridgeBu
   return (
     <>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 12 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: client.tier.color, boxShadow: `0 0 8px ${client.tier.color}`, flexShrink: 0, marginTop: 5 }} />
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: client.tier.color, boxShadow: "none", flexShrink: 0, marginTop: 5 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase" }}>
             Client Telemetry Dossier
@@ -479,7 +479,7 @@ function Dossier({ client, allClients, onClose, onOpenClient, onBridge, bridgeBu
           <span className="tracking-wider" style={{ flex: 1, fontFamily: MONO, fontSize: 8, letterSpacing: 1.3, color: SLATE_DIM, textTransform: "uppercase" }}>
             AI Move Probability
           </span>
-          <span className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: PURPLE_LT, textShadow: `0 0 16px ${PURPLE}88` }}>
+          <span className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: PURPLE_LT, textShadow: "none"}}>
             {client.probability}%
           </span>
         </div>
@@ -550,7 +550,7 @@ function Dossier({ client, allClients, onClose, onOpenClient, onBridge, bridgeBu
             NO PROPERTY ON FILE. VALUES AND RATES ARE NEVER ESTIMATED WITHOUT A RECORDED ADDRESS AND PURCHASE.
           </div>
         ) : portfolio.map((p, i) => (
-          <div key={i} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 10, padding: 12, marginBottom: 8, background: "rgba(255,255,255,0.02)" }}>
+          <div key={i} style={{ border: `1px solid ${HAIRLINE}`, borderRadius: 10, padding: 12, marginBottom: 8, background: "#18181b" }}>
             <div style={{ fontFamily: F, fontSize: 11.5, fontWeight: 700, color: "#fff", marginBottom: 8 }}>{p.address}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
               {[["Est. value", fmtMoney(p.estValue), GREEN], ["Rate", p.rate ? `${p.rate}%` : "—", CYAN], ["Purchased", fmtDate(p.purchasedAt), SLATE]].map(([l, v, c]) => (
@@ -790,7 +790,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
         <style>{CI_KEYFRAMES}</style>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
           <Zap size={46} color={PURPLE_LT} fill={PURPLE_LT}
-            style={{ filter: `drop-shadow(0 0 22px ${PURPLE})`, animation: "ciBootPulse 1.5s ease-in-out infinite" }} />
+            style={{ filter: "none", animation: "ciBootPulse 1.5s ease-in-out infinite" }} />
           <div className="font-mono tracking-wider text-slate-400" style={{
             fontFamily: MONO, fontSize: 10.5, letterSpacing: 2.2, color: SLATE_DIM,
             textAlign: "center", padding: "0 24px", lineHeight: 1.7, maxWidth: 500,
@@ -811,7 +811,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
 
       <div className="w-full p-6 md:p-8" style={{
         flex: 1, overflowY: "auto", minHeight: 0, width: "100%", padding: pad, boxSizing: "border-box",
-        scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent",
+        scrollbarWidth: "thin", scrollbarColor: "#27272a transparent",
       }}>
         {/* header */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
@@ -821,7 +821,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
             textTransform: "uppercase", marginBottom: 4,
           }}>Sphere Telemetry &amp; Reactivation Grid</div>
           <div style={{ fontFamily: F, fontSize: 21, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
-            <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: `0 0 20px ${CYAN}88` }}>
+            <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: "none"}}>
               {hud.networkSize}
             </span>{" "}
             RELATIONSHIPS UNDER ACTIVE TELEMETRY
@@ -859,7 +859,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16, width: "100%" }}>
           <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
             display: "flex", alignItems: "center", gap: 8, padding: "0 12px", height: 38, borderRadius: 10,
-            background: "rgba(0,0,0,0.55)", border: `1px solid ${HAIRLINE}`, flex: "1 1 240px", minWidth: 0,
+            background: "#111111", border: `1px solid ${HAIRLINE}`, flex: "1 1 240px", minWidth: 0,
           }}>
             <Search size={13} color={SLATE_DIM} style={{ flexShrink: 0 }} />
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, property, email…"
@@ -867,7 +867,7 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
               style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", fontFamily: MONO, fontSize: 11, color: "#fff" }} />
             {query && <button onClick={() => setQuery("")} style={{ background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}><X size={12} /></button>}
           </div>
-          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}` }}>
+          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "#111111", border: `1px solid ${HAIRLINE}` }}>
             {[{ id: "all", label: "All", color: SLATE_HEX }, TIERS.A, TIERS.B, TIERS.C].map((t) => (
               <button key={t.id} onClick={() => setTierFilter(t.id)} className="font-mono" style={{
                 padding: "6px 12px", borderRadius: 7, cursor: "pointer", whiteSpace: "nowrap",
@@ -891,11 +891,11 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
         )}
 
         {/* matrix */}
-        <div className="w-full" style={{ width: "100%", border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: "hidden", background: "rgba(0,0,0,0.5)" }}>
+        <div className="w-full" style={{ width: "100%", border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: "hidden", background: "#111111" }}>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", minWidth: 940, borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "rgba(255,255,255,0.035)" }}>
+                <tr style={{ background: "#18181b" }}>
                   {[["name", "Client Name"], ["tier", "Capital Tier"], ["probability", "AI Move Probability"],
                   ["touch", "Last Touchpoint"], ["triggers", "Active Triggers"], [null, "Next AI Directive"]].map(([col, label]) => (
                     <th key={label} onClick={() => col && setSort((s) => ({ col, dir: s.col === col && s.dir === "desc" ? "asc" : "desc" }))}
@@ -916,13 +916,13 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
               <tbody>
                 {rows.map((c) => (
                   <tr key={c.id} onClick={() => setSelected(c)} className="ci-row"
-                    style={{ cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    style={{ cursor: "pointer", borderBottom: "1px solid #18181b" }}>
                     <td style={{ padding: "11px 14px", maxWidth: 230 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {c.hot && (
                           <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0 }}>
-                            <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `1px solid ${PURPLE}`, animation: "ciPulse 2.2s cubic-bezier(.2,.6,.4,1) infinite" }} />
-                            <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: PURPLE, boxShadow: `0 0 7px ${PURPLE}` }} />
+                            <span style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `1px solid ${PURPLE}`, animation: "none" }} />
+                            <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: PURPLE, boxShadow: "none"}} />
                           </span>
                         )}
                         <span style={{ fontFamily: F, fontSize: 11.5, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name}</span>
@@ -966,15 +966,15 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
       {selected && (
         <>
           <div onClick={() => setSelected(null)} style={{
-            position: "absolute", inset: 0, zIndex: 120, background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+            position: "absolute", inset: 0, zIndex: 120, background: "#111111",
+            backdropFilter: "none", WebkitBackdropFilter: "none",
           }} />
           {/* Mount keyframe, not a framer-motion entrance — see header note 2. */}
           <div key={selected.id} className="backdrop-blur-2xl bg-black/60 border-l border-white/10" style={{
             position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 130,
             width: "min(468px, 100%)", overflowY: "auto",
             animation: "ciSlideIn .28s cubic-bezier(.16,1,.3,1) both",
-            background: "rgba(6,6,10,0.96)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             borderLeft: `1px solid ${HAIRLINE}`, padding: 20, boxSizing: "border-box",
           }}>
             <Dossier client={selected} allClients={clients} onClose={() => setSelected(null)}
@@ -992,9 +992,9 @@ export default function ClientIntelligence({ user, isMobile, onNavigate, onOpenT
       {toast && (
         <div className="backdrop-blur-2xl" style={{
           position: "absolute", bottom: 22, left: "50%", transform: "translateX(-50%)", zIndex: 250,
-          background: "rgba(6,6,12,0.95)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: `1px solid ${CYAN}88`, borderRadius: 10, padding: "10px 18px", color: "#fff",
-          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: `0 0 24px ${CYAN}55`,
+          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: "none",
           maxWidth: "86%", textAlign: "center",
         }}>{toast}</div>
       )}
@@ -1012,5 +1012,5 @@ const CI_KEYFRAMES = `
 @keyframes ciPulseBorder{0%,100%{border-color:${AMBER}55;box-shadow:0 0 0 rgba(255,176,32,0)}50%{border-color:${AMBER};box-shadow:0 0 18px rgba(255,176,32,.32)}}
 @keyframes ciGlow{0%,100%{box-shadow:0 0 10px ${RED}55}50%{box-shadow:0 0 22px ${RED}99}}
 .ci-input::placeholder{color:rgba(148,163,184,0.45)}
-.ci-row:hover{background:rgba(255,255,255,0.03)}
+.ci-row:hover{background:#18181b}
 `;

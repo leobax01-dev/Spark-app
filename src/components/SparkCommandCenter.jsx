@@ -54,7 +54,7 @@ const WAKE_RE = /(hey\s+alfred|excuse me,?\s+alfred|alfred)/i;
 function PanelLabel({ children, color = C.cyan }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
-      <div style={{ width: 3, height: 12, borderRadius: 2, background: color, boxShadow: `0 0 8px ${color}` }} />
+      <div style={{ width: 3, height: 12, borderRadius: 2, background: color, boxShadow: "none"}} />
       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 2, color, fontFamily: C.F }}>{children}</span>
     </div>
   );
@@ -69,7 +69,7 @@ function VitalBar({ label, value, max, color, formatValue, onClick }) {
         <span style={{ fontSize: 11, color: C.text, fontFamily: C.F, fontWeight: 700 }}>{formatValue ? formatValue(value) : value}</span>
       </div>
       <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg,${color}80,${color})`, boxShadow: `0 0 8px ${color}80`, transition: "width .6s ease" }} />
+        <div style={{ width: `${pct}%`, height: "100%", background: `linear-gradient(90deg,${color}80,${color})`, boxShadow: "none", transition: "width .6s ease" }} />
       </div>
     </div>
   );
@@ -84,9 +84,9 @@ function CommandButton({ label, sub, color, onClick, busy }) {
       style={{
         width: "100%",
         textAlign: "left",
-        background: "rgba(255,255,255,0.03)",
+        background: "#18181b",
         border: "none",
-        boxShadow: `0 0 0 1px rgba(255,255,255,0.06) inset`,
+        boxShadow: "none",
         borderRadius: 10,
         padding: "12px 14px",
         marginBottom: 10,
@@ -94,8 +94,8 @@ function CommandButton({ label, sub, color, onClick, busy }) {
         opacity: busy ? 0.6 : 1,
         transition: "all .18s ease",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = `0 0 0 1px ${color}66 inset, 0 0 16px ${color}22`)}
-      onMouseLeave={(e) => (e.currentTarget.style.boxShadow = `0 0 0 1px rgba(255,255,255,0.06) inset`)}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#3f3f46")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#27272a")}
     >
       <div style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: C.F }}>{busy ? "Filing task…" : label}</div>
       <div style={{ fontSize: 10, color: C.textDim, fontFamily: C.F, marginTop: 2 }}>{sub}</div>
@@ -450,7 +450,7 @@ export default function SparkCommandCenter() {
               height: 8,
               borderRadius: "50%",
               background: status === "online" ? C.emerald : C.amber,
-              boxShadow: `0 0 10px ${status === "online" ? C.emerald : C.amber}`,
+              boxShadow: "none",
               animation: status !== "online" ? "scc-blink 1s infinite" : "none",
             }}
           />
@@ -463,7 +463,7 @@ export default function SparkCommandCenter() {
           )}
           <button
             onClick={() => setLogsOpen(true)}
-            style={{ background: "transparent", border: "none", boxShadow: `0 0 0 1px ${C.amber}44 inset`, color: C.amber, fontFamily: C.F, fontSize: 9, letterSpacing: 1.5, padding: "6px 12px", borderRadius: 8, cursor: "pointer" }}
+            style={{ background: "transparent", border: "none", boxShadow: "none", color: C.amber, fontFamily: C.F, fontSize: 9, letterSpacing: 1.5, padding: "6px 12px", borderRadius: 8, cursor: "pointer" }}
           >
             COMMAND LOGS
           </button>
@@ -511,7 +511,7 @@ export default function SparkCommandCenter() {
               ALFRED CORE: {status === "online" ? coreState.toUpperCase() : "INITIALIZING"}
             </span>
             {status !== "online" && (
-              <div style={{ width: 160, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", margin: "8px auto 0", overflow: "hidden" }}>
+              <div style={{ width: 160, height: 3, borderRadius: 2, background: "#27272a", margin: "8px auto 0", overflow: "hidden" }}>
                 <div style={{ width: `${Math.min(100, bootPct)}%`, height: "100%", background: C.cyan, transition: "width .15s linear" }} />
               </div>
             )}
@@ -522,7 +522,7 @@ export default function SparkCommandCenter() {
               <TypewriterText
                 text={`Alfred: "${lastSpoken}"`}
                 maxDurationMs={1200}
-                style={{ fontSize: 11, color: C.cyan, fontStyle: "italic", display: "block", textShadow: "0 0 12px rgba(56,240,255,0.4)" }}
+                style={{ fontSize: 11, color: C.cyan, fontStyle: "italic", display: "block", textShadow: "none"}}
               />
             </div>
           )}

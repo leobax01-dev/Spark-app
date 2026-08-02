@@ -65,10 +65,10 @@ export default function AgentDossier({ agentKey, onClose }) {
         width: "min(420px, 92vw)",
         zIndex: 220,
         background: "rgba(6,10,22,0.5)",
-        backdropFilter: "blur(22px) saturate(140%)",
-        WebkitBackdropFilter: "blur(22px) saturate(140%)",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
         borderLeft: `1px solid ${color}33`,
-        boxShadow: `-20px 0 60px rgba(0,0,0,0.5), inset 1px 0 0 ${color}22`,
+        boxShadow: "none",
         display: "flex",
         flexDirection: "column",
         animation: "cc-slide-in .35s cubic-bezier(.2,.8,.2,1) both",
@@ -94,7 +94,7 @@ export default function AgentDossier({ agentKey, onClose }) {
         <div style={{ display: "flex", gap: 16, marginTop: 16 }}>
           {["Pending", "Needs_Approval", "Completed"].map((s) => (
             <div key={s} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color, textShadow: `0 0 8px ${color}66` }}>{counts[s] || 0}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color, textShadow: "none"}}>{counts[s] || 0}</div>
               <div style={{ fontSize: 8, color: C.textDim, letterSpacing: 1, textTransform: "uppercase" }}>{s.replace("_", " ")}</div>
             </div>
           ))}
@@ -113,9 +113,9 @@ export default function AgentDossier({ agentKey, onClose }) {
               padding: "12px 14px",
               marginBottom: 10,
               borderRadius: 8,
-              background: "rgba(255,255,255,0.03)",
+              background: "#18181b",
               border: `1px solid ${color}22`,
-              backdropFilter: "blur(6px)",
+              backdropFilter: "none",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>

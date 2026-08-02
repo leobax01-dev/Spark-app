@@ -12,7 +12,7 @@ const C = {
   bg:"#04040a", surface:"#08080f", surfaceUp:"#0d0d1a", surfaceHigh:"#111122",
   border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.10)",
   indigo:"#6366f1", indigoLt:"#818cf8", violet:"#8b5cf6",
-  cyan:"#22d3ee", emerald:"#10b981", amber:"#f59e0b", rose:"#f43f5e",
+  cyan:"#38bdf8", emerald:"#10b981", amber:"#f59e0b", rose:"#ef4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -23,10 +23,10 @@ const TYPE_META = {
   mls_desc:   { label:"MLS Description",   icon:"📝", color:"#f59e0b" },
   open_house: { label:"Open House",        icon:"🚪", color:"#10b981" },
   objection:  { label:"Objection Handler", icon:"🎯", color:"#8b5cf6" },
-  scripts:    { label:"Scripts",           icon:"🗣️", color:"#22d3ee" },
-  comms:      { label:"Client Comms",      icon:"💬", color:"#f43f5e" },
+  scripts:    { label:"Scripts",           icon:"🗣️", color:"#38bdf8" },
+  comms:      { label:"Client Comms",      icon:"💬", color:"#ef4444" },
   education:  { label:"Education",         icon:"📚", color:"#f59e0b" },
-  market:     { label:"Market Update",     icon:"📈", color:"#22d3ee" },
+  market:     { label:"Market Update",     icon:"📈", color:"#38bdf8" },
   lifestyle:  { label:"Lifestyle",         icon:"🌅", color:"#8b5cf6" },
 };
 
@@ -121,7 +121,7 @@ function ResultField({ label, value, color=C.indigo }){
   const text = Array.isArray(value) ? value.join("\n") : String(value);
   if(!text.trim()) return null;
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+    <div style={{background:"#18181b",border:`1px solid ${C.border}`,
       borderRadius:9,padding:"11px 13px",marginBottom:9}}>
       <div style={{display:"flex",justifyContent:"space-between",
         alignItems:"center",marginBottom:7}}>
@@ -139,7 +139,7 @@ function ResultField({ label, value, color=C.indigo }){
 function ResultList({ label, items, color=C.indigo }){
   if(!items?.length) return null;
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+    <div style={{background:"#18181b",border:`1px solid ${C.border}`,
       borderRadius:9,padding:"11px 13px",marginBottom:9}}>
       <div style={{display:"flex",justifyContent:"space-between",
         alignItems:"center",marginBottom:9}}>
@@ -234,10 +234,10 @@ function DetailView({ entry, onBack, onReuse, onToggleStar, onDelete }){
 
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
         <button onClick={()=>onReuse(entry)}
-          style={{flex:1,background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+          style={{flex:1,background:`#8b5cf6`,
             border:"none",color:"#fff",borderRadius:9,padding:"10px 0",
             cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:12,
-            boxShadow:`0 4px 14px ${C.indigo}28`}}>
+            boxShadow: "none"}}>
           ↺ Reuse & Regenerate
         </button>
         <button onClick={()=>onToggleStar(entry.id)}

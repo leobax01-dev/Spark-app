@@ -2,8 +2,8 @@ const C = {
   bg:"#04040a", surface:"#08080f", surfaceUp:"#0d0d1a", surfaceHigh:"#111122",
   border:"rgba(255,255,255,0.06)", borderMd:"rgba(255,255,255,0.10)", borderHi:"rgba(255,255,255,0.18)",
   indigo:"#6366f1", indigoLt:"#818cf8", indigoD:"#4f52c9",
-  violet:"#8b5cf6", cyan:"#22d3ee", emerald:"#10b981",
-  amber:"#f59e0b", rose:"#f43f5e", sky:"#38bdf8",
+  violet:"#8b5cf6", cyan:"#38bdf8", emerald:"#10b981",
+  amber:"#f59e0b", rose:"#ef4444", sky:"#38bdf8",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)", textFaint:"rgba(255,255,255,0.06)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -34,7 +34,7 @@ const GLOBAL_CSS = `
   @keyframes lineGrow{from{width:0}to{width:100%}}
   @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
   .nav-item{transition:all .18s ease}
-  .nav-item:hover{background:rgba(255,255,255,0.04)!important;color:rgba(255,255,255,.9)!important}
+  .nav-item:hover{background:#18181b!important;color:rgba(255,255,255,.9)!important}
   .nav-item.active{background:rgba(99,102,241,.1)!important;color:#a5b4fc!important;border-color:rgba(99,102,241,.22)!important}
   .btn-g{transition:all .2s ease}
   .btn-g:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 32px rgba(99,102,241,.28)!important;filter:brightness(1.08)}
@@ -68,7 +68,7 @@ const GLOBAL_CSS = `
   .feature-row{transition:all .16s}
   .feature-row:hover{background:rgba(255,255,255,.018)!important}
   .signout-btn{transition:all .18s;cursor:pointer}
-  .signout-btn:hover{color:#f43f5e!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
+  .signout-btn:hover{color:#ef4444!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
   @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
   @keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 20px 4px rgba(99,102,241,.15)}}
   @keyframes progressBar{from{width:0}to{width:100%}}
@@ -146,7 +146,7 @@ const CONTENT_TYPES = {
   open_house:  {label:"Open House Package",    icon:"🚪",color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"agent"},
   objection:   {label:"Objection Handler",     icon:"🎯",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"agent"},
   scripts:     {label:"Scripts & Dialogues",   icon:"🗣️",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"agent"},
-  comms:       {label:"Client Communication",  icon:"💬",color:"#f43f5e", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"agent"},
+  comms:       {label:"Client Communication",  icon:"💬",color:"#ef4444", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"agent"},
   education:   {label:"Agent Tip",             icon:"💡",color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"agent"},
   market:      {label:"Market Update",         icon:"📈",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
   lifestyle:   {label:"Neighborhood Story",    icon:"🌆",color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},

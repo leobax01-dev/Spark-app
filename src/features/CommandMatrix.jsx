@@ -42,15 +42,15 @@ import { buildBriefing, HIGH_DOM } from "./briefing";
 
 // ── design tokens ─────────────────────────────────────────────────────────
 const BG = "#050505";
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
-const GREEN = "#22c55e";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
+const GREEN = "#10b981";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
-const HAIRLINE = "rgba(255,255,255,0.1)";
+const HAIRLINE = "#27272a";
 
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
@@ -131,8 +131,8 @@ function TickerCard({ label, value, sub, color, format = "money", icon: IconCmp 
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
       minWidth: 0, padding: 14, borderRadius: 13,
-      background: `linear-gradient(135deg,${color}0e,rgba(0,0,0,0.45))`,
-      backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+      background: `#111111`,
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
@@ -145,7 +145,7 @@ function TickerCard({ label, value, sub, color, format = "money", icon: IconCmp 
       </div>
       <div className="font-mono" style={{
         fontFamily: MONO, fontSize: 25, fontWeight: 800, color,
-        textShadow: `0 0 18px ${color}66`, lineHeight: 1.1,
+        textShadow: "none", lineHeight: 1.1,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>{text}</div>
       <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 4, lineHeight: 1.45 }}>{sub}</div>
@@ -159,8 +159,8 @@ function ThreatCard({ threat, onSituationRoom, onTalkThrough }) {
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
       borderRadius: 13, padding: 14, marginBottom: 11,
-      background: "rgba(0,0,0,0.55)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-      border: `1px solid ${tone}3d`, boxShadow: `inset 0 0 30px ${tone}0b`,
+      background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+      border: `1px solid ${tone}3d`, boxShadow: "none",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8, flexWrap: "wrap" }}>
         <span className="font-mono" style={{
@@ -204,7 +204,7 @@ function ThreatCard({ threat, onSituationRoom, onTalkThrough }) {
             background: `${tone}1c`, border: `1px solid ${tone}88`, color: tone,
             fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 0.9, textTransform: "uppercase",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            boxShadow: `0 0 13px ${tone}44`,
+            boxShadow: "none",
           }}>
           <ShieldAlert size={12} /> [ Enter Situation Room ]
         </button>
@@ -226,18 +226,18 @@ function ThreatCard({ threat, onSituationRoom, onTalkThrough }) {
 function BackgroundOps({ ops }) {
   return (
     <div style={{
-      borderRadius: 11, border: `1px solid ${HAIRLINE}`, background: "rgba(0,0,0,0.45)",
+      borderRadius: 11, border: `1px solid ${HAIRLINE}`, background: "#111111",
       overflow: "hidden", display: "flex", flexDirection: "column", minHeight: 0,
     }}>
       <div className="font-mono" style={{
         display: "flex", alignItems: "center", gap: 7, padding: "8px 12px",
-        borderBottom: `1px solid ${HAIRLINE}`, background: "rgba(255,255,255,0.03)",
+        borderBottom: `1px solid ${HAIRLINE}`, background: "#18181b",
         fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.4, color: SLATE_DIM, textTransform: "uppercase",
       }}>
         <Terminal size={10} color={GREEN} />
         spark://background · {ops.length} op{ops.length !== 1 ? "s" : ""}
         <span style={{ marginLeft: "auto", color: GREEN, display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ width: 5, height: 5, borderRadius: "50%", background: GREEN, boxShadow: `0 0 7px ${GREEN}`, animation: "cmBlink 1.8s ease-in-out infinite" }} />
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: GREEN, boxShadow: "none", animation: "none" }} />
           LIVE
         </span>
       </div>
@@ -252,7 +252,7 @@ function BackgroundOps({ ops }) {
           <div key={op.id} className="font-mono" style={{
             display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 12px",
             fontFamily: MONO, fontSize: 10, lineHeight: 1.5,
-            borderBottom: "1px solid rgba(255,255,255,0.04)",
+            borderBottom: "1px solid #18181b",
           }}>
             <span style={{ color: SLATE_DIM, flexShrink: 0, fontSize: 9 }}>{op.at}</span>
             {op.pending
@@ -301,7 +301,7 @@ function SpecialistDock({ statuses, onOpen }) {
               style={{
                 flex: "0 0 214px", width: 214, textAlign: "left", cursor: "pointer",
                 padding: 13, borderRadius: 12,
-                background: "rgba(0,0,0,0.55)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+                background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
                 border: `1px solid ${HAIRLINE}`, display: "flex", flexDirection: "column", gap: 9,
                 transition: "border-color .16s ease, background .16s ease",
               }}>
@@ -325,9 +325,9 @@ function SpecialistDock({ statuses, onOpen }) {
                 <span style={{ position: "relative", width: 6, height: 6, flexShrink: 0, marginTop: 4 }}>
                   <span style={{
                     position: "absolute", inset: -3, borderRadius: "50%", border: `1px solid ${dot}`,
-                    animation: "cmPulse 2.2s cubic-bezier(.2,.6,.4,1) infinite",
+                    animation: "none",
                   }} />
-                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: dot, boxShadow: `0 0 7px ${dot}` }} />
+                  <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: dot, boxShadow: "none"}} />
                 </span>
                 <span className="font-mono" style={{
                   flex: 1, minWidth: 0, fontFamily: MONO, fontSize: 9, color: SLATE_DIM, lineHeight: 1.4,
@@ -452,16 +452,16 @@ function ConfirmModal({ plan, busy, onCancel, onConfirm }) {
   return (
     <div onClick={onCancel} style={{
       position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.8)",
-      backdropFilter: "blur(7px)", WebkitBackdropFilter: "blur(7px)",
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
     }}>
       <div onClick={(e) => e.stopPropagation()}
         className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
           width: "min(540px,100%)", maxHeight: "88%", overflowY: "auto",
-          background: "rgba(6,6,12,0.95)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: `1px solid ${PURPLE}55`, borderRadius: 15, padding: 20,
-          boxShadow: `0 0 52px ${PURPLE}44`,
+          boxShadow: "none",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 3 }}>
           <AlertTriangle size={15} color={PURPLE_LT} />
@@ -485,7 +485,7 @@ function ConfirmModal({ plan, busy, onCancel, onConfirm }) {
 
         <div style={{
           border: `1px solid ${mutating ? AMBER : HAIRLINE}44`, borderRadius: 10, padding: 12, marginBottom: 16,
-          background: mutating ? `${AMBER}0c` : "rgba(255,255,255,0.02)",
+          background: mutating ? `${AMBER}0c` : "#18181b",
         }}>
           <div className="tracking-wider" style={{
             fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.4, color: mutating ? AMBER : SLATE_DIM,
@@ -508,11 +508,11 @@ function ConfirmModal({ plan, busy, onCancel, onConfirm }) {
             style={{
               flex: "2 1 230px", padding: "14px 16px", borderRadius: 11,
               cursor: busy || !plan.executable ? "default" : "pointer",
-              background: plan.executable ? `linear-gradient(135deg,#7c3aed,${PURPLE})` : "rgba(255,255,255,0.05)",
+              background: plan.executable ? `#8b5cf6` : "rgba(255,255,255,0.05)",
               border: `1px solid ${plan.executable ? PURPLE : HAIRLINE}`,
               color: plan.executable ? "#fff" : SLATE_DIM,
               fontFamily: F, fontSize: 12, fontWeight: 800, letterSpacing: 1.1, textTransform: "uppercase",
-              boxShadow: plan.executable && !busy ? `0 0 22px ${PURPLE}88` : "none",
+              boxShadow: "none",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               opacity: busy ? 0.7 : 1,
             }}>
@@ -538,26 +538,26 @@ function OmniCommand({ onSubmit, listening, onToggleMic, micSupported, transcrip
     // an ultrawide monitor.
     <div className="w-full" style={{
       flexShrink: 0, width: "100%", padding: `12px ${pad}px 16px`, boxSizing: "border-box",
-      borderTop: `1px solid ${HAIRLINE}`, background: "rgba(5,5,5,0.86)",
-      backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+      borderTop: `1px solid ${HAIRLINE}`, background: "#111111",
+      backdropFilter: "none", WebkitBackdropFilter: "none",
     }}>
       <div className="max-w-4xl mx-auto w-full" style={{ maxWidth: 896, margin: "0 auto", width: "100%" }}>
       <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
         display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 14,
-        background: "rgba(0,0,0,0.72)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${listening ? `${PURPLE}88` : HAIRLINE}`,
-        boxShadow: listening ? `0 0 28px ${PURPLE}44` : "0 -6px 26px rgba(0,0,0,0.6)",
+        boxShadow: "none",
       }}>
         <button onClick={onToggleMic} disabled={!micSupported}
           title={micSupported ? (listening ? "Stop dictation" : "Speak a command") : "Speech recognition unavailable in this browser"}
           style={{
             width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: "flex",
             alignItems: "center", justifyContent: "center",
-            background: listening ? `linear-gradient(135deg,#7c3aed,${PURPLE})` : `${PURPLE}18`,
+            background: listening ? `#8b5cf6` : `${PURPLE}18`,
             border: `1px solid ${PURPLE}${listening ? "" : "55"}`,
             color: listening ? "#fff" : PURPLE_LT,
             cursor: micSupported ? "pointer" : "not-allowed", opacity: micSupported ? 1 : 0.45,
-            boxShadow: listening ? `0 0 20px ${PURPLE}` : `0 0 12px ${PURPLE}44`,
+            boxShadow: "none",
             animation: listening ? "cmGlow 1.4s ease-in-out infinite" : "none",
           }}>
           <Mic size={15} />
@@ -695,7 +695,7 @@ export default function CommandMatrix({
           alignItems: "center", justifyContent: "center", gap: 18,
         }}>
           <Zap size={46} color={PURPLE_LT} fill={PURPLE_LT}
-            style={{ filter: `drop-shadow(0 0 22px ${PURPLE})`, animation: "cmBootPulse 1.5s ease-in-out infinite" }} />
+            style={{ filter: "none", animation: "cmBootPulse 1.5s ease-in-out infinite" }} />
           <div className="font-mono tracking-wider text-slate-400" style={{
             fontFamily: MONO, fontSize: 10.5, letterSpacing: 2.2, color: SLATE_DIM,
             textAlign: "center", padding: "0 24px", lineHeight: 1.7, maxWidth: 460,
@@ -720,16 +720,16 @@ export default function CommandMatrix({
       <div className="w-full p-6 md:p-8" style={{
         flex: 1, overflowY: "auto", minHeight: 0, width: "100%",
         padding: pad, boxSizing: "border-box",
-        scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent",
+        scrollbarWidth: "thin", scrollbarColor: "#27272a transparent",
       }}>
 
         {/* ── Pipeline wealth banner (full width) ── */}
         <div className="w-full" style={{ width: "100%", marginBottom: 18 }}>
           <div style={{
             fontFamily: F, fontSize: 22, fontWeight: 800, lineHeight: 1.25, color: "#fff",
-            textShadow: `0 0 26px ${CYAN}44`,
+            textShadow: "none",
           }}>
-            <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: `0 0 20px ${CYAN}88` }}>
+            <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: "none"}}>
               {fmtMoney(briefing.pipelineValue)}
             </span>{" "}
             IN PIPELINE WEALTH BEING ACTIVELY PROTECTED
@@ -784,7 +784,7 @@ export default function CommandMatrix({
             {briefing.threats.length === 0 ? (
               <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
                 borderRadius: 12, padding: 22, textAlign: "center",
-                background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}`,
+                background: "#111111", border: `1px solid ${HAIRLINE}`,
               }}>
                 <CheckCircle2 size={22} color={GREEN} style={{ marginBottom: 9 }} />
                 <div style={{ fontFamily: F, fontSize: 12.5, fontWeight: 700, color: "#fff", marginBottom: 4 }}>
@@ -840,9 +840,9 @@ export default function CommandMatrix({
       {toast && (
         <div className="backdrop-blur-2xl" style={{
           position: "absolute", bottom: 78, left: "50%", transform: "translateX(-50%)", zIndex: 210,
-          background: "rgba(6,6,12,0.95)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: `1px solid ${CYAN}88`, borderRadius: 10, padding: "10px 18px", color: "#fff",
-          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: `0 0 24px ${CYAN}55`,
+          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: "none",
           maxWidth: "88%", textAlign: "center",
         }}>{toast}</div>
       )}

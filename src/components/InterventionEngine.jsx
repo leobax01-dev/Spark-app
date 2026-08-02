@@ -37,13 +37,13 @@ import SparkBoot from "./SparkBoot";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const CYAN = "#22d3ee";
-const GREEN = "#22C55E";
-const AMBER = "#ffb020";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const CYAN = "#38bdf8";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
 const YELLOW = "#facc15";
-const RED = "#ff3b5c";
+const RED = "#ef4444";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 
@@ -124,9 +124,9 @@ function MetricCard({ icon: IconCmp, label, value, accent, badge, badgeColor, de
       initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}
       className="backdrop-blur-2xl bg-black/60 border border-white/10 rounded-xl p-4"
       style={{
-        flex: 1, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        flex: 1, background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${accent}33`, borderRadius: 12, padding: 16,
-        boxShadow: `inset 0 0 34px ${accent}0d, 0 0 22px ${accent}14`,
+        boxShadow: "none",
         display: "flex", flexDirection: "column", gap: 7, minWidth: 0,
       }}
     >
@@ -137,15 +137,15 @@ function MetricCard({ icon: IconCmp, label, value, accent, badge, badgeColor, de
           <span style={{
             marginLeft: "auto", fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1,
             color: badgeColor, background: `${badgeColor}18`, border: `1px solid ${badgeColor}66`,
-            borderRadius: 999, padding: "2px 7px", boxShadow: `0 0 8px ${badgeColor}44`, whiteSpace: "nowrap",
+            borderRadius: 999, padding: "2px 7px", boxShadow: "none", whiteSpace: "nowrap",
           }}>{badge}</span>
         )}
       </div>
-      <div className="font-mono" style={{ fontFamily: MONO, fontSize: raw ? 17 : 24, fontWeight: 800, color: "#fff", textShadow: `0 0 16px ${accent}88`, letterSpacing: -0.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <div className="font-mono" style={{ fontFamily: MONO, fontSize: raw ? 17 : 24, fontWeight: 800, color: "#fff", textShadow: "none", letterSpacing: -0.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
         {raw ? value : <Ticker value={value} format={typeof value === "number" && value < 1000 ? (v) => `${Math.round(v)}d` : fmtMoney} />}
       </div>
       {delta != null && (
-        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: delta >= 0 ? RED : GREEN, textShadow: `0 0 10px ${delta >= 0 ? RED : GREEN}77` }}>
+        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: delta >= 0 ? RED : GREEN, textShadow: "none"}}>
           {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}% burn rate
         </div>
       )}
@@ -167,7 +167,7 @@ function Beacon({ cx, cy, payload, selectedId, onPick }) {
       </circle>
       <circle cx={cx} cy={cy} r={isSel || hover ? r + 3 : r} fill={color} fillOpacity={0.95}
         stroke={isSel ? "#fff" : "transparent"} strokeWidth={isSel ? 2 : 0}
-        style={{ filter: `drop-shadow(0 0 ${isSel || hover ? 10 : 6}px ${color})`, transition: "r .15s ease" }} />
+        style={{ filter: "none", transition: "r .15s ease" }} />
     </g>
   );
 }
@@ -178,9 +178,9 @@ function RadarTooltip({ active, payload }) {
   const color = QUADRANTS[d.quadrant].color;
   return (
     <div style={{
-      background: "rgba(4,4,8,0.92)", backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
+      background: "rgba(4,4,8,0.92)", backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}66`, borderRadius: 9, padding: "10px 12px",
-      fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 210, boxShadow: `0 0 22px ${color}33`,
+      fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 210, boxShadow: "none",
     }}>
       <div style={{ fontWeight: 800, marginBottom: 5, color, letterSpacing: 1 }}>{QUADRANTS[d.quadrant].label.toUpperCase()}</div>
       <div style={{ marginBottom: 4, opacity: 0.9, fontFamily: F, fontSize: 11 }}>{d.address}</div>
@@ -457,17 +457,17 @@ export default function InterventionEngine({ user, focusDealId }) {
           initial={{ opacity: 0, y: -14 }} animate={{ opacity: 1, y: 0 }}
           style={{
             position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 60,
-            background: "rgba(6,6,12,0.94)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             border: `1px solid ${toast.includes("failed") ? RED : PURPLE}88`, borderRadius: 10,
             padding: "11px 20px", color: "#fff", fontFamily: F, fontSize: 12, fontWeight: 700,
-            boxShadow: `0 0 26px ${toast.includes("failed") ? RED : PURPLE}55`, whiteSpace: "nowrap",
+            boxShadow: "none", whiteSpace: "nowrap",
           }}
         >{toast}</motion.div>
       )}
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <AlertTriangle size={20} color={RED} style={{ filter: `drop-shadow(0 0 8px ${RED}aa)` }} />
+        <AlertTriangle size={20} color={RED} style={{ filter: "none"}} />
         <div>
           <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, letterSpacing: 1.4, color: "#fff" }}>INTERVENTION ENGINE</div>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, color: SLATE_DIM, letterSpacing: 2 }}>
@@ -498,8 +498,8 @@ export default function InterventionEngine({ user, focusDealId }) {
         <div
           className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: "1 1 62%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: "1 1 62%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0,
           }}
         >
@@ -518,11 +518,11 @@ export default function InterventionEngine({ user, focusDealId }) {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 14, right: 22, bottom: 14, left: 4 }}>
-                  <CartesianGrid stroke="rgba(148,163,184,0.08)" />
+                  <CartesianGrid stroke="#27272a" strokeDasharray="3 3" />
                   <XAxis type="number" dataKey="daysStalled" name="Days Stalled" unit="d"
-                    stroke="rgba(255,255,255,0.2)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }} />
+                    stroke="rgba(255,255,255,0.2)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} />
                   <YAxis type="number" dataKey="volume" name="Volume"
-                    stroke="rgba(255,255,255,0.2)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
+                    stroke="rgba(255,255,255,0.2)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
                   <ZAxis range={[60, 60]} />
                   <Tooltip content={<RadarTooltip />} cursor={false} />
                   <ReferenceLine x={thresholds.dMid} stroke={`${PURPLE}66`} strokeDasharray="4 4" />
@@ -545,7 +545,7 @@ export default function InterventionEngine({ user, focusDealId }) {
           <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
             {Object.values(QUADRANTS).map((q) => (
               <div key={q.key} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 9.5, color: SLATE_DIM }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: q.color, boxShadow: `0 0 6px ${q.color}` }} />
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: q.color, boxShadow: "none"}} />
                 <span className="font-mono" style={{ fontFamily: MONO, fontSize: 8.5 }}>{q.key}</span> {q.label}
               </div>
             ))}
@@ -556,8 +556,8 @@ export default function InterventionEngine({ user, focusDealId }) {
         <div
           className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: "1 1 38%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: "1 1 38%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto",
           }}
         >
@@ -582,14 +582,14 @@ export default function InterventionEngine({ user, focusDealId }) {
                 {/* Scanning laser over mono grid */}
                 <div style={{
                   position: "relative", height: 92, borderRadius: 10, overflow: "hidden", marginBottom: 16,
-                  border: "1px dashed rgba(255,255,255,0.12)",
+                  border: "1px dashed #27272a",
                   backgroundImage: "linear-gradient(rgba(148,163,184,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(148,163,184,0.07) 1px,transparent 1px)",
                   backgroundSize: "16px 16px",
                 }}>
                   <div style={{
                     position: "absolute", left: 0, right: 0, height: 2, top: 0,
                     background: `linear-gradient(90deg,transparent,${PURPLE}cc,transparent)`,
-                    boxShadow: `0 0 12px ${PURPLE}`, animation: "ieLaser 2.6s ease-in-out infinite",
+                    boxShadow: "none", animation: "none",
                   }} />
                   <div className="font-mono" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: 9, letterSpacing: 2, color: SLATE_DIM }}>
                     AWAITING TARGET LOCK
@@ -621,7 +621,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
                       {taxonomy.map((t) => (
                         <div key={t.name} style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: F, fontSize: 10, color: SLATE }}>
-                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: CAUSE_COLOR[t.name], boxShadow: `0 0 6px ${CAUSE_COLOR[t.name]}` }} />
+                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: CAUSE_COLOR[t.name], boxShadow: "none"}} />
                           {t.name} <span className="font-mono" style={{ fontFamily: MONO, color: SLATE_DIM }}>{Math.round((t.value / deals.length) * 100)}%</span>
                         </div>
                       ))}
@@ -640,7 +640,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                   <button onClick={() => setSelected(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}><X size={15} /></button>
                 </div>
 
-                <div style={{ border: `1px solid ${selColor}44`, borderRadius: 11, padding: 13, marginBottom: 13, background: "rgba(255,255,255,0.02)", boxShadow: `inset 0 0 24px ${selColor}0d` }}>
+                <div style={{ border: `1px solid ${selColor}44`, borderRadius: 11, padding: 13, marginBottom: 13, background: "#18181b", boxShadow: "none"}}>
                   <div style={{ display: "flex", gap: 8, marginBottom: 9 }}>
                     <MapPin size={13} color={selColor} style={{ marginTop: 2, flexShrink: 0 }} />
                     <div style={{ fontFamily: F, fontSize: 13, fontWeight: 800, color: "#fff", lineHeight: 1.35 }}>{selected.address}</div>
@@ -652,7 +652,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                       RISK {selected.risk}
                     </span>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, paddingTop: 9, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, paddingTop: 9, borderTop: "1px solid #27272a" }}>
                     {[["List Price", fmtMoney(selected.volume), "#fff"], ["Days Stalled", `${Math.round(selected.daysStalled)}d`, RED], ["GCI", fmtMoney(selected.gci), AMBER]].map(([l, v, c]) => (
                       <div key={l}>
                         <div className="tracking-wider" style={{ fontFamily: F, fontSize: 7.5, letterSpacing: 1, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 2 }}>{l}</div>
@@ -665,7 +665,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                 </div>
 
                 {/* Capital Recovery Simulator */}
-                <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 11, padding: 13, marginBottom: 13, background: "rgba(255,255,255,0.02)" }}>
+                <div style={{ border: "1px solid #27272a", borderRadius: 11, padding: 13, marginBottom: 13, background: "#18181b" }}>
                   <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.6, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 10 }}>
                     Capital Recovery Simulator
                   </div>
@@ -676,14 +676,14 @@ export default function InterventionEngine({ user, focusDealId }) {
                   <input type="range" min={0} max={10} step={0.5} value={concession}
                     onChange={(e) => setConcession(Number(e.target.value))}
                     className="ie-slider"
-                    style={{ width: "100%", marginBottom: 12, background: `linear-gradient(90deg,${PURPLE} ${concession * 10}%, rgba(255,255,255,0.1) ${concession * 10}%)` }} />
+                    style={{ width: "100%", marginBottom: 12, background: `linear-gradient(90deg,${PURPLE} ${concession * 10}%, #27272a ${concession * 10}%)` }} />
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
                     <span className="tracking-wider" style={{ fontFamily: F, fontSize: 8.5, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase" }}>Rescue Probability</span>
-                    <span className="font-mono" style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800, color: rescueScore > 60 ? GREEN : rescueScore > 35 ? AMBER : RED, textShadow: `0 0 12px ${rescueScore > 60 ? GREEN : rescueScore > 35 ? AMBER : RED}88` }}>{rescueScore}%</span>
+                    <span className="font-mono" style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800, color: rescueScore > 60 ? GREEN : rescueScore > 35 ? AMBER : RED, textShadow: "none"}}>{rescueScore}%</span>
                   </div>
-                  <div style={{ height: 7, borderRadius: 999, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                  <div style={{ height: 7, borderRadius: 999, background: "#27272a", overflow: "hidden" }}>
                     <motion.div animate={{ width: `${rescueScore}%` }} transition={{ type: "spring", stiffness: 180, damping: 24 }}
-                      style={{ height: "100%", background: `linear-gradient(90deg,${RED},${AMBER},${GREEN})`, backgroundSize: "300% 100%", backgroundPosition: `${100 - rescueScore}% 0`, boxShadow: `0 0 12px ${rescueScore > 60 ? GREEN : AMBER}` }} />
+                      style={{ height: "100%", background: `linear-gradient(90deg,${RED},${AMBER},${GREEN})`, backgroundSize: "300% 100%", backgroundPosition: `${100 - rescueScore}% 0`, boxShadow: "none"}} />
                   </div>
                   <div className="font-mono" style={{ fontFamily: MONO, fontSize: 8.5, color: SLATE_DIM, marginTop: 7 }}>
                     CONCESSION COST {fmtMoney(selected.volume * (concession / 100))} · NET GCI {fmtMoney(selected.gci - selected.gci * (concession / 100))}
@@ -693,11 +693,11 @@ export default function InterventionEngine({ user, focusDealId }) {
                 <button onClick={generatePlaybook} disabled={decrypting}
                   className="shadow-[0_0_15px_rgba(168,85,247,0.5)]"
                   style={{
-                    width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                    width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "#8b5cf6",
                     border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "12px 14px",
                     fontFamily: F, fontSize: 11, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                     color: "#fff", cursor: decrypting ? "default" : "pointer",
-                    boxShadow: decrypting ? "none" : "0 0 15px rgba(168,85,247,0.5)",
+                    boxShadow: "none",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12,
                   }}>
                   {decrypting ? <Loader2 size={13} style={{ animation: "ieSpin 1s linear infinite" }} /> : <Zap size={13} />}
@@ -713,7 +713,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                 )}
 
                 {/* Execution Loop */}
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 13, display: "flex", flexDirection: "column", gap: 9 }}>
+                <div style={{ borderTop: "1px solid #27272a", paddingTop: 13, display: "flex", flexDirection: "column", gap: 9 }}>
                   <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.6, color: SLATE_DIM, textTransform: "uppercase" }}>
                     Agent Dispatch Protocol
                   </div>
@@ -722,7 +722,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                       width: "100%", background: "rgba(34,211,238,0.16)", border: `1px solid ${CYAN}77`, borderRadius: 10,
                       padding: "11px 14px", fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1,
                       textTransform: "uppercase", color: CYAN, cursor: selected.agentEmail ? "pointer" : "default",
-                      boxShadow: `0 0 14px ${CYAN}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                      boxShadow: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       opacity: selected.agentEmail ? 1 : 0.45,
                     }}>
                     <Send size={13} /> [ Dispatch to Agent ]
@@ -733,7 +733,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                       border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "11px 14px",
                       fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                       color: PURPLE_LT, cursor: resolving ? "default" : "pointer",
-                      boxShadow: resolving ? "none" : `0 0 15px ${PURPLE}55`,
+                      boxShadow: "none",
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                     }}>
                     {resolving ? <Loader2 size={13} style={{ animation: "ieSpin 1s linear infinite" }} /> : <CheckCircle2 size={13} />}
@@ -750,8 +750,8 @@ export default function InterventionEngine({ user, focusDealId }) {
       <div
         className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16, minHeight: 200,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 14, padding: 16, minHeight: 200,
           display: "flex", flexDirection: "column",
         }}
       >
@@ -759,7 +759,7 @@ export default function InterventionEngine({ user, focusDealId }) {
           Active Rescue Dispatch Ledger
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1.1fr 1fr 1fr 1fr 1.1fr", gap: 8, padding: "0 8px 8px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1.1fr 1fr 1fr 1fr 1.1fr", gap: 8, padding: "0 8px 8px", borderBottom: "1px solid #27272a" }}>
           {[["address", "Property"], ["agent", "Agent"], ["volume", "Volume"], ["daysStalled", "Days Stalled"], ["risk", "Risk"], ["quadrant", "Threat Level"]].map(([key, label]) => (
             <button key={key} onClick={() => toggleSort(key)}
               style={{
@@ -788,7 +788,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                   borderLeft: `2px solid ${isSel ? q.color : "transparent"}`,
                   transition: "background .15s ease, transform .15s ease",
                 }}
-                onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "rgba(255,255,255,0.035)"; e.currentTarget.style.transform = "translateX(3px)"; }}
+                onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "#18181b"; e.currentTarget.style.transform = "translateX(3px)"; }}
                 onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = "transparent"; e.currentTarget.style.transform = "translateX(0)"; }}>
                 <span style={{ fontFamily: F, fontSize: 11.5, fontWeight: 600, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.address}</span>
                 <span style={{ fontFamily: F, fontSize: 11, color: SLATE, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.agent}</span>
@@ -799,7 +799,7 @@ export default function InterventionEngine({ user, focusDealId }) {
                   fontFamily: MONO, fontSize: 8, fontWeight: 800, letterSpacing: 0.8, color: q.color,
                   background: `${q.color}14`, border: `1px solid ${q.color}55`, borderRadius: 999,
                   padding: "3px 8px", whiteSpace: "nowrap", textAlign: "center",
-                  boxShadow: `0 0 8px ${q.color}33`,
+                  boxShadow: "none",
                 }}>{q.key} · {q.label.split(" ")[0].toUpperCase()}</span>
               </div>
             );

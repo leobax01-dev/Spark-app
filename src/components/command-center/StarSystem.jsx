@@ -104,7 +104,7 @@ function Planet({ def, focused, dimmed, onSelect, positionRef }) {
     }
   });
 
-  const color = AGENT_COLOR[def.key] || "#8CA0FF";
+  const color = AGENT_COLOR[def.key] || "#a78bfa";
 
   return (
     <group>

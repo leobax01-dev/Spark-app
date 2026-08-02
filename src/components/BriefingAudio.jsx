@@ -9,12 +9,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
-const HAIRLINE = "rgba(255,255,255,0.1)";
+const HAIRLINE = "#27272a";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
@@ -85,7 +85,7 @@ export default function BriefingAudio({ text, compact }) {
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
       display: "flex", alignItems: "center", gap: 10, flexShrink: 0,
       padding: compact ? "7px 10px" : "8px 12px", borderRadius: 12,
-      background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+      background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${HAIRLINE}`,
     }}>
       <style>{AUDIO_KEYFRAMES}</style>
@@ -93,11 +93,11 @@ export default function BriefingAudio({ text, compact }) {
         style={{
           width: 30, height: 30, borderRadius: 9, flexShrink: 0, display: "flex",
           alignItems: "center", justifyContent: "center",
-          background: playing ? `${PURPLE}22` : `linear-gradient(135deg,#7c3aed,${PURPLE})`,
+          background: playing ? `${PURPLE}22` : `#8b5cf6`,
           border: `1px solid ${PURPLE}88`, color: "#fff",
           cursor: supported && text ? "pointer" : "not-allowed",
           opacity: supported && text ? 1 : 0.45,
-          boxShadow: playing ? `0 0 14px ${PURPLE}77` : "none",
+          boxShadow: "none",
         }}>
         {playing ? <Pause size={13} /> : <Play size={13} />}
       </button>
@@ -110,7 +110,7 @@ export default function BriefingAudio({ text, compact }) {
             height: playing ? "100%" : 3,
             transformOrigin: "bottom",
             animation: playing ? `cmBar 0.9s ease-in-out ${i * 0.09}s infinite` : "none",
-            boxShadow: playing ? `0 0 6px ${PURPLE}88` : "none",
+            boxShadow: "none",
           }} />
         ))}
       </div>

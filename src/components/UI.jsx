@@ -37,7 +37,7 @@ export function Card({ children, accent, style={}, C }){
   const a = accent || C.indigo;
   return (
     <div style={{
-      background: `linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+      background: `${C.surface}`,
       border: `1px solid ${C.border}`,
       borderRadius: 14,
       padding: "18px 16px",
@@ -61,8 +61,8 @@ export function Label({ children, color, C }){
     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}>
       <div style={{
         width: 3, height: 13, borderRadius: 2,
-        background: `linear-gradient(180deg,${c},${c}60)`,
-        boxShadow: `0 0 7px ${c}80`,
+        background: `${c}`,
+        boxShadow: "none",
       }}/>
       <span style={{ fontSize: 9, color: c, fontFamily: C.F, fontWeight: 700, letterSpacing: 2.2 }}>
         {children}
@@ -90,7 +90,7 @@ export function Button({ children, variant="secondary", onClick, disabled, loadi
           ? "rgba(255,255,255,.06)"
           : isPrimary ? `linear-gradient(135deg,${primaryColor},${primaryColor}cc)` : "transparent",
         color: isOff ? C.textDim : isPrimary ? "#fff" : C.text,
-        boxShadow: isPrimary && !isOff ? `0 4px 16px ${primaryColor}28` : "none",
+        boxShadow: "none",
         opacity: loading ? .6 : 1,
         ...style,
       }}>

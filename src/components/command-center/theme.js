@@ -10,9 +10,9 @@ export const C = {
   glass: "rgba(6,10,20,0.55)",
 
   cyan: "#38f0ff",
-  indigo: "#4F6BFF",
+  indigo: "#8b5cf6",
   violet: "#b26bff",
-  emerald: "#22C55E",
+  emerald: "#10b981",
   amber: "#F5C542",
   gold: "#e8c15a",
   rose: "#ff4d5e",

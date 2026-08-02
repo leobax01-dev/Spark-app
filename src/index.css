@@ -1,0 +1,141 @@
+/* src/index.css — SPARK OS "Matte Void" global baseline.
+ *
+ * Mirrors src/theme.js as CSS custom properties. Tailwind is not installed in
+ * this project, so utility class names in the markup are inert; these
+ * variables plus the theme module are how styling is actually applied.
+ *
+ * THE ANTI-GLOW RULE: no coloured shadows, no backdrop blur on structural
+ * panels, no saturated gradient fills, and no pulsing outside a genuine
+ * time-critical alert. Structure separates elements here, not light. */
+
+:root {
+  /* surfaces */
+  --spark-void: #050505;
+  --spark-panel: #111111;
+  --spark-panel-hi: #18181b;
+  --spark-panel-lo: #0a0a0a;
+  --spark-border: #27272a;
+  --spark-border-hi: #3f3f46;
+
+  /* accents */
+  --spark-primary: #8b5cf6;
+  --spark-primary-dim: #7c3aed;
+  --spark-primary-text: #a78bfa;
+  --spark-secondary: #38bdf8;
+  --spark-secondary-text: #7dd3fc;
+  --spark-positive: #10b981;
+  --spark-warning: #f59e0b;
+  --spark-negative: #ef4444;
+
+  /* type */
+  --spark-text: #f4f4f5;
+  --spark-text-body: #a1a1aa;
+  --spark-text-dim: #71717a;
+  --spark-text-faint: #52525b;
+
+  --spark-font: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --spark-mono: "JetBrains Mono", "SF Mono", ui-monospace, "Courier New", monospace;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--spark-void);
+  color: var(--spark-text-body);
+  font-family: var(--spark-font);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Every metric, currency figure, percentage, timestamp and ledger entry.
+ * tabular-nums keeps columns of numbers from shifting as values tick. */
+.font-mono,
+.spark-mono {
+  font-family: var(--spark-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--spark-text);
+}
+
+/* Structural label treatment. */
+.spark-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spark-text-dim);
+}
+
+/* Solid panel. Bordered, never shadowed or blurred. */
+.spark-panel {
+  background: var(--spark-panel);
+  border: 1px solid var(--spark-border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+/* Flat minimalist status pill. */
+.spark-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--spark-panel-hi);
+  border: 1px solid var(--spark-border-hi);
+  color: var(--spark-text-body);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* ── Anti-glow enforcement ────────────────────────────────────────────────
+ * Legacy markup still carries Tailwind glass/glow class names. Tailwind is not
+ * compiled here so they are inert, but these rules make the intent explicit
+ * and neutralise them if Tailwind is ever added without a styling audit. */
+.backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md,
+.backdrop-blur-lg, .backdrop-blur-xl, .backdrop-blur-2xl, .backdrop-blur-3xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.shadow-sm, .shadow, .shadow-md, .shadow-lg,
+.shadow-xl, .shadow-2xl, .shadow-neon, .drop-shadow-xl {
+  box-shadow: none !important;
+}
+
+/* Respect users who have asked the OS to reduce motion. Under this setting no
+ * animation survives — including the critical-alert pulse, which has a static
+ * colour and border treatment carrying the same meaning. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbars: thin, matte, no accent colour. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--spark-border-hi) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--spark-border-hi);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+/* Native form controls inherit the palette rather than the OS default. */
+input, textarea, select, button { font-family: inherit; }
+input::placeholder, textarea::placeholder { color: var(--spark-text-faint); }

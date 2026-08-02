@@ -51,12 +51,12 @@ import { AUTOPILOT_ALERTS_KEY } from "./briefing";
 
 // ── design tokens ─────────────────────────────────────────────────────────
 const BG = "#050505";
-const CYAN = "#22d3ee";
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
-const GREEN = "#22c55e";
+const CYAN = "#38bdf8";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
+const GREEN = "#10b981";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 // Hex twin of the slate tokens. Anywhere a colour gets an alpha suffix
@@ -64,7 +64,7 @@ const SLATE_DIM = "rgba(148,163,184,0.65)";
 // produces invalid CSS that the browser drops, which rendered the "All"
 // filter chip as an unreadable white box.
 const SLATE_HEX = "#94a3b8";
-const HAIRLINE = "rgba(255,255,255,0.1)";
+const HAIRLINE = "#27272a";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
@@ -309,8 +309,8 @@ function HudCard({ label, value, sub, color, format = "money", pulse, icon: I })
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
       minWidth: 0, padding: 15, borderRadius: 13,
-      background: `linear-gradient(135deg,${color}0e,rgba(0,0,0,0.45))`,
-      backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+      background: `#111111`,
+      backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${color}33`,
       animation: pulse ? "tiPulseBorder 1.8s ease-in-out infinite" : "none",
     }}>
@@ -324,7 +324,7 @@ function HudCard({ label, value, sub, color, format = "money", pulse, icon: I })
       </div>
       <div className="font-mono" style={{
         fontFamily: MONO, fontSize: 25, fontWeight: 800, color,
-        textShadow: `0 0 18px ${color}66`, lineHeight: 1.1,
+        textShadow: "none", lineHeight: 1.1,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>{text}</div>
       <div style={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM, marginTop: 4, lineHeight: 1.45 }}>{sub}</div>
@@ -341,16 +341,16 @@ function DealCard({ deal, now, onOpen, onClient }) {
     <div onClick={() => onOpen(deal)}
       className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
         padding: 12, borderRadius: 11, marginBottom: 9, cursor: "pointer",
-        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${HAIRLINE}`, transition: "border-color .16s ease",
       }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 8 }}>
         <span style={{ position: "relative", width: 7, height: 7, flexShrink: 0, marginTop: 4 }}>
           <span style={{
             position: "absolute", inset: -3, borderRadius: "50%", border: `1px solid ${health.color}`,
-            animation: "tiPulse 2.2s cubic-bezier(.2,.6,.4,1) infinite",
+            animation: "none",
           }} />
-          <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: health.color, boxShadow: `0 0 7px ${health.color}` }} />
+          <span style={{ position: "absolute", inset: 0, borderRadius: "50%", background: health.color, boxShadow: "none"}} />
         </span>
         <div style={{ flex: 1, minWidth: 0, fontFamily: F, fontSize: 11.5, fontWeight: 700, color: "#fff", lineHeight: 1.35 }}>
           {d.address || deal.name}
@@ -426,7 +426,7 @@ function ContingencyBar({ label, date, offerDate, now, onDispatch, dispatched })
       <div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
         <div style={{
           width: `${pct}%`, height: "100%", background: color,
-          boxShadow: `0 0 8px ${color}`, transition: "width .4s ease",
+          boxShadow: "none", transition: "width .4s ease",
         }} />
       </div>
       {critical && (
@@ -468,7 +468,7 @@ function StakeholderDock({ stakeholders = {}, now }) {
         return (
           <div key={r.key} style={{
             padding: 11, borderRadius: 10, border: `1px solid ${HAIRLINE}`,
-            background: "rgba(255,255,255,0.02)",
+            background: "#18181b",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
               <I size={11} color={SLATE_DIM} style={{ flexShrink: 0 }} />
@@ -476,7 +476,7 @@ function StakeholderDock({ stakeholders = {}, now }) {
                 fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.3, color: SLATE_DIM,
                 textTransform: "uppercase", flex: 1,
               }}>{r.label}</span>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, boxShadow: `0 0 6px ${dot}`, flexShrink: 0 }} />
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, boxShadow: "none", flexShrink: 0 }} />
             </div>
             <div style={{ fontFamily: F, fontSize: 11.5, fontWeight: 700, color: unassigned ? SLATE_DIM : "#fff" }}>
               {s.name || "Not assigned"}
@@ -527,7 +527,7 @@ function NetSheet({ deal, sheet, side, onSide, onExport, exporting }) {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}`, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "#111111", border: `1px solid ${HAIRLINE}`, marginBottom: 12 }}>
         {["seller", "buyer"].map((s) => (
           <button key={s} onClick={() => onSide(s)} className="font-mono" style={{
             flex: 1, padding: "7px 10px", borderRadius: 7, cursor: "pointer",
@@ -562,7 +562,7 @@ function NetSheet({ deal, sheet, side, onSide, onExport, exporting }) {
           <span style={{
             fontFamily: MONO, fontSize: 17, fontWeight: 800,
             color: side === "seller" ? GREEN : CYAN,
-            textShadow: `0 0 14px ${side === "seller" ? GREEN : CYAN}66`,
+            textShadow: "none",
           }}>{fmtFull(total)}</span>
         </div>
       </div>
@@ -867,7 +867,7 @@ export default function TransactionIntelligence({
         <style>{TI_KEYFRAMES}</style>
         <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18 }}>
           <Zap size={46} color={PURPLE_LT} fill={PURPLE_LT}
-            style={{ filter: `drop-shadow(0 0 22px ${PURPLE})`, animation: "tiBootPulse 1.5s ease-in-out infinite" }} />
+            style={{ filter: "none", animation: "tiBootPulse 1.5s ease-in-out infinite" }} />
           <div className="font-mono tracking-wider text-slate-400" style={{
             fontFamily: MONO, fontSize: 10.5, letterSpacing: 2.2, color: SLATE_DIM,
             textAlign: "center", padding: "0 24px", lineHeight: 1.7, maxWidth: 480,
@@ -892,7 +892,7 @@ export default function TransactionIntelligence({
 
       <div className="w-full p-6 md:p-8" style={{
         flex: 1, overflowY: "auto", minHeight: 0, width: "100%", padding: pad, boxSizing: "border-box",
-        scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,.07) transparent",
+        scrollbarWidth: "thin", scrollbarColor: "#27272a transparent",
       }}>
 
         {/* ── Header ── */}
@@ -903,14 +903,14 @@ export default function TransactionIntelligence({
               color: SLATE_DIM, textTransform: "uppercase", marginBottom: 4,
             }}>Transaction Intelligence &amp; Lifecycle Terminal</div>
             <div style={{ fontFamily: F, fontSize: 21, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>
-              <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: `0 0 20px ${CYAN}88` }}>
+              <span className="font-mono" style={{ fontFamily: MONO, color: CYAN, textShadow: "none"}}>
                 {fmtMoney(hud.volume)}
               </span>{" "}
               ACROSS {hud.activeCount} ACTIVE DEAL{hud.activeCount !== 1 ? "S" : ""}
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 11, background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}` }}>
+          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 11, background: "#111111", border: `1px solid ${HAIRLINE}` }}>
             {[{ id: "kanban", label: "Kanban Matrix", icon: LayoutGrid }, { id: "table", label: "Master Table", icon: Table2 }].map((v) => {
               const I = v.icon;
               return (
@@ -920,7 +920,7 @@ export default function TransactionIntelligence({
                   background: view === v.id ? `${PURPLE}22` : "transparent",
                   border: `1px solid ${view === v.id ? `${PURPLE}88` : "transparent"}`,
                   color: view === v.id ? PURPLE_LT : SLATE_DIM,
-                  boxShadow: view === v.id ? `0 0 12px ${PURPLE}44` : "none",
+                  boxShadow: "none",
                 }}>
                   <I size={11} /> [ {v.label} ]
                 </button>
@@ -949,7 +949,7 @@ export default function TransactionIntelligence({
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16, width: "100%" }}>
           <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
             display: "flex", alignItems: "center", gap: 8, padding: "0 12px", height: 38,
-            borderRadius: 10, background: "rgba(0,0,0,0.55)", border: `1px solid ${HAIRLINE}`,
+            borderRadius: 10, background: "#111111", border: `1px solid ${HAIRLINE}`,
             flex: "1 1 240px", minWidth: 0,
           }}>
             <Search size={13} color={SLATE_DIM} style={{ flexShrink: 0 }} />
@@ -959,7 +959,7 @@ export default function TransactionIntelligence({
             {query && <button onClick={() => setQuery("")} style={{ background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}><X size={12} /></button>}
           </div>
 
-          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}`, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "#111111", border: `1px solid ${HAIRLINE}`, flexWrap: "wrap" }}>
             {[{ id: "all", label: "All", color: SLATE_HEX }, ...STAGES].map((s) => (
               <button key={s.id} onClick={() => setStageFilter(s.id)} className="font-mono" style={{
                 padding: "6px 10px", borderRadius: 7, cursor: "pointer", whiteSpace: "nowrap",
@@ -997,7 +997,7 @@ export default function TransactionIntelligence({
                     display: "flex", alignItems: "center", gap: 7, marginBottom: 10,
                     paddingBottom: 8, borderBottom: `1px solid ${st.color}33`,
                   }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: st.color, boxShadow: `0 0 7px ${st.color}`, flexShrink: 0 }} />
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: st.color, boxShadow: "none", flexShrink: 0 }} />
                     <span className="tracking-wider" style={{
                       fontFamily: MONO, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.2,
                       color: st.color, textTransform: "uppercase", flex: 1, minWidth: 0,
@@ -1024,12 +1024,12 @@ export default function TransactionIntelligence({
         ) : (
           <div className="w-full" style={{
             width: "100%", border: `1px solid ${HAIRLINE}`, borderRadius: 12, overflow: "hidden",
-            background: "rgba(0,0,0,0.5)",
+            background: "#111111",
           }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", minWidth: 860, borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.035)" }}>
+                  <tr style={{ background: "#18181b" }}>
                     {[["address", "Address"], ["client", "Client"], ["price", "Price"], ["stage", "Stage"],
                     ["inspection", "Inspection Deadline"], ["closeDate", "Closing"], ["net", "Net Proceeds"]].map(([col, label]) => (
                       <th key={col} onClick={() => setSort((s) => ({ col, dir: s.col === col && s.dir === "asc" ? "desc" : "asc" }))}
@@ -1055,10 +1055,10 @@ export default function TransactionIntelligence({
                     const ns = computeNetSheet(d.value, d.detail?.netSheet, d.detail?.closeDate || d.closeDate);
                     const insH = hoursUntil(d.detail?.inspectionDate, now);
                     return (
-                      <tr key={d.id} onClick={() => setSelected(d)} className="ti-row" style={{ cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <tr key={d.id} onClick={() => setSelected(d)} className="ti-row" style={{ cursor: "pointer", borderBottom: "1px solid #18181b" }}>
                         <td style={{ padding: "11px 14px", fontFamily: F, fontSize: 11.5, color: "#fff", maxWidth: 260 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: health.color, boxShadow: `0 0 6px ${health.color}`, flexShrink: 0 }} />
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: health.color, boxShadow: "none", flexShrink: 0 }} />
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.detail?.address || d.name}</span>
                             {d.simulated && <span className="font-mono" style={{ fontFamily: MONO, fontSize: 6.5, color: AMBER, border: `1px solid ${AMBER}55`, borderRadius: 3, padding: "1px 4px", flexShrink: 0 }}>SIM</span>}
                           </div>
@@ -1106,8 +1106,8 @@ export default function TransactionIntelligence({
       {selected && sheet && (
         <>
           <div onClick={() => setSelected(null)} style={{
-            position: "absolute", inset: 0, zIndex: 120, background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+            position: "absolute", inset: 0, zIndex: 120, background: "#111111",
+            backdropFilter: "none", WebkitBackdropFilter: "none",
           }} />
           {/* A mount keyframe, not a framer-motion entrance and not a
               state-driven transition. The motion entrance stalled mid-slide
@@ -1121,7 +1121,7 @@ export default function TransactionIntelligence({
               position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 130,
               width: "min(468px, 100%)", overflowY: "auto",
               animation: "tiSlideIn .28s cubic-bezier(.16,1,.3,1) both",
-              background: "rgba(6,6,10,0.96)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+              background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
               borderLeft: `1px solid ${HAIRLINE}`, padding: 20, boxSizing: "border-box",
             }}>
             <DealDossier
@@ -1141,9 +1141,9 @@ export default function TransactionIntelligence({
       {toast && (
         <div className="backdrop-blur-2xl" style={{
           position: "absolute", bottom: 22, left: "50%", transform: "translateX(-50%)", zIndex: 200,
-          background: "rgba(6,6,12,0.95)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
           border: `1px solid ${CYAN}88`, borderRadius: 10, padding: "10px 18px", color: "#fff",
-          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: `0 0 24px ${CYAN}55`,
+          fontFamily: F, fontSize: 11.5, fontWeight: 700, boxShadow: "none",
           maxWidth: "86%", textAlign: "center",
         }}>{toast}</div>
       )}
@@ -1163,7 +1163,7 @@ function DealDossier({
   return (
     <>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 9, marginBottom: 4 }}>
-        <span style={{ width: 8, height: 8, borderRadius: "50%", background: health.color, boxShadow: `0 0 8px ${health.color}`, flexShrink: 0, marginTop: 5 }} />
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: health.color, boxShadow: "none", flexShrink: 0, marginTop: 5 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="tracking-wider text-slate-400" style={{
             fontFamily: MONO, fontSize: 7.5, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase",
@@ -1196,7 +1196,7 @@ function DealDossier({
       </div>
 
       {/* stage advance */}
-      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.5)", border: `1px solid ${HAIRLINE}`, marginBottom: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 4, padding: 4, borderRadius: 10, background: "#111111", border: `1px solid ${HAIRLINE}`, marginBottom: 8, flexWrap: "wrap" }}>
         {STAGES.map((s) => (
           <button key={s.id} onClick={() => onStage(s.id)} className="font-mono" title={`Move to ${s.label}`} style={{
             flex: "1 1 auto", padding: "6px 4px", borderRadius: 6, cursor: "pointer",
@@ -1360,7 +1360,7 @@ function DossierDropzone({ onExtracted }) {
         onClick={() => inputRef.current?.click()}
         style={{
           border: `1px dashed ${drag ? PURPLE : HAIRLINE}`, borderRadius: 11, padding: "20px 14px",
-          textAlign: "center", cursor: "pointer", background: drag ? `${PURPLE}0e` : "rgba(255,255,255,0.02)",
+          textAlign: "center", cursor: "pointer", background: drag ? `${PURPLE}0e` : "#18181b",
           transition: "border-color .16s ease, background .16s ease",
         }}>
         <input ref={inputRef} type="file" accept="image/*" hidden
@@ -1400,7 +1400,7 @@ function DossierDropzone({ onExtracted }) {
           <button onClick={() => { onExtracted(found); setStatus("idle"); setFound(null); }}
             style={{
               width: "100%", marginTop: 10, padding: "10px 12px", borderRadius: 9, cursor: "pointer",
-              background: `linear-gradient(135deg,#7c3aed,${PURPLE})`, border: `1px solid ${PURPLE}`,
+              background: `#8b5cf6`, border: `1px solid ${PURPLE}`,
               color: "#fff", fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 1,
               textTransform: "uppercase", display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
             }}>
@@ -1421,5 +1421,5 @@ const TI_KEYFRAMES = `
 @keyframes tiSlideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
 @keyframes tiGlowRed{0%,100%{box-shadow:0 0 8px ${RED}44}50%{box-shadow:0 0 20px ${RED}88}}
 .ti-input::placeholder{color:rgba(148,163,184,0.45)}
-.ti-row:hover{background:rgba(255,255,255,0.03)}
+.ti-row:hover{background:#18181b}
 `;

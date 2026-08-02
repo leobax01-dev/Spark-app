@@ -45,12 +45,12 @@ import SparkBoot from "./SparkBoot";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const CYAN = "#22d3ee";
-const GREEN = "#22C55E";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const CYAN = "#38bdf8";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
 const SLATE = "rgba(226,232,240,0.9)";
 const SLATE_DIM = "rgba(148,163,184,0.65)";
 
@@ -173,9 +173,9 @@ function MetricCard({ icon: IconCmp, label, value, format, accent, delta, deltaL
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10 rounded-xl p-4"
       style={{
         flex: 1, position: "relative", overflow: "hidden", minWidth: 0,
-        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${accent}33`, borderRadius: 12, padding: 15,
-        boxShadow: `inset 0 0 32px ${accent}0d, 0 0 20px ${accent}12`,
+        boxShadow: "none",
         display: "flex", flexDirection: "column", gap: 6,
       }}>
       {spark?.length > 1 && (
@@ -184,7 +184,7 @@ function MetricCard({ icon: IconCmp, label, value, format, accent, delta, deltaL
             <AreaChart data={spark} margin={{ top: 28, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={accent} stopOpacity={0.8} />
+                  <stop offset="0%" stopColor={accent} stopOpacity={0.4} />
                   <stop offset="100%" stopColor={accent} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -197,11 +197,11 @@ function MetricCard({ icon: IconCmp, label, value, format, accent, delta, deltaL
         <IconCmp size={13} strokeWidth={2.5} />
         <span className="tracking-wider" style={{ fontFamily: F, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.4, textTransform: "uppercase", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       </div>
-      <div className="font-mono" style={{ fontFamily: MONO, fontSize: 23, fontWeight: 800, color: "#fff", textShadow: `0 0 16px ${accent}88`, letterSpacing: -0.4, position: "relative", whiteSpace: "nowrap" }}>
+      <div className="font-mono" style={{ fontFamily: MONO, fontSize: 23, fontWeight: 800, color: "#fff", textShadow: "none", letterSpacing: -0.4, position: "relative", whiteSpace: "nowrap" }}>
         <Ticker value={value} format={format} />
       </div>
       {delta != null && (
-        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, position: "relative", color: delta >= 0 ? GREEN : delta > -12 ? AMBER : RED, textShadow: `0 0 10px ${delta >= 0 ? GREEN : AMBER}77` }}>
+        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, position: "relative", color: delta >= 0 ? GREEN : delta > -12 ? AMBER : RED, textShadow: "none"}}>
           {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}% {deltaLabel || "MoM"}
         </div>
       )}
@@ -220,9 +220,9 @@ function GlassTooltip({ active, payload, label }) {
   ];
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      background: "rgba(4,4,8,0.9)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+      background: "rgba(4,4,8,0.9)", backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${PURPLE}55`, borderRadius: 10, padding: "10px 13px",
-      fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 215, boxShadow: `0 0 24px ${PURPLE}33`,
+      fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 215, boxShadow: "none",
     }}>
       <div style={{ fontWeight: 800, marginBottom: 6, letterSpacing: 1, color: PURPLE_LT }}>{label}</div>
       {rows.map(([k, v]) => (
@@ -241,9 +241,9 @@ function StatusPill({ status }) {
       display: "inline-flex", alignItems: "center", gap: 5, fontFamily: MONO, fontSize: 8, fontWeight: 800,
       letterSpacing: 0.7, textTransform: "uppercase", color: m.color, background: `${m.color}14`,
       border: `1px solid ${m.color}55`, borderRadius: 999, padding: "3px 8px", whiteSpace: "nowrap",
-      boxShadow: `0 0 8px ${m.color}30`,
+      boxShadow: "none",
     }}>
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: m.color, boxShadow: `0 0 5px ${m.color}` }} />
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: m.color, boxShadow: "none"}} />
       {m.label}
     </span>
   );
@@ -561,7 +561,7 @@ export default function CommissionLedger({ user }) {
 
   const selStat = selected ? STATUS_META[selected.status] : null;
   const selectStyle = {
-    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8,
+    background: "rgba(255,255,255,0.05)", border: "1px solid #27272a", borderRadius: 8,
     color: "#fff", fontFamily: F, fontSize: 11, padding: "8px 10px", outline: "none", cursor: "pointer",
   };
 
@@ -578,16 +578,16 @@ export default function CommissionLedger({ user }) {
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
           style={{
             position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 60,
-            background: "rgba(6,6,12,0.94)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             border: `1px solid ${toast.includes("failed") || toast.includes("unavailable") ? RED : PURPLE}88`,
             borderRadius: 10, padding: "11px 20px", color: "#fff", fontFamily: F, fontSize: 12, fontWeight: 700,
-            boxShadow: `0 0 26px ${toast.includes("failed") || toast.includes("unavailable") ? RED : PURPLE}55`, whiteSpace: "nowrap",
+            boxShadow: "none", whiteSpace: "nowrap",
           }}>{toast}</motion.div>
       )}
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <DollarSign size={20} color={GREEN} style={{ filter: `drop-shadow(0 0 8px ${GREEN}aa)` }} />
+        <DollarSign size={20} color={GREEN} style={{ filter: "none"}} />
         <div>
           <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, letterSpacing: 1.4, color: "#fff" }}>COMMISSION LEDGER</div>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, color: SLATE_DIM, letterSpacing: 2 }}>
@@ -598,7 +598,7 @@ export default function CommissionLedger({ user }) {
           <span className="font-mono" style={{
             fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.2, color: AMBER,
             background: `${AMBER}14`, border: `1px solid ${AMBER}66`, borderRadius: 999,
-            padding: "5px 12px", boxShadow: `0 0 12px ${AMBER}33`,
+            padding: "5px 12px", boxShadow: "none",
           }}>⚠ SIMULATED LEDGER · SPARSE LIVE DATA</span>
         )}
         <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
@@ -615,11 +615,11 @@ export default function CommissionLedger({ user }) {
               background: exporting ? "rgba(168,85,247,0.12)" : "rgba(168,85,247,0.18)",
               border: `1px solid ${PURPLE}77`, borderRadius: 9, padding: "9px 14px", color: PURPLE_LT,
               fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 0.9, textTransform: "uppercase",
-              cursor: exporting ? "default" : "pointer", boxShadow: exporting ? "none" : `0 0 14px ${PURPLE}55`, whiteSpace: "nowrap",
+              cursor: exporting ? "default" : "pointer", boxShadow: "none", whiteSpace: "nowrap",
             }}>
             {exporting ? <Loader2 size={12} style={{ animation: "clSpin 1s linear infinite" }} /> : <FileDown size={12} />}
             {exporting ? `Generating… ${exportPct}%` : "PDF Tear-Sheet"}
-            {exporting && <span style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: `${exportPct}%`, background: PURPLE_LT, boxShadow: `0 0 8px ${PURPLE}`, transition: "width .3s ease" }} />}
+            {exporting && <span style={{ position: "absolute", left: 0, bottom: 0, height: 2, width: `${exportPct}%`, background: PURPLE_LT, boxShadow: "none", transition: "width .3s ease" }} />}
           </button>
         </div>
       </div>
@@ -643,8 +643,8 @@ export default function CommissionLedger({ user }) {
       {/* Cash flow / waterfall visualizer */}
       <div className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16, height: 292, flexShrink: 0,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 14, padding: 16, height: 292, flexShrink: 0,
           display: "flex", flexDirection: "column",
         }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
@@ -658,9 +658,9 @@ export default function CommissionLedger({ user }) {
                   fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.8, padding: "6px 11px",
                   borderRadius: 7, cursor: "pointer", textTransform: "uppercase",
                   background: view === v.id ? `${PURPLE}22` : "transparent",
-                  border: `1px solid ${view === v.id ? PURPLE : "rgba(255,255,255,0.12)"}`,
+                  border: `1px solid ${view === v.id ? PURPLE : "#27272a"}`,
                   color: view === v.id ? PURPLE_LT : SLATE_DIM,
-                  boxShadow: view === v.id ? `0 0 12px ${PURPLE}44` : "none",
+                  boxShadow: "none",
                 }}>{v.label}</button>
             ))}
           </div>
@@ -675,19 +675,19 @@ export default function CommissionLedger({ user }) {
               <ComposedChart data={chartData} margin={{ top: 8, right: 14, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="clConfirmed" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={PURPLE} stopOpacity={0.95} />
-                    <stop offset="100%" stopColor={PURPLE} stopOpacity={0.3} />
+                    <stop offset="0%" stopColor={PURPLE} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={PURPLE} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="clWeighted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={CYAN} stopOpacity={0.9} />
-                    <stop offset="100%" stopColor={CYAN} stopOpacity={0.25} />
+                    <stop offset="0%" stopColor={CYAN} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={CYAN} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(148,163,184,0.1)" vertical={false} />
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.22)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }} />
-                <YAxis yAxisId="l" stroke="rgba(255,255,255,0.22)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
-                <YAxis yAxisId="r" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "rgba(148,163,184,0.45)", fontSize: 9, fontFamily: MONO }} tickFormatter={fmtMoney} />
-                <Tooltip content={<GlassTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} />
+                <YAxis yAxisId="l" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }} tickFormatter={fmtMoney} />
+                <YAxis yAxisId="r" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }} tickFormatter={fmtMoney} />
+                <Tooltip content={<GlassTooltip />} cursor={{ fill: "#18181b" }} />
                 <Legend wrapperStyle={{ fontFamily: F, fontSize: 9.5, color: SLATE_DIM }} />
                 <Bar yAxisId="l" dataKey="confirmed" stackId="a" name={view === "waterfall" ? "Agent Payout" : "Confirmed GCI"}
                   fill="url(#clConfirmed)" isAnimationActive={false} radius={[0, 0, 0, 0]} />
@@ -704,8 +704,8 @@ export default function CommissionLedger({ user }) {
       {/* Filter suite */}
       <div className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 12,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 12, padding: 12,
           display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", flexShrink: 0,
         }}>
         <div style={{ position: "relative", flex: "1 1 220px", minWidth: 180 }}>
@@ -713,7 +713,7 @@ export default function CommissionLedger({ user }) {
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search address or agent…"
             style={{
               width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#fff",
+              border: "1px solid #27272a", borderRadius: 8, color: "#fff",
               fontFamily: F, fontSize: 11, padding: "8px 10px 8px 30px", outline: "none",
             }} />
         </div>
@@ -735,15 +735,15 @@ export default function CommissionLedger({ user }) {
       <div style={{ flex: 1, display: "flex", gap: 16, minHeight: 300 }}>
         <div className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: selected ? "1 1 62%" : "1 1 100%", background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: selected ? "1 1 62%" : "1 1 100%", background: "#111111",
+            backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden", transition: "flex .28s ease",
           }}>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 10 }}>
             Ledger Matrix
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 0.9fr 0.8fr 0.7fr 0.9fr 0.7fr 1fr 0.9fr 0.6fr", gap: 7, padding: "0 8px 8px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 0.9fr 0.8fr 0.7fr 0.9fr 0.7fr 1fr 0.9fr 0.6fr", gap: 7, padding: "0 8px 8px", borderBottom: "1px solid #27272a" }}>
             {[["agent", "Agent"], ["property", "Property"], ["volume", "Volume"], ["gci", "Total GCI"], ["agentPayoutPercent", "Split %"], ["brokerageNet", "Brok. Net"], ["probability", "Prob %"], ["projectedCloseDate", "Proj. Close"], ["status", "Status"], [null, "Action"]].map(([k, label]) => (
               <button key={label} onClick={() => k && toggleSort(k)} disabled={!k}
                 style={{
@@ -771,7 +771,7 @@ export default function CommissionLedger({ user }) {
                     cursor: "pointer", background: isSel ? `${PURPLE}14` : "transparent",
                     borderLeft: `2px solid ${isSel ? PURPLE : "transparent"}`, transition: "background .15s ease",
                   }}
-                  onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "rgba(255,255,255,0.035)"; }}
+                  onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "#18181b"; }}
                   onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = "transparent"; }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
                     <span style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.agent}</span>
@@ -796,8 +796,8 @@ export default function CommissionLedger({ user }) {
         {selected && audit && (
           <div className="backdrop-blur-2xl bg-black/60 border border-white/10"
             style={{
-              flex: "1 1 38%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-              border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+              flex: "1 1 38%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+              border: "1px solid #27272a", borderRadius: 14, padding: 16,
               display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto",
             }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -808,7 +808,7 @@ export default function CommissionLedger({ user }) {
               <button onClick={() => setSelected(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}><X size={15} /></button>
             </div>
 
-            <div style={{ border: `1px solid ${selStat.color}44`, borderRadius: 11, padding: 13, marginBottom: 12, background: "rgba(255,255,255,0.02)" }}>
+            <div style={{ border: `1px solid ${selStat.color}44`, borderRadius: 11, padding: 13, marginBottom: 12, background: "#18181b" }}>
               <div style={{ fontFamily: F, fontSize: 12.5, fontWeight: 800, color: "#fff", marginBottom: 4, lineHeight: 1.35 }}>{selected.property}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                 <span style={{ fontFamily: F, fontSize: 11, color: SLATE_DIM }}>{selected.agent}</span>
@@ -829,7 +829,7 @@ export default function CommissionLedger({ user }) {
             <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.5, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 7 }}>
               Tiered Split Calculation
             </div>
-            <div style={{ border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 12, marginBottom: 12, background: "rgba(255,255,255,0.02)" }}>
+            <div style={{ border: "1px solid #27272a", borderRadius: 10, padding: 12, marginBottom: 12, background: "#18181b" }}>
               <div className="font-mono" style={{ fontFamily: MONO, fontSize: 11, color: PURPLE_LT, fontWeight: 800, marginBottom: 8 }}>
                 {selected.agentPayoutPercent}/{100 - selected.agentPayoutPercent} SPLIT → {fmtFull(CAP_TARGET)} CAP
               </div>
@@ -839,7 +839,7 @@ export default function CommissionLedger({ user }) {
                 ["Agent Net", fmtFull(audit.agentNet), "#fff"],
                 ["Company Dollar", fmtFull(audit.companyDollar), PURPLE_LT],
                 ["Brokerage Net", fmtFull(selected.brokerageNet), AMBER]].map(([l, v, c], i, arr) => (
-                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderTop: i === 3 || i === 4 ? "1px solid rgba(255,255,255,0.08)" : "none" }}>
+                <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", borderTop: i === 3 || i === 4 ? "1px solid #27272a" : "none" }}>
                   <span style={{ fontFamily: F, fontSize: 10, color: SLATE_DIM }}>{l}</span>
                   <span className="font-mono" style={{ fontFamily: MONO, fontSize: 11, fontWeight: i === 3 || i === 5 ? 800 : 600, color: c }}>{v}</span>
                 </div>
@@ -851,8 +851,8 @@ export default function CommissionLedger({ user }) {
                     {fmtFull(audit.capPaid)} · {audit.capPct.toFixed(0)}% Completed
                   </span>
                 </div>
-                <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${audit.capPct}%`, transition: "width .6s ease", background: `linear-gradient(90deg,${PURPLE},${CYAN})`, boxShadow: `0 0 10px ${PURPLE}88` }} />
+                <div style={{ height: 6, borderRadius: 999, background: "#27272a", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${audit.capPct}%`, transition: "width .6s ease", background: `${PURPLE}`, boxShadow: "none"}} />
                 </div>
               </div>
               <div className="font-mono" style={{ fontFamily: MONO, fontSize: 7.5, color: SLATE_DIM, marginTop: 8, letterSpacing: 0.4 }}>
@@ -862,7 +862,7 @@ export default function CommissionLedger({ user }) {
 
             {/* AI cash flow risk flag */}
             {audit.flag && (
-              <div style={{ border: `1px solid ${AMBER}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, background: `linear-gradient(135deg,${AMBER}12,rgba(0,0,0,0.3))` }}>
+              <div style={{ border: `1px solid ${AMBER}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, background: `#111111` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <ShieldAlert size={11} color={AMBER} />
                   <span className="font-mono" style={{ fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.4, color: AMBER }}>AI CASH FLOW RISK FLAG</span>
@@ -874,7 +874,7 @@ export default function CommissionLedger({ user }) {
               </div>
             )}
 
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ borderTop: "1px solid #27272a", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={approvePayout} disabled={approving || selected.status === "CLOSED"}
                 style={{
                   width: "100%", background: selected.status === "CLOSED" ? "rgba(255,255,255,0.05)" : "rgba(34,197,94,0.16)",
@@ -882,7 +882,7 @@ export default function CommissionLedger({ user }) {
                   padding: "11px 14px", fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 1,
                   textTransform: "uppercase", color: selected.status === "CLOSED" ? SLATE_DIM : GREEN,
                   cursor: approving || selected.status === "CLOSED" ? "default" : "pointer",
-                  boxShadow: selected.status === "CLOSED" ? "none" : `0 0 14px ${GREEN}44`,
+                  boxShadow: "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}>
                 {approving ? <Loader2 size={12} style={{ animation: "clSpin 1s linear infinite" }} /> : <CheckCircle2 size={12} />}
@@ -892,7 +892,7 @@ export default function CommissionLedger({ user }) {
                 style={{
                   width: "100%", background: "rgba(168,85,247,0.16)", border: `1px solid ${PURPLE}77`, borderRadius: 10,
                   padding: "11px 14px", fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 1,
-                  textTransform: "uppercase", color: PURPLE_LT, cursor: "pointer", boxShadow: `0 0 14px ${PURPLE}44`,
+                  textTransform: "uppercase", color: PURPLE_LT, cursor: "pointer", boxShadow: "none",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 }}>
                 <Download size={12} /> [ Export Statement ]

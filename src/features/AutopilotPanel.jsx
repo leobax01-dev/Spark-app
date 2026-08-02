@@ -15,9 +15,9 @@ import { buildBriefing, buildSpokenText } from "./briefing";
 // Command Matrix palette — the consolidated header sits above the Matrix and
 // has to match it, not the older indigo panel chrome.
 const MX = {
-  purple:"#a855f7", purpleLt:"#c084fc", cyan:"#22d3ee", green:"#22c55e",
-  amber:"#ffb020", slateDim:"rgba(148,163,184,0.65)",
-  hairline:"rgba(255,255,255,0.1)",
+  purple:"#8b5cf6", purpleLt:"#a78bfa", cyan:"#38bdf8", green:"#10b981",
+  amber:"#f59e0b", slateDim:"rgba(148,163,184,0.65)",
+  hairline:"#27272a",
   mono:"'JetBrains Mono','Courier New',monospace",
 };
 // One gutter shared by the header, the Matrix body and the command bar — they
@@ -29,10 +29,10 @@ const MX_PAD_Y = 20;
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 const C = {
-  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
-  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)",
-  indigo:"#4F6BFF", indigoLt:"#8CA0FF", violet:"#4257DB",
-  cyan:"#38BDF8", emerald:"#22C55E", amber:"#F5A623", rose:"#EF4444",
+  bg:"#0a0a0a", surface:"#111111", surfaceUp:"#18181b", surfaceHigh:"#18181b",
+  border:"#27272a", borderMd:"#27272a",
+  indigo:"#8b5cf6", indigoLt:"#a78bfa", violet:"#7c3aed",
+  cyan:"#38bdf8", emerald:"#10b981", amber:"#f59e0b", rose:"#ef4444",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -754,7 +754,7 @@ function SendItForMe({ recipientName, recipientEmail, defaultSubject, message, a
   }
 
   return(
-    <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.emerald}28`,
+    <div style={{background:"#18181b",border:`1px solid ${C.emerald}28`,
       borderRadius:10,padding:"12px 13px",marginTop:8}}>
       <div style={{fontSize:9,color:C.emerald,fontFamily:C.F,fontWeight:700,letterSpacing:1,marginBottom:8}}>
         SEND VIA SPARK — review before sending
@@ -779,7 +779,7 @@ function SendItForMe({ recipientName, recipientEmail, defaultSubject, message, a
           Cancel
         </button>
         <button onClick={handleSend} disabled={sending}
-          style={{flex:1,background:sending?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+          style={{flex:1,background:sending?"rgba(255,255,255,.05)":`${C.emerald}`,
             border:"none",color:sending?C.textDim:"#fff",borderRadius:7,padding:"6px 13px",
             cursor:sending?"default":"pointer",fontSize:10,fontFamily:C.F,fontWeight:700}}>
           {sending?"Sending...":"Confirm & Send"}
@@ -902,7 +902,7 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
             <div style={{width:40,height:40,borderRadius:11,flexShrink:0,
               background:`linear-gradient(135deg,${sevColor},${sevColor}80)`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:18,boxShadow:`0 4px 14px ${sevColor}30`}}>⚠️</div>
+              fontSize:18,boxShadow: "none"}}>⚠️</div>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
                 <span style={{fontSize:9,color:sevColor,fontFamily:C.F,fontWeight:700,
@@ -937,7 +937,7 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
           <div style={{textAlign:"center",padding:"28px 0"}}>
             <div style={{display:"flex",justifyContent:"center",gap:7,marginBottom:14}}>
               {[0,1,2,3].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",
-                background:sevColor,opacity:.6,animation:`pulse 1.1s ease ${i*.14}s infinite`}}/>)}
+                background:sevColor,opacity:.6,animation:"none"}}/>)}
             </div>
             <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 4px"}}>
               Analyzing situation...
@@ -1053,10 +1053,10 @@ function SituationRoom({ risk, apResult, voice, onClose, onDiscuss }){
               <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,
                 margin:"0 0 14px",lineHeight:1.6}}>{brief.winning_move}</p>
               <button onClick={()=>onDiscuss(`I'm in a Situation Room for "${risk.deal}". The risk: "${risk.risk}". The winning move according to Autopilot: "${brief.winning_move}". Help me execute this right now with the exact words to say.`)}
-                style={{width:"100%",background:`linear-gradient(135deg,${C.emerald},${C.indigo})`,
+                style={{width:"100%",background:`${C.emerald}`,
                   border:"none",color:"#fff",borderRadius:10,padding:"12px 0",
                   cursor:"pointer",fontFamily:C.F,fontWeight:800,fontSize:13,
-                  boxShadow:`0 4px 16px ${C.emerald}28`,
+                  boxShadow: "none",
                   display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
                 <span>⚡</span> Execute winning move with SPARK
               </button>
@@ -1207,7 +1207,7 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
                   {item.kind==="risk" ? `${item.deal} — ${item.risk}` : item.action}
                 </p>
                 {item.message && (
-                  <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+                  <div style={{background:"#18181b",border:`1px solid ${C.border}`,
                     borderRadius:8,padding:"9px 11px",marginTop:8}}>
                     <p style={{fontFamily:C.F,fontSize:11,color:C.textMd,margin:0,lineHeight:1.6,whiteSpace:"pre-wrap"}}>
                       {item.message}
@@ -1253,7 +1253,7 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
                 : `${item.action}${item.client?` for ${item.client}`:""}`;
               return(
                 <div key={i} style={{display:"flex",alignItems:"flex-start",gap:9,
-                  background:"rgba(255,255,255,.015)",border:`1px solid ${C.border}`,
+                  background:"#18181b",border:`1px solid ${C.border}`,
                   borderRadius:10,padding:"10px 13px"}}>
                   <Icon.Check size={13} color={C.emerald} style={{marginTop:2,flexShrink:0}}/>
                   <span style={{fontFamily:C.F,fontSize:12,color:C.textMd,lineHeight:1.55}}>{label}</span>
@@ -1262,7 +1262,7 @@ function TeamBriefing({ apResult, sphere, listingPerf, ledger, voice, onDiscuss,
             })}
             {listingFlags.length>0 && (
               <div style={{display:"flex",alignItems:"flex-start",gap:9,
-                background:"rgba(255,255,255,.015)",border:`1px solid ${C.border}`,
+                background:"#18181b",border:`1px solid ${C.border}`,
                 borderRadius:10,padding:"10px 13px"}}>
                 <Icon.Check size={13} color={C.emerald} style={{marginTop:2,flexShrink:0}}/>
                 <span style={{fontFamily:C.F,fontSize:12,color:C.textMd,lineHeight:1.55}}>
@@ -1300,9 +1300,9 @@ function MissionSection({ mission, runTime, onDiscuss, user, voice }){
       <APCard accent={C.emerald} style={{background:`linear-gradient(135deg,rgba(34, 197, 94,.08),rgba(79, 107, 255,.04))`}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:12}}>
           <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
-            background:`linear-gradient(135deg,${C.emerald},${C.indigo})`,
+            background:`${C.emerald}`,
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:20,boxShadow:`0 4px 16px rgba(34, 197, 94,.3)`}}>🎯</div>
+            fontSize:20,boxShadow: "none"}}>🎯</div>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:C.emerald,letterSpacing:2.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>TODAY'S MISSION</div>
             <p style={{fontFamily:C.F,fontWeight:800,fontSize:16,color:C.text,margin:"0 0 8px",lineHeight:1.3,letterSpacing:"-0.01em"}}>{mission.headline}</p>
@@ -1374,7 +1374,7 @@ function DealIntelligence({ di, onDiscuss, onSituationRoom }){
           {di.risks.map((risk,i)=>(
             <div key={i} style={{marginBottom:i<di.risks.length-1?14:0}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:risk.severity==="high"?C.rose:C.amber,boxShadow:`0 0 5px ${risk.severity==="high"?C.rose:C.amber}`,flexShrink:0}}/>
+                <div style={{width:6,height:6,borderRadius:"50%",background:risk.severity==="high"?C.rose:C.amber,boxShadow: "none",flexShrink:0}}/>
                 <div style={{flex:1}}>
                   <span style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.text}}>{risk.deal}</span>
                   <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginLeft:8}}>— {risk.risk}</span>
@@ -1382,7 +1382,7 @@ function DealIntelligence({ di, onDiscuss, onSituationRoom }){
                 <div style={{display:"flex",gap:5,flexShrink:0}}>
                   {risk.severity==="high"&&(
                     <button onClick={()=>onSituationRoom(risk)}
-                      style={{background:`linear-gradient(135deg,${C.rose},rgba(239, 68, 68,.7))`,
+                      style={{background:`${C.rose}`,
                         border:"none",color:"#fff",borderRadius:6,padding:"3px 9px",
                         cursor:"pointer",fontSize:9,fontFamily:C.F,fontWeight:700}}>
                       Situation Room →
@@ -1432,7 +1432,7 @@ function ClientScores({ scores, onDiscuss }){
       <APLabel color={C.cyan}>CLIENT PROBABILITY SCORES</APLabel>
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {scores.slice(0,6).map((c,i)=>(
-          <div key={i} style={{display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 13px",animation:`slideR .22s ease ${i*.05}s both`}}>
+          <div key={i} style={{display:"flex",alignItems:"center",gap:12,background:"#18181b",border:`1px solid ${C.border}`,borderRadius:10,padding:"11px 13px",animation:`slideR .22s ease ${i*.05}s both`}}>
             <ScoreRing score={c.score||50}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
@@ -1472,7 +1472,7 @@ function RelationshipAlerts({ alerts, onDiscuss, user, voice }){
               </div>
               <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:"0 0 10px",lineHeight:1.5}}>{alert.reason}</p>
               {alert.message&&(
-                <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:7,padding:"9px 11px"}}>
+                <div style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:7,padding:"9px 11px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                     <span style={{fontSize:8,color:t.color,fontFamily:C.F,fontWeight:700,letterSpacing:1.5}}>PERSONAL MESSAGE</span>
                     <APCopyBtn text={alert.message}/>
@@ -1597,7 +1597,7 @@ function RunHistory({ runs, memory, conversations }){
         <APCard accent={C.violet}>
           <APLabel color={C.violet}>PATTERN MEMORY ({memory.coaching_history.length} runs)</APLabel>
           {memory.coaching_history.slice(0,4).map((h,i)=>(
-            <div key={i} style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:8}}>
+            <div key={i} style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:8}}>
               <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,marginBottom:5}}>{h.date}</div>
               <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 6px",lineHeight:1.5}}>{h.observation}</p>
               {h.recommendation&&<p style={{fontFamily:C.F,fontSize:11,color:C.violet,margin:0,lineHeight:1.5,fontWeight:600}}>→ {h.recommendation}</p>}
@@ -1614,7 +1614,7 @@ function RunHistory({ runs, memory, conversations }){
             {runs.map((run,i)=>{
               const hColor=hc[run.overall_health]||C.textDim;
               return(
-                <div key={run.id} style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px"}}>
+                <div key={run.id} style={{display:"flex",alignItems:"center",gap:10,background:"#18181b",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px"}}>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:C.F,fontSize:12,color:C.text,fontWeight:600}}>{new Date(run.run_at).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</div>
                     <div style={{fontFamily:C.F,fontSize:10,color:C.textDim,marginTop:2}}>{run.client_count} clients · {run.deal_count} deals</div>
@@ -1694,7 +1694,7 @@ function ChatMessage({ msg, onRegenerate, onSaveNote, onConfirmProposal, onCance
         </div>
         {!applied && (
           <>
-            <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 11px",marginBottom:11}}>
+            <div style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:9,padding:"9px 11px",marginBottom:11}}>
               {Object.entries(p.updates||{}).filter(([k,v])=>v&&String(v).trim()).map(([k,v])=>(
                 <div key={k} style={{display:"flex",gap:8,fontFamily:C.F,fontSize:11,marginBottom:4}}>
                   <span style={{color:C.textDim,minWidth:80,textTransform:"capitalize"}}>{k.replace(/([A-Z])/g," $1")}:</span>
@@ -1727,13 +1727,13 @@ function ChatMessage({ msg, onRegenerate, onSaveNote, onConfirmProposal, onCance
       onMouseEnter={()=>setShowActions(true)}
       onMouseLeave={()=>setShowActions(false)}>
       <div style={{width:28,height:28,borderRadius:"50%",
-        background:isUser?`linear-gradient(135deg,${C.indigo},${C.violet})`:`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+        background:isUser?`#8b5cf6`:`${C.emerald}`,
         display:"flex",alignItems:"center",justifyContent:"center",
         fontSize:12,fontWeight:800,color:"#fff",flexShrink:0,marginTop:2}}>
         {isUser?"Y":"S"}
       </div>
       <div style={{maxWidth:"82%",position:"relative"}}>
-        <div style={{background:isUser?`linear-gradient(135deg,${C.indigo}22,${C.violet}14)`:`${C.surface}`,
+        <div style={{background:isUser?`#18181b`:`${C.surface}`,
           border:`1px solid ${isUser?C.indigo+"30":C.border}`,
           borderRadius:isUser?"14px 4px 14px 14px":"4px 14px 14px 14px",
           padding:"10px 13px"}}>
@@ -1742,7 +1742,7 @@ function ChatMessage({ msg, onRegenerate, onSaveNote, onConfirmProposal, onCance
             dangerouslySetInnerHTML={{__html:formattedContent}}/>
           {msg.streaming&&(
             <span style={{display:"inline-block",width:8,height:14,background:C.indigoLt,
-              marginLeft:2,borderRadius:1,animation:"pulse .7s ease infinite"}}/>
+              marginLeft:2,borderRadius:1,animation:"none"}}/>
           )}
         </div>
         <div style={{fontSize:9,color:C.textDim,fontFamily:C.F,marginTop:4,
@@ -1794,9 +1794,9 @@ function ChatMessage({ msg, onRegenerate, onSaveNote, onConfirmProposal, onCance
 function TypingIndicator(){
   return(
     <div style={{display:"flex",gap:9,marginBottom:16,alignItems:"flex-start"}}>
-      <div style={{width:28,height:28,borderRadius:"50%",background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>S</div>
+      <div style={{width:28,height:28,borderRadius:"50%",background:`${C.emerald}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:800,color:"#fff",flexShrink:0}}>S</div>
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:"4px 14px 14px 14px",padding:"13px 15px",display:"flex",gap:5,alignItems:"center"}}>
-        {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.indigoLt,animation:`pulse .9s ease ${i*.18}s infinite`}}/>)}
+        {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:"50%",background:C.indigoLt,animation:"none"}}/>)}
       </div>
     </div>
   );
@@ -2400,7 +2400,7 @@ function WeeklyReport({ report, weekLabel, onDiscuss }){
           <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
             background:`linear-gradient(135deg,${mc},${mc}80)`,
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:20,boxShadow:`0 4px 14px ${mc}30`}}>📊</div>
+            fontSize:20,boxShadow: "none"}}>📊</div>
           <div>
             <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:3}}>
               <span style={{fontSize:9,color:mc,fontFamily:C.F,fontWeight:700,
@@ -2581,10 +2581,10 @@ function WeeklyReport({ report, weekLabel, onDiscuss }){
           <p style={{fontFamily:C.F,fontSize:13,fontWeight:700,color:C.text,
             margin:"0 0 12px",lineHeight:1.6}}>{report.coaching_focus}</p>
           <button onClick={()=>onDiscuss(`My coaching focus for next week according to Autopilot: "${report.coaching_focus}". Help me build a specific plan to work on this.`)}
-            style={{width:"100%",background:`linear-gradient(135deg,${C.violet},${C.indigo})`,
+            style={{width:"100%",background:`${C.violet}`,
               border:"none",color:"#fff",borderRadius:10,padding:"11px 0",
               cursor:"pointer",fontFamily:C.F,fontWeight:800,fontSize:12,
-              boxShadow:`0 4px 14px ${C.violet}28`,
+              boxShadow: "none",
               display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>
             <span>🎯</span> Build action plan with SPARK
           </button>
@@ -2647,7 +2647,7 @@ function SphereReactivation({ sphere, onDiscuss, onCopyToast, user, voice }){
           <div style={{width:40,height:40,borderRadius:11,flexShrink:0,
             background:C.indigo,
             display:"flex",alignItems:"center",justifyContent:"center",
-            boxShadow:`0 4px 14px ${C.indigo}30`}}><Icon.Sphere size={19} color="#fff"/></div>
+            boxShadow: "none"}}><Icon.Sphere size={19} color="#fff"/></div>
           <div>
             <span style={{fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:700,
               background:`${C.indigo}14`,border:`1px solid ${C.indigo}28`,
@@ -2681,7 +2681,7 @@ function SphereReactivation({ sphere, onDiscuss, onCopyToast, user, voice }){
           {opportunities.map((op,i)=>{
             const style = TRIGGER_STYLE[op.trigger]||{icon:"👤",color:C.indigo};
             return(
-              <div key={i} style={{background:"rgba(255,255,255,.02)",
+              <div key={i} style={{background:"#18181b",
                 border:`1px solid ${C.border}`,borderRadius:11,padding:"13px 14px",
                 animation:`slideR .2s ease ${i*.05}s both`}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
@@ -2817,11 +2817,11 @@ function NegotiationCopilot({ voice, onDiscuss }){
           {error&&<div style={{background:"rgba(239, 68, 68,.07)",border:"1px solid rgba(239, 68, 68,.2)",borderRadius:9,padding:"10px 12px",marginBottom:12,fontFamily:C.F,fontSize:11,color:C.rose}}>{error}</div>}
 
           <button onClick={handleGenerate} disabled={!situationText.trim()||loading}
-            style={{width:"100%",background:situationText.trim()&&!loading?`linear-gradient(135deg,${C.violet},${C.indigo})`:"rgba(255,255,255,.05)",
+            style={{width:"100%",background:situationText.trim()&&!loading?`${C.violet}`:"rgba(255,255,255,.05)",
               border:"none",color:situationText.trim()&&!loading?"#fff":C.textDim,
               borderRadius:10,padding:"12px 0",cursor:situationText.trim()&&!loading?"pointer":"default",
               fontFamily:C.F,fontWeight:800,fontSize:13,
-              boxShadow:situationText.trim()&&!loading?`0 4px 16px ${C.violet}28`:"none",
+              boxShadow: "none",
               display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
             {loading?(
               <>
@@ -2842,9 +2842,9 @@ function NegotiationCopilot({ voice, onDiscuss }){
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div style={{display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:36,height:36,borderRadius:10,flexShrink:0,
-                  background:`linear-gradient(135deg,${C.violet},${C.indigo})`,
+                  background:`${C.violet}`,
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:16,boxShadow:`0 4px 12px ${C.violet}30`}}>🤝</div>
+                  fontSize:16,boxShadow: "none"}}>🤝</div>
                 <div>
                   <span style={{fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,
                     background:`${C.violet}14`,border:`1px solid ${C.violet}28`,
@@ -3024,13 +3024,13 @@ function ListingPerformance({ data, onDiscuss }){
 
             {item.marketStats&&(
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-                <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
+                <div style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
                   <div style={{fontSize:8,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>MEDIAN DOM (AREA)</div>
                   <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginTop:2}}>
                     {item.marketStats.medianDaysOnMarket ?? "—"}{item.marketStats.medianDaysOnMarket ? "d" : ""}
                   </div>
                 </div>
-                <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
+                <div style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 10px"}}>
                   <div style={{fontSize:8,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>THIS LISTING</div>
                   <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginTop:2}}>
                     {item.trackedDays ?? "—"}{item.trackedDays!=null ? "d tracked" : ""}
@@ -3054,7 +3054,7 @@ function ListingPerformance({ data, onDiscuss }){
             </div>
 
             {item.seller_update_script&&(
-              <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:8}}>
+              <div style={{background:"#18181b",border:`1px solid ${C.border}`,borderRadius:9,padding:"10px 12px",marginBottom:8}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                   <span style={{fontSize:8,color:C.textDim,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>SELLER UPDATE — READY TO SEND</span>
                   <APCopyBtn text={item.seller_update_script}/>
@@ -3171,7 +3171,7 @@ function TransactionCoordinator({ voice, onDiscuss }){
               const isCurrent = currentMilestone?.key===m.key;
               return(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:10,
-                  background:isCurrent?`${style.color}08`:"rgba(255,255,255,.02)",
+                  background:isCurrent?`${style.color}08`:"#18181b",
                   border:`1px solid ${isCurrent?style.color+"30":C.border}`,
                   borderRadius:8,padding:"8px 11px"}}>
                   <span style={{fontSize:14}}>{m.icon}</span>
@@ -3193,10 +3193,10 @@ function TransactionCoordinator({ voice, onDiscuss }){
 
           {!updates&&(
             <button onClick={handleGetUpdates} disabled={loading}
-              style={{width:"100%",marginTop:14,background:loading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.violet})`,
+              style={{width:"100%",marginTop:14,background:loading?"rgba(255,255,255,.05)":`#8b5cf6`,
                 border:"none",color:loading?C.textDim:"#fff",borderRadius:10,padding:"11px 0",
                 cursor:loading?"default":"pointer",fontFamily:C.F,fontWeight:800,fontSize:12,
-                boxShadow:loading?"none":`0 4px 14px ${C.indigo}28`}}>
+                boxShadow: "none"}}>
               {loading?"Drafting updates...":"Draft Stakeholder Updates"}
             </button>
           )}
@@ -3371,7 +3371,7 @@ function BusinessHealthHero({ apResult, sphere, ledger }){
 
   if(!hasFlags){
     return(
-      <div style={{background:`linear-gradient(135deg,${C.emerald}10,${C.emerald}04)`,
+      <div style={{background:`#18181b`,
         border:`1px solid ${C.emerald}22`,borderRadius:16,padding:"18px 20px",
         marginBottom:14,textAlign:"center"}}>
         <div style={{fontFamily:C.F,fontWeight:800,fontSize:15,color:C.text,marginBottom:3}}>
@@ -3502,7 +3502,7 @@ function TeamRoster({ tabs, activeTab, onSelect, apResult, sphere, listingPerf, 
             <button key={t.id} onClick={()=>onSelect(t.id)}
               style={{textAlign:"left",padding:"11px 12px",borderRadius:12,cursor:"pointer",
                 border:`1px solid ${active?C.indigo+"44":C.border}`,
-                background:active?`${C.indigo}0c`:"rgba(255,255,255,.015)",
+                background:active?`${C.indigo}0c`:"#18181b",
                 transition:"all .15s ease",display:"flex",flexDirection:"column",gap:7}}>
               <div style={{display:"flex",alignItems:"center",gap:7}}>
                 <div style={{width:24,height:24,borderRadius:7,flexShrink:0,
@@ -3586,7 +3586,7 @@ function ActivationChecklist({ voice, planKey, apResult, onNavigate, onOpenTab, 
         </div>
         <div style={{flex:1,height:5,background:"rgba(255,255,255,.06)",borderRadius:4,overflow:"hidden"}}>
           <div style={{width:`${(doneCount/steps.length)*100}%`,height:"100%",
-            background:`linear-gradient(90deg,${C.indigo},${C.violet})`,
+            background:`${C.indigo}`,
             borderRadius:4,transition:"width .3s ease"}}/>
         </div>
         <span style={{fontFamily:C.F,fontSize:10,color:C.textDim,flexShrink:0}}>
@@ -4331,9 +4331,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
             right-hand group until the Run button wrapped onto its own row. */}
         <div style={{display:"flex",alignItems:"center",gap:11,minWidth:0,marginRight:"auto"}}>
           <div style={{width:isMobile?30:34,height:isMobile?30:34,borderRadius:9,flexShrink:0,
-            background:`linear-gradient(135deg,#7c3aed,${MX.purple})`,
+            background:`#8b5cf6`,
             display:"flex",alignItems:"center",justifyContent:"center",
-            boxShadow:`0 0 16px ${MX.purple}66`,
+            boxShadow: "none",
             animation:apRunning?"spin 2s linear infinite":"none"}}>
             <Icon.Sparkle size={isMobile?15:17} color="#fff"/>
           </div>
@@ -4343,8 +4343,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
             <div className="font-mono tracking-wider" style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
               <span style={{width:6,height:6,borderRadius:"50%",flexShrink:0,
                 background:apRunning?MX.amber:apResult?MX.green:MX.slateDim,
-                boxShadow:`0 0 8px ${apRunning?MX.amber:apResult?MX.green:"transparent"}`,
-                animation:apRunning?"pulse 1s ease infinite":"none"}}/>
+                boxShadow: "none",
+                animation:apRunning?"none":"none"}}/>
               <span style={{fontFamily:MX.mono,fontSize:8,letterSpacing:1.6,textTransform:"uppercase",
                 color:apRunning?MX.amber:apResult?MX.green:MX.slateDim}}>
                 [ {apRunning?"Running analysis":apResult?"Live pipeline telemetry":"Telemetry standing by"} ]
@@ -4363,7 +4363,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
 
           {isPremium&&(
             <div style={{display:"flex",gap:4,padding:4,borderRadius:11,
-              background:"rgba(0,0,0,0.5)",border:`1px solid ${MX.hairline}`}}>
+              background:"#111111",border:`1px solid ${MX.hairline}`}}>
               {[{id:"matrix",label:"Matrix"},
                 {id:"intelligence",label:"Intelligence",disabled:!apResult&&!hasEnoughData},
                 {id:"chat",label:"Chat"}].map(v=>(
@@ -4375,7 +4375,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                     background:view===v.id?`${MX.purple}22`:"transparent",
                     border:`1px solid ${view===v.id?MX.purple+"88":"transparent"}`,
                     color:view===v.id?MX.purpleLt:MX.slateDim,
-                    boxShadow:view===v.id?`0 0 12px ${MX.purple}44`:"none",
+                    boxShadow: "none",
                     transition:"all .16s"}}>
                   {v.label}
                 </button>
@@ -4395,14 +4395,14 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
       <div style={{flexShrink:0}}>
         {/* Mode selector for non-premium (chat only) or in chat view */}
         {(!isPremium||view==="chat")&&(
-          <div style={{display:"flex",gap:5,background:"rgba(255,255,255,.02)",borderRadius:10,padding:3,marginTop:8}}>
+          <div style={{display:"flex",gap:5,background:"#18181b",borderRadius:10,padding:3,marginTop:8}}>
             {Object.entries(MODES).map(([key,m])=>{
               const ModeIcon = Icon[m.icon];
               return(
               <button key={key} onClick={()=>setMode(key)}
                 style={{flex:1,padding:"6px 4px",borderRadius:7,
                   border:`1px solid ${mode===key?m.color+"30":"transparent"}`,
-                  background:mode===key?`linear-gradient(135deg,${m.color}14,${m.color}06)`:"transparent",
+                  background:mode===key?`#18181b`:"transparent",
                   color:mode===key?m.color:C.textDim,cursor:"pointer",
                   fontSize:9,fontWeight:700,fontFamily:C.F,letterSpacing:.4,transition:"all .14s",
                   display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
@@ -4461,7 +4461,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
             {/* Premium with no data */}
             {isPremium&&!hasEnoughData&&!apResult&&!viewingExample&&(
               <div style={{textAlign:"center",padding:"32px 16px",animation:"fadeUp .4s ease"}}>
-                <div style={{width:64,height:64,borderRadius:18,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${C.indigo}40`}}><Icon.Bot size={30} color="#fff"/></div>
+                <div style={{width:64,height:64,borderRadius:18,margin:"0 auto 16px",background:`#8b5cf6`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow: "none"}}><Icon.Bot size={30} color="#fff"/></div>
                 <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:18,color:C.text,margin:"0 0 10px"}}>Autopilot is ready.</h3>
                 <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:"0 0 20px",lineHeight:1.7,maxWidth:320,marginLeft:"auto",marginRight:"auto"}}>Add your clients and deals so Autopilot has real data to analyze. The more context you provide, the more powerful it becomes.</p>
                 {[{icon:"Clients",label:"Add your clients",desc:"Clients tab → Pipeline Manager",tab:"clients"},{icon:"Script",label:"Add your deals",desc:"Market tab → My Business → Add Deal",tab:"market"},{icon:"Mission",label:"Set your GCI goal",desc:"Market tab → My Business → Goals",tab:"market"}].map((s,i)=>{
@@ -4498,7 +4498,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                 they're actually signing up for. */}
             {viewingExample&&(
               <div style={{animation:"fadeUp .3s ease"}}>
-                <div style={{background:`linear-gradient(135deg,${C.amber}12,${C.amber}05)`,
+                <div style={{background:`#18181b`,
                   border:`1px solid ${C.amber}30`,borderRadius:12,padding:"11px 14px",
                   marginBottom:16,display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
                   <span style={{fontFamily:C.F,fontSize:11,color:C.amber,fontWeight:700,display:"flex",alignItems:"center",gap:6}}>
@@ -4532,7 +4532,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
               <APCard accent={C.indigo}>
                 <div style={{textAlign:"center",padding:"24px 0"}}>
                   <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
-                    {[0,1,2,3,4].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:C.indigo,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                    {[0,1,2,3,4].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:C.indigo,opacity:.6,animation:"none"}}/>)}
                   </div>
                   <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Analyzing your business...</p>
                   <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0,lineHeight:1.6}}>Scanning {data.totalClients} clients · {data.totalDeals} deals · pipeline health · relationship patterns</p>
@@ -4568,8 +4568,8 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                     display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <div style={{width:6,height:6,borderRadius:"50%",
-                        background:C.rose,boxShadow:`0 0 6px ${C.rose}`,
-                        animation:"pulse 1s ease infinite",flexShrink:0}}/>
+                        background:C.rose,boxShadow: "none",
+                        animation:"none",flexShrink:0}}/>
                       <div>
                         <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.rose}}>
                           {apResult.deal_intelligence.risks.filter(r=>r.severity==="high").length} critical deal risk{apResult.deal_intelligence.risks.filter(r=>r.severity==="high").length>1?"s":""} detected
@@ -4580,10 +4580,10 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                       </div>
                     </div>
                     <button onClick={()=>setSituationRoom(apResult.deal_intelligence.risks[0])}
-                      style={{background:`linear-gradient(135deg,${C.rose},rgba(239, 68, 68,.7))`,
+                      style={{background:`${C.rose}`,
                         border:"none",color:"#fff",borderRadius:8,padding:"7px 14px",
                         cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:11,
-                        flexShrink:0,boxShadow:`0 3px 12px ${C.rose}28`}}>
+                        flexShrink:0,boxShadow: "none"}}>
                       Open Situation Room →
                     </button>
                   </div>
@@ -4607,11 +4607,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                         </div>
                       </div>
                       <button onClick={runListingPerformance} disabled={listingPerfLoading}
-                        style={{background:listingPerfLoading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.emerald})`,
+                        style={{background:listingPerfLoading?"rgba(255,255,255,.05)":`${C.indigo}`,
                           border:"none",color:listingPerfLoading?C.textDim:"#fff",
                           borderRadius:9,padding:"8px 16px",cursor:listingPerfLoading?"default":"pointer",
                           fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0,
-                          boxShadow:listingPerfLoading?"none":`0 3px 12px ${C.indigo}30`,transition:"all .2s"}}>
+                          boxShadow: "none",transition:"all .2s"}}>
                         {listingPerfLoading?"Analyzing...":listingPerf?"Refresh Analysis":"Analyze Listings"}
                       </button>
                     </div>
@@ -4622,7 +4622,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                       <APCard accent={C.indigo}>
                         <div style={{textAlign:"center",padding:"28px 0"}}>
                           <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
-                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.indigo,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.indigo,opacity:.6,animation:"none"}}/>)}
                           </div>
                           <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Pulling real market data...</p>
                           <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>Checking local days-on-market and pricing trends for each listing</p>
@@ -4663,11 +4663,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                         </div>
                       </div>
                       <button onClick={runSphereReactivation} disabled={sphereLoading}
-                        style={{background:sphereLoading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.violet},${C.indigo})`,
+                        style={{background:sphereLoading?"rgba(255,255,255,.05)":`${C.violet}`,
                           border:"none",color:sphereLoading?C.textDim:"#fff",
                           borderRadius:9,padding:"8px 16px",cursor:sphereLoading?"default":"pointer",
                           fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0,
-                          boxShadow:sphereLoading?"none":`0 3px 12px ${C.violet}30`,transition:"all .2s"}}>
+                          boxShadow: "none",transition:"all .2s"}}>
                         {sphereLoading?"Scanning...":sphere?"Rescan Sphere":"Scan My Sphere"}
                       </button>
                     </div>
@@ -4678,7 +4678,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                       <APCard accent={C.violet}>
                         <div style={{textAlign:"center",padding:"28px 0"}}>
                           <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
-                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.violet,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.violet,opacity:.6,animation:"none"}}/>)}
                           </div>
                           <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Scanning your sphere...</p>
                           <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>Finding past clients and cold leads worth reconnecting with</p>
@@ -4723,11 +4723,11 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                         </div>
                       </div>
                       <button onClick={runWeeklyReport} disabled={weeklyLoading}
-                        style={{background:weeklyLoading?"rgba(255,255,255,.05)":`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                        style={{background:weeklyLoading?"rgba(255,255,255,.05)":`#8b5cf6`,
                           border:"none",color:weeklyLoading?C.textDim:"#fff",
                           borderRadius:9,padding:"8px 16px",cursor:weeklyLoading?"default":"pointer",
                           fontFamily:C.F,fontWeight:700,fontSize:11,flexShrink:0,
-                          boxShadow:weeklyLoading?"none":`0 3px 12px ${C.indigo}30`,transition:"all .2s"}}>
+                          boxShadow: "none",transition:"all .2s"}}>
                         {weeklyLoading?"Generating...":weeklyReport?"Regenerate":"Generate Report"}
                       </button>
                     </div>
@@ -4738,7 +4738,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                       <APCard accent={C.indigo}>
                         <div style={{textAlign:"center",padding:"28px 0"}}>
                           <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:16}}>
-                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.indigo,opacity:.6,animation:`pulse 1.2s ease ${i*.15}s infinite`}}/>)}
+                            {[0,1,2,3,4].map(i=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.indigo,opacity:.6,animation:"none"}}/>)}
                           </div>
                           <p style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:C.text,margin:"0 0 6px"}}>Generating your weekly report...</p>
                           <p style={{fontFamily:C.F,fontSize:11,color:C.textDim,margin:0}}>Analyzing your week — wins, misses, patterns, and priorities for next week</p>
@@ -4783,15 +4783,15 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
 
             {/* Non-premium paywall */}
             {!isPremium&&(
-              <div style={{background:`linear-gradient(135deg,${C.violet}10,${C.indigo}08)`,border:`1px solid ${C.violet}28`,borderRadius:18,padding:"36px 24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+              <div style={{background:`#18181b`,border:`1px solid ${C.violet}28`,borderRadius:18,padding:"36px 24px",textAlign:"center",position:"relative",overflow:"hidden"}}>
                 <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",width:250,height:250,borderRadius:"50%",pointerEvents:"none",background:`radial-gradient(circle,${C.violet}14,transparent 70%)`}}/>
                 <div style={{position:"relative"}}>
-                  <div style={{width:60,height:60,borderRadius:16,margin:"0 auto 16px",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 8px 28px ${C.indigo}40`}}><Icon.Bot size={28} color="#fff"/></div>
+                  <div style={{width:60,height:60,borderRadius:16,margin:"0 auto 16px",background:`#8b5cf6`,display:"flex",alignItems:"center",justifyContent:"center",boxShadow: "none"}}><Icon.Bot size={28} color="#fff"/></div>
                   <div style={{display:"inline-flex",alignItems:"center",gap:6,background:`${C.violet}12`,border:`1px solid ${C.violet}28`,borderRadius:14,padding:"3px 12px",marginBottom:12,fontSize:9,color:C.violet,fontFamily:C.F,fontWeight:700,letterSpacing:2}}>✦ PREMIUM EXCLUSIVE</div>
                   <h3 style={{fontFamily:C.F,fontWeight:800,fontSize:20,color:C.text,margin:"0 0 10px",letterSpacing:"-0.02em"}}>Autopilot Intelligence</h3>
                   <p style={{fontFamily:C.F,fontSize:12,color:C.textMd,margin:"0 0 20px",lineHeight:1.7,maxWidth:340,marginLeft:"auto",marginRight:"auto"}}>Upgrade to Premium to unlock the full Autopilot intelligence report — daily mission, deal risk detection, client probability scores, relationship alerts, market intelligence, and AI coaching — all in one view.</p>
                   <button onClick={()=>window.open("https://buy.stripe.com/aFa7sKcfbbmr9jn5Lw0sU09","_blank")}
-                    style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,border:"none",color:"#fff",padding:"13px 32px",borderRadius:11,cursor:"pointer",fontWeight:800,fontSize:14,fontFamily:C.F,boxShadow:`0 0 0 1px ${C.violet}40,0 6px 22px ${C.violet}28`,marginBottom:10}}>
+                    style={{background:`#8b5cf6`,border:"none",color:"#fff",padding:"13px 32px",borderRadius:11,cursor:"pointer",fontWeight:800,fontSize:14,fontFamily:C.F,boxShadow: "none",marginBottom:10}}>
                     Upgrade to Premium — $129/month ⚡
                   </button>
                   <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:0}}>Cancel anytime · Unlimited credits included</p>
@@ -4812,7 +4812,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                   ? `linear-gradient(135deg,rgba(239, 68, 68,.08),rgba(79, 107, 255,.04))`
                   : briefObj.urgency==="high"
                   ? `linear-gradient(135deg,rgba(245, 166, 35,.07),rgba(79, 107, 255,.04))`
-                  : `linear-gradient(135deg,${C.indigo}10,${C.emerald}06)`,
+                  : `#18181b`,
                 border: `1px solid ${briefObj.urgency==="critical"?C.rose+"30":briefObj.urgency==="high"?C.amber+"30":C.indigo+"20"}`,
                 borderRadius:13,padding:"16px 16px",marginBottom:16,
                 animation:"fadeUp .4s ease",position:"relative",overflow:"hidden"}}>
@@ -4821,18 +4821,18 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                 {briefObj.urgency==="critical"&&(
                   <div style={{position:"absolute",top:10,right:12,
                     width:8,height:8,borderRadius:"50%",background:C.rose,
-                    boxShadow:`0 0 8px ${C.rose}`,animation:"pulse 1s ease infinite"}}/>
+                    boxShadow: "none",animation:"none"}}/>
                 )}
 
                 <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
                   <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
-                    background:`linear-gradient(135deg,${C.emerald},${C.cyan})`,
+                    background:`${C.emerald}`,
                     display:"flex",alignItems:"center",justifyContent:"center",
                     fontSize:12,fontWeight:800,color:"#fff"}}>S</div>
                   <div style={{flex:1}}>
                     {briefLoading?(
                       <div style={{display:"flex",gap:5,alignItems:"center",padding:"4px 0"}}>
-                        {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.indigoLt,animation:`pulse .9s ease ${i*.18}s infinite`}}/>)}
+                        {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.indigoLt,animation:"none"}}/>)}
                         <span style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginLeft:4}}>Preparing your brief...</span>
                       </div>
                     ):(
@@ -4849,7 +4849,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                           fontFamily:C.F,fontWeight:700,fontSize:11,
                           display:"inline-flex",alignItems:"center",gap:6,
                           transition:"all .15s"}}
-                        onMouseEnter={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}28,${C.violet}18)`}
+                        onMouseEnter={e=>e.currentTarget.style.background=`#18181b`}
                         onMouseLeave={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}18,${C.violet}10)`}>
                         <span>⚡</span>
                         Do this now
@@ -4926,7 +4926,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                 padding:"8px 12px",animation:"fadeUp .2s ease"}}>
                 <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
                   <div style={{width:5,height:5,borderRadius:"50%",background:C.rose,
-                    animation:"pulse .6s ease infinite"}}/>
+                    animation:"none"}}/>
                   <span style={{fontSize:8,color:C.rose,fontFamily:C.F,fontWeight:700,letterSpacing:1}}>
                     LISTENING
                   </span>
@@ -4942,16 +4942,16 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                 title={voiceActive?"Stop listening":"Start voice input"}
                 style={{width:44,height:44,borderRadius:11,flexShrink:0,
                   background:voiceActive
-                    ?`linear-gradient(135deg,${C.rose},rgba(239, 68, 68,.7))`
+                    ?`${C.rose}`
                     :"rgba(255,255,255,.05)",
                   border:`1px solid ${voiceActive?C.rose+"50":C.border}`,
                   cursor:"pointer",display:"flex",alignItems:"center",
                   justifyContent:"center",
-                  boxShadow:voiceActive?`0 0 0 3px ${C.rose}20,0 4px 14px ${C.rose}28`:"none",
+                  boxShadow: "none",
                   transition:"all .18s",position:"relative"}}>
                 {voiceActive&&(
                   <div style={{position:"absolute",inset:-3,borderRadius:14,
-                    border:`2px solid ${C.rose}40`,animation:"pulse 1s ease infinite"}}/>
+                    border:`2px solid ${C.rose}40`,animation:"none"}}/>
                 )}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke={voiceActive?"#fff":C.textDim} strokeWidth="2"
@@ -4976,7 +4976,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                 borderRadius:11,padding:"11px 14px",color:C.text,fontFamily:C.F,
                 fontSize:13,resize:"none",lineHeight:1.5,height:44,maxHeight:140,
                 outline:"none",boxSizing:"border-box",transition:"all .16s"}}
-              onFocus={e=>{ if(!voiceActive){ e.target.style.borderColor=`${currentMode.color}55`; e.target.style.boxShadow=`0 0 0 3px ${currentMode.color}10`; } }}
+              onFocus={e=>{ if(!voiceActive){ e.target.style.borderColor=currentMode.color; } }}
               onBlur={e=>{ e.target.style.borderColor=voiceActive?C.rose+"30":C.borderMd; e.target.style.boxShadow="none"; }}/>
 
             <button onClick={()=>{ const wasVoice=lastInputWasVoice; stopVoice(); if(wasVoice) sendVoiceCommand(input); else sendMessage(input); }}
@@ -4988,7 +4988,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
                 border:"none",
                 cursor:(input.trim()||transcript)&&!chatLoading?"pointer":"default",
                 display:"flex",alignItems:"center",justifyContent:"center",
-                boxShadow:(input.trim()||transcript)&&!chatLoading?`0 4px 14px ${currentMode.color}30`:"none",
+                boxShadow: "none",
                 transition:"all .18s"}}>
               {chatLoading
                 ?<div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${currentMode.color}`,borderTopColor:"transparent",animation:"spin .7s linear infinite"}}/>
@@ -5055,9 +5055,9 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
       {view==="intelligence"&&isPremium&&apTab!=="mission"&&(
         <div style={{flexShrink:0,paddingTop:10,borderTop:`1px solid ${C.border}`,marginTop:8}}>
           <button onClick={()=>setView("chat")}
-            style={{width:"100%",background:`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`,border:`1px solid ${C.indigo}28`,color:C.indigoLt,borderRadius:11,padding:"11px 0",cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:13,transition:"all .16s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
-            onMouseEnter={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}22,${C.violet}14)`}
-            onMouseLeave={e=>e.currentTarget.style.background=`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`}>
+            style={{width:"100%",background:`#18181b`,border:`1px solid ${C.indigo}28`,color:C.indigoLt,borderRadius:11,padding:"11px 0",cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:13,transition:"all .16s",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
+            onMouseEnter={e=>e.currentTarget.style.background=`#18181b`}
+            onMouseLeave={e=>e.currentTarget.style.background=`#18181b`}>
             <Icon.Chat size={15}/>
             {isPremium&&apResult?"Discuss anything with SPARK Autopilot →":"Chat with SPARK →"}
           </button>
@@ -5075,7 +5075,7 @@ export default function AutopilotPanel({ user, voice, planKey, onNavigate, isMob
         </p>
         <button onClick={()=>window.location.reload()}
           style={{background:"rgba(79, 107, 255,.15)",border:"1px solid rgba(79, 107, 255,.3)",
-            color:"#8CA0FF",borderRadius:8,padding:"8px 20px",cursor:"pointer",
+            color:"#a78bfa",borderRadius:8,padding:"8px 20px",cursor:"pointer",
             fontFamily:"'Plus Jakarta Sans',sans-serif",fontSize:13,fontWeight:600}}>
           Reload
         </button>

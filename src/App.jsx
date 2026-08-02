@@ -46,11 +46,11 @@ function resetAnalytics(){
 // ─────────────────────────────────────────────────────────────────────────────
 const FONTS_URL = "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
 const C = {
-  bg:"#0a0a0d", surface:"#0d0e12", surfaceUp:"#131519", surfaceHigh:"#191c22",
-  border:"rgba(255,255,255,0.07)", borderMd:"rgba(255,255,255,0.12)", borderHi:"rgba(255,255,255,0.20)",
-  indigo:"#4F6BFF", indigoLt:"#8CA0FF", indigoD:"#33469E",
-  violet:"#4257DB", cyan:"#38BDF8", emerald:"#22C55E",
-  amber:"#F5A623", rose:"#EF4444", sky:"#38BDF8",
+  bg:"#0a0a0a", surface:"#111111", surfaceUp:"#18181b", surfaceHigh:"#18181b",
+  border:"#27272a", borderMd:"#27272a", borderHi:"rgba(255,255,255,0.20)",
+  indigo:"#8b5cf6", indigoLt:"#a78bfa", indigoD:"#33469E",
+  violet:"#7c3aed", cyan:"#38bdf8", emerald:"#10b981",
+  amber:"#f59e0b", rose:"#ef4444", sky:"#38bdf8",
   text:"rgba(255,255,255,0.95)", textMd:"rgba(255,255,255,0.55)",
   textDim:"rgba(255,255,255,0.26)", textFaint:"rgba(255,255,255,0.06)",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -64,9 +64,9 @@ const C = {
 // export surface. `C` above remains the legacy agent-app palette; BRAND is
 // the canonical accent/typography set for anything brand-facing.
 const BRAND = {
-  purple:"#a855f7", purpleLt:"#c084fc", cyan:"#22d3ee",
+  purple:"#8b5cf6", purpleLt:"#a78bfa", cyan:"#38bdf8",
   bg:"#050505",
-  glass:"rgba(0,0,0,0.6)", glassBorder:"rgba(255,255,255,0.1)",
+  glass:"#111111", glassBorder:"#27272a",
   slate:"rgba(226,232,240,0.9)", slateDim:"rgba(148,163,184,0.65)",
   mono:"'JetBrains Mono','Courier New',monospace",
   F:"'Plus Jakarta Sans',sans-serif",
@@ -74,7 +74,7 @@ const BRAND = {
 
 const GLOBAL_CSS = `
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#0a0a0d;-webkit-font-smoothing:antialiased}
+  html,body{height:100%;background:#0a0a0a;-webkit-font-smoothing:antialiased}
   ::-webkit-scrollbar{width:2px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.06);border-radius:2px}
@@ -97,8 +97,8 @@ const GLOBAL_CSS = `
   @keyframes lineGrow{from{width:0}to{width:100%}}
   @keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
   .nav-item{transition:all .18s ease}
-  .nav-item:hover{background:rgba(255,255,255,0.04)!important;color:rgba(255,255,255,.9)!important}
-  .nav-item.active{background:rgba(168,85,247,.12)!important;color:#c084fc!important;border-color:rgba(168,85,247,.35)!important;box-shadow:inset 2px 0 0 #a855f7,0 0 14px rgba(168,85,247,.18)!important}
+  .nav-item:hover{background:#18181b!important;color:rgba(255,255,255,.9)!important}
+  .nav-item.active{background:#111111!important;color:#f4f4f5!important;border-color:#27272a!important;border-left:2px solid #8b5cf6!important;box-shadow:none!important}
   .btn-g{transition:all .2s ease}
   .btn-g:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 12px 32px rgba(79, 107, 255,.28)!important;filter:brightness(1.08)}
   .btn-g:active:not(:disabled){transform:translateY(0);filter:brightness(.96)}
@@ -131,7 +131,7 @@ const GLOBAL_CSS = `
   .feature-row{transition:all .16s}
   .feature-row:hover{background:rgba(255,255,255,.018)!important}
   .signout-btn{transition:all .18s;cursor:pointer}
-  .signout-btn:hover{color:#EF4444!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
+  .signout-btn:hover{color:#ef4444!important;border-color:rgba(244,63,94,.3)!important;background:rgba(244,63,94,.05)!important}
   @keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
   @keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 rgba(79, 107, 255,0)}50%{box-shadow:0 0 20px 4px rgba(79, 107, 255,.15)}}
   @keyframes progressBar{from{width:0}to{width:100%}}
@@ -219,7 +219,7 @@ const CONTENT_TYPES = {
   open_house:  {label:"Open House Package",    icon:"Door",  color:C.emerald,cost:2,desc:"Full open house marketing kit",           minPlan:"starter"},
   objection:   {label:"Objection Handler",     icon:"Mission",color:C.violet, cost:1,desc:"AI responses to any client objection",    minPlan:"starter"},
   scripts:     {label:"Scripts & Dialogues",   icon:"Script",color:C.cyan,   cost:1,desc:"Listing appts, buyers, FSBO & more",     minPlan:"starter"},
-  comms:       {label:"Client Communication",  icon:"Chat",  color:"#EF4444", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
+  comms:       {label:"Client Communication",  icon:"Chat",  color:"#ef4444", cost:1,desc:"Follow-ups, offers, nurture sequences",   minPlan:"starter"},
   education:   {label:"Agent Tip",             icon:"Bulb",  color:C.amber,  cost:1,desc:"Authority-building daily tips",           minPlan:"starter"},
   market:      {label:"Market Update",         icon:"Market",color:C.cyan,   cost:2,desc:"Local stats → viral authority",           minPlan:"pro"},
   lifestyle:   {label:"Neighborhood Story",    icon:"City",  color:C.emerald,cost:2,desc:"Lifestyle content for relocators",        minPlan:"pro"},
@@ -522,7 +522,7 @@ function ToastContainer(){
           border:`1px solid ${t.type==="error"?C.rose:t.type==="info"?C.indigo:C.emerald}44`,
           color:t.type==="error"?C.rose:t.type==="info"?C.indigoLt:C.emerald,
           padding:"11px 16px",borderRadius:10,fontSize:13,fontFamily:C.F,fontWeight:600,
-          boxShadow:"0 8px 24px rgba(0,0,0,.4)",animation:"toastIn .25s ease both",backdropFilter:"blur(12px)",
+          boxShadow: "none",animation:"toastIn .25s ease both",backdropFilter: "none",
         }}>{t.type==="error"?"✕ ":t.type==="info"?"ℹ ":"✓ "}{t.msg}</div>
       ))}
     </div>
@@ -535,9 +535,9 @@ function ToastContainer(){
 function OrbBg(){
   return(
     <div style={{position:"fixed",inset:0,overflow:"hidden",pointerEvents:"none",zIndex:-1}}>
-      <div style={{position:"absolute",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle,rgba(79, 107, 255,.07) 0%,transparent 65%)",top:"-20%",left:"-15%",animation:"orb1 28s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(66, 87, 219,.05) 0%,transparent 65%)",bottom:"-10%",right:"-10%",animation:"orb2 32s ease-in-out infinite"}}/>
-      <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.03) 0%,transparent 65%)",top:"40%",left:"50%",animation:"orb3 22s ease-in-out infinite"}}/>
+      <div style={{position:"absolute",width:800,height:800,borderRadius:"50%",background:"radial-gradient(circle,rgba(79, 107, 255,.07) 0%,transparent 65%)",top:"-20%",left:"-15%",animation:"none"}}/>
+      <div style={{position:"absolute",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(66, 87, 219,.05) 0%,transparent 65%)",bottom:"-10%",right:"-10%",animation:"none"}}/>
+      <div style={{position:"absolute",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(34,211,238,.03) 0%,transparent 65%)",top:"40%",left:"50%",animation:"none"}}/>
       <div style={{position:"absolute",inset:0,background:"repeating-linear-gradient(0deg,transparent,transparent 60px,rgba(255,255,255,.008) 60px,rgba(255,255,255,.008) 61px),repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(255,255,255,.008) 60px,rgba(255,255,255,.008) 61px)"}}/>
     </div>
   );
@@ -552,12 +552,12 @@ function Logo({small, pulse}){
         background:`linear-gradient(135deg,${BRAND.purple}2e,${BRAND.purple}0d)`,
         border:`1px solid ${BRAND.purple}55`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:`0 0 0 1px ${BRAND.purple}22, 0 4px 20px ${BRAND.purple}40`,flexShrink:0}}>
+        boxShadow: "none",flexShrink:0}}>
         <Zap size={small?15:18}
           className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
           color={BRAND.purpleLt} fill={BRAND.purpleLt}
-          style={{filter:"drop-shadow(0 0 10px rgba(168,85,247,0.6))",
-            animation: pulse ? "sparkPulse 1.5s ease-in-out infinite" : undefined}}/>
+          style={{filter: "none",
+            animation: pulse ? "none" : undefined}}/>
       </div>
       <div>
         <div className="tracking-wider" style={{fontFamily:C.F,fontWeight:800,fontSize:small?14:16,color:C.text,letterSpacing:1.4}}>SPARK OS</div>
@@ -577,7 +577,7 @@ function SparkBoot({label="INITIALIZING SPARK OS..."}){
       <Zap size={46}
         className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
         color={BRAND.purpleLt} fill={BRAND.purpleLt}
-        style={{filter:`drop-shadow(0 0 22px ${BRAND.purple})`,animation:"sparkPulse 1.5s ease-in-out infinite"}}/>
+        style={{filter: "none",animation:"none"}}/>
       <div className="font-mono tracking-wider text-slate-400"
         style={{fontFamily:BRAND.mono,fontSize:11,letterSpacing:2.5,color:"rgba(148,163,184,0.65)"}}>
         {label}
@@ -585,11 +585,13 @@ function SparkBoot({label="INITIALIZING SPARK OS..."}){
     </div>
   );
 }
+// Was a 4-stop animated rainbow gradient clipped to the text. Flat accent
+// colour now — the Anti-Glow rule rules out saturated gradient fills.
 function Shimmer({children,style={}}){
-  return <span style={{background:"linear-gradient(90deg,#4F6BFF,#B8C6FF,#4257DB,#4F6BFF)",backgroundSize:"200% auto",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",animation:"shimmer 3s linear infinite",...style}}>{children}</span>;
+  return <span style={{color:"#a78bfa",...style}}>{children}</span>;
 }
 function Badge({color=C.indigo,children}){
-  return <span style={{background:color+"14",border:`1px solid ${color}35`,color,fontSize:9,fontWeight:700,padding:"3px 10px",borderRadius:20,fontFamily:C.F,letterSpacing:1.8,whiteSpace:"nowrap",backdropFilter:"blur(4px)"}}>{children}</span>;
+  return <span style={{background:"#18181b",border:"1px solid #3f3f46",color:"#d4d4d8",fontSize:10,fontWeight:500,padding:"3px 8px",borderRadius:6,fontFamily:C.F,letterSpacing:.6,whiteSpace:"nowrap"}}>{children}</span>;
 }
 function CopyBtn({text,label}){
   const [ok,setOk]=useState(false); const toast=useToast();
@@ -613,7 +615,7 @@ function ComplianceBanner({ running, result }){
   if(running){
     return(
       <div style={{display:"flex",alignItems:"center",gap:8,
-        background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+        background:"#18181b",border:`1px solid ${C.border}`,
         borderRadius:10,padding:"9px 13px",marginBottom:14}}>
         <div style={{width:12,height:12,borderRadius:"50%",
           border:"2px solid rgba(79, 107, 255,.3)",borderTopColor:C.indigo,
@@ -627,7 +629,7 @@ function ComplianceBanner({ running, result }){
 
   if(!result) return null;
   const risk = RISK_LABELS[result.overall_risk] || RISK_LABELS.clear;
-  const colorMap = { emerald:C.emerald, amber:C.amber, rose:"#EF4444" };
+  const colorMap = { emerald:C.emerald, amber:C.amber, rose:"#ef4444" };
   const color = colorMap[risk.color] || C.emerald;
   const flags = result.flags||[];
 
@@ -663,7 +665,7 @@ function ComplianceBanner({ running, result }){
             </p>
           )}
           {flags.map((f,i)=>(
-            <div key={i} style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+            <div key={i} style={{background:"#18181b",border:`1px solid ${C.border}`,
               borderRadius:8,padding:"9px 11px",marginBottom:8}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:5}}>
                 <span style={{fontFamily:C.F,fontSize:11,color:C.text,fontWeight:700,fontStyle:"italic"}}>
@@ -746,14 +748,14 @@ function DownloadButton({url, isImage}){
 
   return(
     <button className="btn-g" onClick={handleDownload} disabled={state==="fetching"}
-      style={{width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:state==="fetching"?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:state==="fetching"?0.7:1}}>
+      style={{width:"100%",background:"#8b5cf6",border:"none",color:"#fff",padding:"11px 0",borderRadius:9,cursor:state==="fetching"?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:state==="fetching"?0.7:1}}>
       {state==="fetching" ? "Preparing download..." : state==="done" ? "✓ Downloaded" : `⬇ ${isImage?"Download Image":"Download Video"}`}
     </button>
   );
 }
 
 function Field({label,value,onChange,placeholder,area,rows=2,type="text"}){
-  const s={width:"100%",background:"rgba(255,255,255,0.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"border-color .18s, box-shadow .18s",resize:"none"};
+  const s={width:"100%",background:"#18181b",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F,transition:"border-color .18s, box-shadow .18s",resize:"none"};
   return(
     <div>
       <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>{label}</div>
@@ -782,18 +784,18 @@ function UpgradePrompt({feature,requiredPlan,onUpgrade}){
       <div style={{fontSize:22,marginBottom:8}}>🔒</div>
       <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.amber,marginBottom:6}}>{feature} requires {p.name} plan</div>
       <div style={{fontFamily:C.F,fontSize:12,color:C.textMd,marginBottom:14,lineHeight:1.55}}>Upgrade to {p.name} (${p.price}/mo) to unlock.</div>
-      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#F5A623,#d97706)",color:"#fff",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:C.F}}>Upgrade to {p.name} →</div>
+      <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"linear-gradient(135deg,#f59e0b,#d97706)",color:"#fff",padding:"8px 18px",borderRadius:8,fontSize:12,fontWeight:700,fontFamily:C.F}}>Upgrade to {p.name} →</div>
     </div>
   );
 }
 function RBlock({accent,label,children,action,delay=0}){
   return(
     <div className="rblock" style={{
-      background:`linear-gradient(135deg,${C.surfaceUp},${C.surface})`,
+      background:`${C.surfaceUp}`,
       border:`1px solid ${C.border}`,
       borderRadius:13,padding:"18px 18px",marginBottom:11,
       animation:`scaleIn .26s ease ${delay}s both`,
-      boxShadow:"0 2px 12px rgba(0,0,0,.2)",
+      boxShadow: "none",
       position:"relative",overflow:"hidden"}}>
       {/* Subtle accent line at top */}
       <div style={{position:"absolute",top:0,left:0,right:0,height:1,
@@ -802,8 +804,8 @@ function RBlock({accent,label,children,action,delay=0}){
         alignItems:"center",marginBottom:13}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:3,height:14,
-            background:`linear-gradient(180deg,${accent},${accent}60)`,
-            borderRadius:2,boxShadow:`0 0 8px ${accent}80`}}/>
+            background:`${accent}`,
+            borderRadius:2,boxShadow: "none"}}/>
           <span style={{fontSize:9,color:accent,letterSpacing:2.2,
             fontFamily:C.F,fontWeight:700}}>{label}</span>
         </div>
@@ -901,9 +903,8 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
                 style={{
                   position:"relative",width:88,height:88,
                   borderRadius:10,overflow:"hidden",flexShrink:0,
-                  border:`2px solid ${isHero?"#F5A623":hovered?C.indigo+"80":C.border}`,
-                  boxShadow:isHero?`0 0 16px rgba(245,158,11,.28)`:
-                    hovered?`0 4px 16px rgba(79, 107, 255,.2)`:"none",
+                  border:`2px solid ${isHero?"#f59e0b":hovered?C.indigo+"80":C.border}`,
+                  boxShadow: "none",
                   animation:"photoIn .22s ease both",
                   transition:"border-color .16s, box-shadow .16s"}}>
 
@@ -920,11 +921,11 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
                 {/* Hero crown badge */}
                 {isHero&&(
                   <div style={{position:"absolute",top:5,left:5,
-                    background:"linear-gradient(135deg,#F5A623,#d97706)",
+                    background:"linear-gradient(135deg,#f59e0b,#d97706)",
                     borderRadius:5,padding:"2px 6px",
                     fontSize:8,color:"#fff",fontWeight:800,
                     fontFamily:C.F,letterSpacing:.5,
-                    boxShadow:"0 2px 6px rgba(245,158,11,.5)",
+                    boxShadow: "none",
                     display:"flex",alignItems:"center",gap:3}}>
                     ★ HERO
                   </div>
@@ -1042,7 +1043,7 @@ function PhotoUploader({ photos, setPhotos, maxPhotos, planKey, onGoUpgrade }){
             borderRadius:20,padding:"5px 14px"}}>
             <span style={{width:5,height:5,borderRadius:"50%",
               background:C.indigoLt,flexShrink:0,
-              animation:"pulse 2s ease infinite",display:"block"}}/>
+              animation:"none",display:"block"}}/>
             <span style={{fontSize:10,color:C.indigoLt,fontFamily:C.F,fontWeight:600}}>
               Each photo → 5s cinematic clip · stitched into one video
             </span>
@@ -1092,7 +1093,7 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
         <div style={{fontFamily:C.F,fontWeight:700,fontSize:14,color:C.text,marginBottom:6}}>Generating your cinematic listing video…</div>
         <div style={{fontFamily:C.F,fontSize:11,color:C.textDim,marginBottom:14}}>This takes 30–90 seconds. Your content is ready now while you wait.</div>
         <div style={{display:"flex",justifyContent:"center",gap:5}}>
-          {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.indigoLt,animation:`pulse 1.2s ease ${i*.2}s infinite`}}/>)}
+          {[0,1,2].map(i=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:C.indigoLt,animation:"none"}}/>)}
         </div>
       </div>
     );
@@ -1103,17 +1104,17 @@ function VideoResultPanel({ vidState, higgsfieldPrompt, videoQuality, hasHiggsfi
     return(
       <div style={{animation:"scaleIn .28s ease"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-          <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 8px ${C.emerald}`}}/>
+          <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,boxShadow: "none"}}/>
           <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:700}}>
             {isImage ? `HERO IMAGE READY · ${videoQuality}` : `LISTING VIDEO READY · ${videoQuality}`}
           </span>
         </div>
         {isImage && (
-          <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.15)",borderRadius:8,padding:"9px 13px",marginBottom:12,fontSize:12,color:"#F5A623",fontFamily:C.F}}>
+          <div style={{background:"rgba(245,158,11,.06)",border:"1px solid rgba(245,158,11,.15)",borderRadius:8,padding:"9px 13px",marginBottom:12,fontSize:12,color:"#f59e0b",fontFamily:C.F}}>
             ⚠ Video render unavailable — showing the generated still image instead.
           </div>
         )}
-        <div style={{borderRadius:12,overflow:"hidden",background:"#000",marginBottom:12,boxShadow:"0 12px 40px rgba(0,0,0,.5)"}}>
+        <div style={{borderRadius:12,overflow:"hidden",background:"#000",marginBottom:12,boxShadow: "none"}}>
           {isImage
             ? <img src={vidState.url} alt="Generated listing visual" style={{width:"100%",maxHeight:420,display:"block",objectFit:"cover"}}/>
             : <video src={vidState.url} controls playsInline style={{width:"100%",maxHeight:420,display:"block"}}/>
@@ -1187,21 +1188,21 @@ function OnboardingModal({planKey,onClose}){
           <div style={{position:"relative",display:"inline-block",marginBottom:24}}>
             <div style={{position:"absolute",inset:"-20px",borderRadius:"50%",
               background:`radial-gradient(circle,${C.indigo}28,transparent 70%)`,
-              animation:"orb1 4s ease-in-out infinite"}}/>
+              animation:"none"}}/>
             <div style={{position:"relative",width:72,height:72,borderRadius:"50%",
-              background:`linear-gradient(135deg,${BRAND.purple}33,${BRAND.purple}0f)`,
+              background:`#18181b`,
               border:`1px solid ${BRAND.purple}55`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 8px 32px ${BRAND.purple}55`,margin:"0 auto"}}>
+              boxShadow: "none",margin:"0 auto"}}>
               <Zap size={34} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
                 color={BRAND.purpleLt} fill={BRAND.purpleLt}
-                style={{filter:"drop-shadow(0 0 14px rgba(168,85,247,0.6))"}}/>
+                style={{filter: "none"}}/>
             </div>
           </div>
 
           <h1 style={{fontFamily:C.F,fontWeight:800,fontSize:26,
             margin:"0 0 8px",letterSpacing:"-0.02em"}}>
-            Welcome to <span style={{background:`linear-gradient(135deg,${BRAND.purpleLt},${BRAND.cyan})`,
+            Welcome to <span style={{background:`${BRAND.purpleLt}`,
               WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>SPARK OS</span>
           </h1>
           <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,
@@ -1211,12 +1212,12 @@ function OnboardingModal({planKey,onClose}){
 
           {/* Plan activation card */}
           <div style={{
-            background:`linear-gradient(135deg,${plan.accent}12,${C.violet}08)`,
+            background:`#18181b`,
             border:`1px solid ${plan.accent}30`,
             borderRadius:12,padding:"14px 18px",marginBottom:8,textAlign:"left"}}>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
               <div style={{width:36,height:36,borderRadius:"50%",
-                background:`linear-gradient(135deg,${plan.accent},${C.violet})`,
+                background:`${plan.accent}`,
                 display:"flex",alignItems:"center",justifyContent:"center",
                 fontSize:15,fontWeight:800,color:"#fff",flexShrink:0}}>
                 ✦
@@ -1231,7 +1232,7 @@ function OnboardingModal({planKey,onClose}){
               </div>
               <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
                 <div style={{width:6,height:6,borderRadius:"50%",
-                  background:C.emerald,boxShadow:`0 0 6px ${C.emerald}`}}/>
+                  background:C.emerald,boxShadow: "none"}}/>
                 <span style={{fontSize:10,color:C.emerald,fontFamily:C.F,fontWeight:700}}>ACTIVE</span>
               </div>
             </div>
@@ -1267,7 +1268,7 @@ function OnboardingModal({planKey,onClose}){
                   style={{
                     padding:"12px 13px",borderRadius:11,cursor:"pointer",
                     border:`1px solid ${sel?color+"55":C.border}`,
-                    background:sel?`${color}0e`:"rgba(255,255,255,.015)",
+                    background:sel?`${color}0e`:"#18181b",
                     transition:"all .16s ease",
                     animation:`fadeUp .3s ease ${i*.05}s both`,
                     display:"flex",alignItems:"center",gap:10}}>
@@ -1308,7 +1309,7 @@ function OnboardingModal({planKey,onClose}){
             <div style={{marginBottom:8,display:"flex",justifyContent:"center"}}>
               <Zap size={28} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
                 color={BRAND.purpleLt} fill={BRAND.purpleLt}
-                style={{filter:"drop-shadow(0 0 10px rgba(168,85,247,0.6))"}}/>
+                style={{filter: "none"}}/>
             </div>
             <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:20,margin:"0 0 6px",
               letterSpacing:"-0.01em"}}>How it works</h2>
@@ -1336,7 +1337,7 @@ function OnboardingModal({planKey,onClose}){
                   width:32,height:32,borderRadius:"50%",flexShrink:0,
                   background:`linear-gradient(135deg,${s.color},${s.color}90)`,
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:16,boxShadow:`0 4px 12px ${s.color}40`}}>
+                  fontSize:16,boxShadow: "none"}}>
                   {s.icon}
                 </div>
                 <div>
@@ -1370,11 +1371,11 @@ function OnboardingModal({planKey,onClose}){
           <div style={{position:"relative",display:"inline-block",marginBottom:20}}>
             <div style={{position:"absolute",inset:"-28px",borderRadius:"50%",
               background:`radial-gradient(circle,${C.emerald}22,transparent 70%)`,
-              animation:launched?"none":"orb2 3s ease-in-out infinite"}}/>
+              animation:launched?"none":"none"}}/>
             <div style={{position:"relative",width:80,height:80,borderRadius:"50%",
-              background:`linear-gradient(135deg,${C.emerald},${C.indigo})`,
+              background:`${C.emerald}`,
               display:"flex",alignItems:"center",justifyContent:"center",
-              boxShadow:`0 8px 32px ${C.emerald}40`,margin:"0 auto",
+              boxShadow: "none",margin:"0 auto",
               transform:launched?"scale(1.2)":"scale(1)",
               transition:"transform .4s cubic-bezier(.34,1.56,.64,1)"}}>
               <span style={{fontSize:36}}>{launched?"🚀":"✦"}</span>
@@ -1392,13 +1393,13 @@ function OnboardingModal({planKey,onClose}){
 
           {/* Credits display */}
           <div style={{
-            background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+            background:`${C.surface}`,
             border:`1px solid ${C.border}`,
             borderRadius:12,padding:"14px 18px",marginBottom:20,
             display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <div style={{width:8,height:8,borderRadius:"50%",
-                background:C.indigoLt,boxShadow:`0 0 8px ${C.indigoLt}`}}/>
+                background:C.indigoLt,boxShadow: "none"}}/>
               <span style={{fontFamily:C.F,fontSize:12,color:C.textMd}}>Credits ready</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -1435,8 +1436,8 @@ function OnboardingModal({planKey,onClose}){
     <div style={{position:"fixed",inset:0,
       background:"rgba(4,4,10,.92)",
       display:"flex",alignItems:"center",justifyContent:"center",
-      zIndex:1000,backdropFilter:"blur(16px)",
-      WebkitBackdropFilter:"blur(16px)",
+      zIndex:1000,backdropFilter: "none",
+      WebkitBackdropFilter: "none",
       animation:"fadeIn .25s ease"}}>
 
       <div style={{
@@ -1444,7 +1445,7 @@ function OnboardingModal({planKey,onClose}){
         border:`1px solid ${C.borderMd}`,
         borderRadius:20,padding:"32px 28px",
         maxWidth:460,width:"92%",
-        boxShadow:"0 48px 96px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.04)",
+        boxShadow: "none",
         animation:"scaleIn .28s cubic-bezier(.34,1.56,.64,1)",
         position:"relative",overflow:"hidden",maxHeight:"90vh",overflowY:"auto"}}>
 
@@ -1467,7 +1468,7 @@ function OnboardingModal({planKey,onClose}){
                 borderRadius:2,
                 background:i<step?C.emerald:i===step?C.indigoLt:"rgba(255,255,255,.1)",
                 transition:"all .28s ease",
-                boxShadow:i===step?`0 0 6px ${C.indigoLt}80`:"none"}}/>
+                boxShadow: "none"}}/>
             ))}
           </div>
         </div>
@@ -1490,14 +1491,12 @@ function OnboardingModal({planKey,onClose}){
           <button className="btn-g" onClick={isLast?handleLaunch:()=>setStep(s=>s+1)}
             style={{flex:1,
               background:isLast
-                ?"linear-gradient(135deg,#22C55E,#4F6BFF)"
-                :"linear-gradient(135deg,#4F6BFF,#4257DB)",
+                ?"linear-gradient(135deg,#10b981,#8b5cf6)"
+                :"#8b5cf6",
               border:"none",color:"#fff",padding:"13px 0",borderRadius:10,
               cursor:"pointer",fontWeight:800,fontSize:14,fontFamily:C.F,
               letterSpacing:.2,
-              boxShadow:isLast
-                ?"0 6px 24px rgba(16,185,129,.3)"
-                :"0 6px 24px rgba(79, 107, 255,.28)",
+              boxShadow: "none",
               transition:"all .22s ease"}}>
             {isLast
               ?"🚀 Start Generating"
@@ -1530,7 +1529,7 @@ function OnboardingModal({planKey,onClose}){
 // CONFETTI PARTICLES — celebration burst on generation complete
 // ─────────────────────────────────────────────────────────────────────────────
 function ConfettiParticles(){
-  const COLORS=["#4F6BFF","#4257DB","#22C55E","#38BDF8","#F5A623","#EF4444","#8CA0FF"];
+  const COLORS=["#8b5cf6","#7c3aed","#10b981","#38bdf8","#f59e0b","#ef4444","#a78bfa"];
   const particles=Array.from({length:22},(_,i)=>{
     const angle=Math.random()*360;
     const dist=60+Math.random()*80;
@@ -1554,7 +1553,7 @@ function ConfettiParticles(){
           background:p.color,
           "--px":`${p.px}px`,"--py":`${p.py}px`,
           animation:`particle ${p.dur}s ease ${p.delay}s both`,
-          boxShadow:`0 0 4px ${p.color}88`}}/>
+          boxShadow: "none"}}/>
       ))}
     </div>
   );
@@ -1597,7 +1596,7 @@ const EMPTY_STATE_DEMOS={
   comms:{
     headline:"Post-Showing Follow-Up",
     lines:["Subject: Great to show you 123 Ocean Drive today, [Name]","Body: It was wonderful walking through the property with you...","Text: Hey [Name]! Thanks for the tour today — any questions? 🏡"],
-    label:"SAMPLE CLIENT COMMUNICATION",color:"#EF4444",
+    label:"SAMPLE CLIENT COMMUNICATION",color:"#ef4444",
     hint:"Enter context and SPARK writes personalized email, text, and phone scripts",
   },
   education:{
@@ -1633,8 +1632,8 @@ function EmptyStateCard({type, contentTypes}){
       <div style={{padding:"11px 16px",borderBottom:`1px solid ${demo.color}18`,
         display:"flex",alignItems:"center",gap:8}}>
         <div style={{width:3,height:12,borderRadius:2,
-          background:`linear-gradient(180deg,${demo.color},${demo.color}60)`,
-          boxShadow:`0 0 6px ${demo.color}80`}}/>
+          background:`${demo.color}`,
+          boxShadow: "none"}}/>
         <span style={{fontSize:8,color:demo.color,fontFamily:C.F,
           fontWeight:700,letterSpacing:2.5}}>{demo.label}</span>
         <span style={{marginLeft:"auto",fontSize:9,color:C.textDim,
@@ -1969,7 +1968,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
         <button onClick={()=>setGenView("generate")}
           style={{flex:1,padding:"9px 0",borderRadius:7,
             background:genView==="generate"
-              ?"linear-gradient(135deg,rgba(79, 107, 255,.14),rgba(66, 87, 219,.08))"
+              ?"#18181b"
               :"transparent",
             border:genView==="generate"?"1px solid rgba(79, 107, 255,.25)":"1px solid transparent",
             color:genView==="generate"?C.indigoLt:C.textDim,
@@ -1980,7 +1979,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
         <button onClick={()=>setGenView("history")}
           style={{flex:1,padding:"9px 0",borderRadius:7,
             background:genView==="history"
-              ?"linear-gradient(135deg,rgba(79, 107, 255,.14),rgba(66, 87, 219,.08))"
+              ?"#18181b"
               :"transparent",
             border:genView==="history"?"1px solid rgba(79, 107, 255,.25)":"1px solid transparent",
             color:genView==="history"?C.indigoLt:C.textDim,
@@ -2027,11 +2026,11 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 textAlign:"left",position:"relative",
                 border:`1px solid ${active?ct.color+"55":locked?"rgba(255,255,255,.04)":C.border}`,
                 background:active
-                  ?`linear-gradient(135deg,${ct.color}10,${ct.color}04)`
+                  ?`#18181b`
                   :locked?"rgba(255,255,255,.01)":C.surface,
                 opacity:locked?.5:1,cursor:"pointer",
                 animation:`fadeUp .32s ease ${i*.05}s both`,
-                boxShadow:active?`0 4px 16px ${ct.color}18,inset 0 0 0 1px ${ct.color}20`:"none",
+                boxShadow: "none",
                 transition:"all .18s ease"}}>
               {locked&&(
                 <div style={{position:"absolute",top:8,right:8,
@@ -2079,7 +2078,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               {plan.voiceMemory?(
                 voice?.saved?(
                   <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 11px",background:"rgba(16,185,129,.06)",border:"1px solid rgba(16,185,129,.15)",borderRadius:7}}>
-                    <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow:`0 0 7px ${C.emerald}`}}/>
+                    <div style={{width:5,height:5,borderRadius:"50%",background:C.emerald,boxShadow: "none"}}/>
                     <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,fontWeight:600}}>Agent voice active — {voice.name||""} · {voice.market||""}</span>
                   </div>
                 ):(
@@ -2133,7 +2132,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
             )}
 
             {/* Plan stats row */}
-            <div style={{marginTop:14,padding:"7px 11px",background:"rgba(255,255,255,.02)",borderRadius:7,display:"flex",gap:16,flexWrap:"wrap"}}>
+            <div style={{marginTop:14,padding:"7px 11px",background:"#18181b",borderRadius:7,display:"flex",gap:16,flexWrap:"wrap"}}>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Hooks: <strong style={{color:C.text}}>{plan.hooks}</strong></span>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Video: <strong style={{color:C.text}}>{plan.videoQuality}</strong></span>
               <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>Photos: <strong style={{color:C.text}}>{plan.maxPhotos} max</strong></span>
@@ -2148,7 +2147,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               style={{
                 width:"100%",
                 background:canGen
-                  ?"linear-gradient(135deg,#4F6BFF,#4257DB,#4F6BFF)"
+                  ?"linear-gradient(135deg,#8b5cf6,#7c3aed,#8b5cf6)"
                   :C.surface,
                 backgroundSize:"200% 200%",
                 border:canGen?"none":`1px solid ${C.border}`,
@@ -2157,7 +2156,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 cursor:canGen?"pointer":"not-allowed",
                 fontFamily:C.F,fontWeight:800,fontSize:15,
                 letterSpacing:.3,
-                boxShadow:canGen?"0 6px 24px rgba(79, 107, 255,.3),0 0 0 1px rgba(79, 107, 255,.3)":"none",
+                boxShadow: "none",
                 transition:"all .22s cubic-bezier(.34,1.56,.64,1)",
               }}>
               {credits<=0
@@ -2172,7 +2171,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               border:`1px solid rgba(79, 107, 255,.18)`,
               borderRadius:14,padding:"28px 22px",
               textAlign:"center",animation:"fadeIn .2s ease",
-              boxShadow:"0 8px 32px rgba(79, 107, 255,.08)"}}>
+              boxShadow: "none"}}>
               <div style={{position:"relative",width:60,height:60,margin:"0 auto 16px"}}>
                 <ProgressRing pct={pct}/>
                 <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",
@@ -2185,7 +2184,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                 {[0,1,2].map(i=>(
                   <div key={i} style={{width:6,height:6,borderRadius:"50%",
                     background:C.indigoLt,opacity:.7,
-                    animation:`pulse 1.2s ease ${i*.22}s infinite`}}/>
+                    animation:"none"}}/>
                 ))}
               </div>
             </div>
@@ -2215,13 +2214,13 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     :"rgba(16,185,129,.06)",
                   border:`1px solid ${justCompleted?"rgba(16,185,129,.5)":"rgba(16,185,129,.2)"}`,
                   borderRadius:8,padding:"5px 11px",
-                  boxShadow:justCompleted?"0 0 0 0 rgba(16,185,129,.6)":"none",
+                  boxShadow: "none",
                   animation:justCompleted?"glowRing 1s ease .3s both":"none",
                   transition:"all .3s ease"}}>
                   <div style={{width:6,height:6,borderRadius:"50%",
                     background:C.emerald,
-                    boxShadow:`0 0 ${justCompleted?"10px":"6px"} ${C.emerald}`,
-                    animation:justCompleted?"pulse .6s ease infinite":"none"}}/>
+                    boxShadow: "none",
+                    animation:justCompleted?"none":"none"}}/>
                   <span style={{fontSize:11,color:C.emerald,fontFamily:C.F,
                     fontWeight:800,letterSpacing:.5}}>
                     {justCompleted?"✦ PACKAGE READY":"PACKAGE READY"}
@@ -2252,21 +2251,21 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                       style={{flex:1,padding:"8px 4px",borderRadius:7,
                         border:`1px solid ${active?"rgba(79, 107, 255,.28)":"transparent"}`,
                         background:active
-                          ?"linear-gradient(135deg,rgba(79, 107, 255,.14),rgba(66, 87, 219,.08))"
+                          ?"#18181b"
                           :"transparent",
                         color:active?C.indigoLt:C.textDim,
                         cursor:"pointer",fontSize:9,fontWeight:700,
                         fontFamily:C.F,letterSpacing:.8,
-                        boxShadow:active?"0 2px 8px rgba(79, 107, 255,.15)":"none",
+                        boxShadow: "none",
                         position:"relative",
                         transition:"all .16s ease"}}>
                       {t.replace(/_/g," ").toUpperCase()}
                       {dot&&<span style={{position:"absolute",top:3,right:3,width:5,height:5,
                         borderRadius:"50%",background:C.cyan,
-                        animation:"pulse 1.2s ease infinite"}}/>}
+                        animation:"none"}}/>}
                       {done&&<span style={{position:"absolute",top:3,right:3,width:5,height:5,
                         borderRadius:"50%",background:C.emerald,
-                        boxShadow:`0 0 5px ${C.emerald}`}}/>}
+                        boxShadow: "none"}}/>}
                     </button>
                   );
                 })}
@@ -2539,7 +2538,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
               {/* ── CLIENT COMMUNICATION TABS ── */}
               {tab==="email"&&type==="comms"&&(
                 <div style={{animation:"scaleIn .22s ease"}}>
-                  <RBlock accent={"#EF4444"} label="SUBJECT LINE" action={<CopyBtn text={result.subject_line||""} label="Subject copied"/>}>
+                  <RBlock accent={"#ef4444"} label="SUBJECT LINE" action={<CopyBtn text={result.subject_line||""} label="Subject copied"/>}>
                     <p style={{fontFamily:C.F,fontSize:14,fontWeight:700,color:C.text,margin:0}}>{result.subject_line}</p>
                   </RBlock>
                   <RBlock accent={C.indigo} label="EMAIL" action={<CopyBtn text={result.email_body||""} label="Email copied"/>}>
@@ -2559,7 +2558,7 @@ function GeneratePanel({planKey,voice,credits,setCredits,apiKeys,onGoUpgrade,onG
                     <div style={{fontSize:11,color:C.textDim,fontFamily:C.F,marginTop:8}}>{(result.text_version||"").length} / 160 chars</div>
                   </RBlock>
                   {result.personal_touch&&(
-                    <RBlock accent={"#EF4444"} label="PERSONALIZATION TIP">
+                    <RBlock accent={"#ef4444"} label="PERSONALIZATION TIP">
                       <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0,lineHeight:1.6}}>{result.personal_touch}</p>
                     </RBlock>
                   )}
@@ -2715,7 +2714,7 @@ function PushNotificationCard({ user }){
         </div>
         <button onClick={()=>subscribed?unsubscribe():subscribe()} disabled={loading}
           style={{width:38,height:22,borderRadius:11,border:"none",cursor:loading?"default":"pointer",flexShrink:0,opacity:loading?.6:1,
-            background:subscribed?C.indigo:"rgba(255,255,255,.12)",position:"relative",transition:"background .15s"}}>
+            background:subscribed?C.indigo:"#27272a",position:"relative",transition:"background .15s"}}>
           <div style={{width:16,height:16,borderRadius:"50%",background:"#fff",position:"absolute",top:3,
             left:subscribed?19:3,transition:"left .15s"}}/>
         </button>
@@ -2812,7 +2811,7 @@ function VoicePanel({planKey,voice,setVoice,onSave,onGoUpgrade,user}){
           </div>
           <button onClick={()=>setVoice(v=>({...v,smsEnabled:!v.smsEnabled}))}
             style={{width:38,height:22,borderRadius:11,border:"none",cursor:"pointer",flexShrink:0,
-              background:voice.smsEnabled?C.indigo:"rgba(255,255,255,.12)",position:"relative",transition:"background .15s"}}>
+              background:voice.smsEnabled?C.indigo:"#27272a",position:"relative",transition:"background .15s"}}>
             <div style={{width:16,height:16,borderRadius:"50%",background:"#fff",position:"absolute",top:3,
               left:voice.smsEnabled?19:3,transition:"left .15s"}}/>
           </button>
@@ -2894,20 +2893,20 @@ function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
         {planEntries.map(([pk,pp],i)=>{
           const active=i===idx, isCurTab=mode==="billing"&&pk===currentPlanKey;
           return(
-            <button key={pk} onClick={()=>go(i)} style={{padding:"5px 14px",borderRadius:20,border:"none",background:active?`linear-gradient(135deg,${pp.accent},${pp.accent}bb)`:"rgba(255,255,255,.05)",color:active?"#fff":C.textDim,cursor:"pointer",fontSize:11,fontWeight:active?700:500,fontFamily:C.F,letterSpacing:.5,transition:"all .18s",boxShadow:active?`0 2px 12px ${pp.accent}44`:"none",position:"relative"}}>
+            <button key={pk} onClick={()=>go(i)} style={{padding:"5px 14px",borderRadius:20,border:"none",background:active?`${pp.accent}`:"rgba(255,255,255,.05)",color:active?"#fff":C.textDim,cursor:"pointer",fontSize:11,fontWeight:active?700:500,fontFamily:C.F,letterSpacing:.5,transition:"all .18s",boxShadow: "none",position:"relative"}}>
               {pp.name}
-              {isCurTab&&<span style={{position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:C.emerald,border:`2px solid ${C.bg}`,boxShadow:`0 0 6px ${C.emerald}`}}/>}
+              {isCurTab&&<span style={{position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:C.emerald,border:`2px solid ${C.bg}`,boxShadow: "none"}}/>}
             </button>
           );
         })}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:12}}>
         <button className="carousel-arrow" onClick={()=>go(idx-1)} disabled={!prevOk} style={{opacity:prevOk?1:.2,pointerEvents:prevOk?"auto":"none"}}>←</button>
-        <div key={animKey} style={{flex:1,background:isCur?C.surfaceUp:C.surface,border:`1px solid ${isCur?p.accent+"55":p.badge?p.accent+"30":C.border}`,borderRadius:16,padding:"28px 24px",position:"relative",boxShadow:p.badge?`0 0 40px ${p.accent}18,0 8px 32px rgba(0,0,0,.3)`:isCur?`0 0 28px ${p.accent}14`:"0 4px 20px rgba(0,0,0,.2)",animation:slideAnim}}>
+        <div key={animKey} style={{flex:1,background:isCur?C.surfaceUp:C.surface,border:`1px solid ${isCur?p.accent+"55":p.badge?p.accent+"30":C.border}`,borderRadius:16,padding:"28px 24px",position:"relative",boxShadow: "none",animation:slideAnim}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
             <Badge color={p.accent}>{p.name.toUpperCase()}</Badge>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-              {p.badge&&<span style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:"#fff",fontSize:8,fontWeight:800,padding:"3px 10px",borderRadius:8,letterSpacing:1,fontFamily:C.F}}>{p.badge}</span>}
+              {p.badge&&<span style={{background:`#8b5cf6`,color:"#fff",fontSize:8,fontWeight:800,padding:"3px 10px",borderRadius:8,letterSpacing:1,fontFamily:C.F}}>{p.badge}</span>}
               {isCur&&<span style={{background:p.accent,color:"#fff",fontSize:8,fontWeight:800,padding:"3px 10px",borderRadius:8,letterSpacing:1,fontFamily:C.F}}>CURRENT</span>}
             </div>
           </div>
@@ -2927,12 +2926,12 @@ function PlanCarousel({currentPlanKey,onSelect,onStart,mode}){
             </div>
           </div>
           {mode==="landing"?(
-            <button className="btn-g" onClick={()=>onStart("signup")} style={{width:"100%",background:`linear-gradient(135deg,${p.accent},${p.accent}bb)`,border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:`0 4px 18px ${p.accent}33`,letterSpacing:.3}}>
+            <button className="btn-g" onClick={()=>onStart("signup")} style={{width:"100%",background:`${p.accent}`,border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow: "none",letterSpacing:.3}}>
               Get Started with {p.name} ⚡
             </button>
           ):(
             <button className="btn-g" onClick={()=>onSelect(k)} disabled={isCur}
-              style={{width:"100%",background:isCur?"transparent":isUp?`linear-gradient(135deg,${p.accent},${p.accent}bb)`:"rgba(255,255,255,.06)",border:`1px solid ${isCur?p.accent+"44":isUp?p.accent+"66":C.border}`,color:isCur?p.accent:isUp?"#fff":C.textMd,padding:"13px 0",borderRadius:10,cursor:isCur?"default":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:isUp?`0 4px 18px ${p.accent}30`:"none"}}>
+              style={{width:"100%",background:isCur?"transparent":isUp?`${p.accent}`:"rgba(255,255,255,.06)",border:`1px solid ${isCur?p.accent+"44":isUp?p.accent+"66":C.border}`,color:isCur?p.accent:isUp?"#fff":C.textMd,padding:"13px 0",borderRadius:10,cursor:isCur?"default":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow: "none"}}>
               {isCur?"Your Current Plan":isUp?`Upgrade to ${p.name} →`:isDn?`Switch to ${p.name} ↓`:"Select Plan"}
             </button>
           )}
@@ -2991,8 +2990,8 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
   return(
     <div style={{animation:"fadeUp .38s ease"}}>
       {confirmKey&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter:"blur(8px)",animation:"fadeIn .2s ease"}}>
-          <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:16,padding:30,maxWidth:400,width:"90%",boxShadow:"0 40px 80px rgba(0,0,0,.5)",animation:"scaleIn .24s ease"}}>
+        <div style={{position:"fixed",inset:0,background:"rgba(8,9,14,.9)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:999,backdropFilter: "none",animation:"fadeIn .2s ease"}}>
+          <div style={{background:C.surface,border:`1px solid ${C.borderMd}`,borderRadius:16,padding:30,maxWidth:400,width:"90%",boxShadow: "none",animation:"scaleIn .24s ease"}}>
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:8}}>Upgrade to {PLANS[confirmKey].name}?</div>
             <p style={{fontSize:13,color:C.textMd,marginBottom:20,fontFamily:C.F,lineHeight:1.6}}>Your plan becomes <strong style={{color:PLANS[confirmKey].accent}}>{PLANS[confirmKey].name}</strong> at ${PLANS[confirmKey].price}/month with {PLANS[confirmKey].maxPhotos} listing photos and {PLANS[confirmKey].videoQuality} video generation.</p>
             <div style={{background:"rgba(16,185,129,.07)",border:"1px solid rgba(16,185,129,.2)",borderRadius:8,padding:"10px 13px",marginBottom:20,fontSize:12,color:C.emerald,fontFamily:C.F}}>You will be taken to secure Stripe checkout to complete your upgrade.</div>
@@ -3006,7 +3005,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
 
       {/* Trial paywall banner */}
       {trialExhausted&&(
-        <div style={{background:`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`,
+        <div style={{background:`#18181b`,
           border:`1px solid ${C.indigo}30`,borderRadius:14,padding:"24px 22px",
           marginBottom:22,textAlign:"center",position:"relative",overflow:"hidden"}}>
           <div style={{position:"absolute",top:"-20%",left:"50%",transform:"translateX(-50%)",
@@ -3031,10 +3030,10 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
               ))}
             </div>
             <button className="btn-g" onClick={()=>{ track("upgrade_clicked",{ plan:intendedPlan, source:"trial_paywall", credits_at_click:0, current_plan:"trial" }); goStripe(PLANS[intendedPlan].stripeLink, userEmail||""); }}
-              style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
+              style={{background:"#8b5cf6",border:"none",
                 color:"#fff",padding:"13px 32px",borderRadius:10,cursor:"pointer",
                 fontWeight:800,fontSize:14,fontFamily:C.F,
-                boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 6px 22px rgba(79, 107, 255,.3)"}}>
+                boxShadow: "none"}}>
               Upgrade to Premium — $129/month ⚡
             </button>
             <p style={{fontFamily:C.F,fontSize:10,color:C.textDim,margin:"10px 0 0"}}>
@@ -3045,7 +3044,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
       )}
 
       {/* Credit overview */}
-      <div style={{background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:26,position:"relative",overflow:"hidden"}}>
+      <div style={{background:`${C.surface}`,border:`1px solid ${C.border}`,borderRadius:13,padding:22,marginBottom:26,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-25%",right:"-4%",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,${plan.accent}14,transparent 70%)`,pointerEvents:"none"}}/>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
           <div>
@@ -3059,7 +3058,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
           </div>
         </div>
         <div style={{height:4,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${Math.min(100,(credits/plan.credits)*100)}%`,background:`linear-gradient(90deg,${plan.accent},${C.indigoLt})`,borderRadius:2,transition:"width .55s ease"}}/>
+          <div style={{height:"100%",width:`${Math.min(100,(credits/plan.credits)*100)}%`,background:`${plan.accent}`,borderRadius:2,transition:"width .55s ease"}}/>
         </div>
         <div style={{display:"flex",justifyContent:"space-between",marginTop:5}}>
           <span style={{fontSize:10,color:C.textDim,fontFamily:C.F}}>{credits} remaining</span>
@@ -3076,7 +3075,7 @@ function BillingPanel({planKey,setPlanKey,credits,setCredits,userEmail,user,inte
         {CREDIT_PACKS.map((pk,i)=>(
           <button key={i} className="cp-b" onClick={()=>{ goStripe(pk.stripeLink, userEmail||""); }}
             style={{background:C.surface,border:`1px solid ${pk.hot?"rgba(79, 107, 255,.28)":C.border}`,borderRadius:10,padding:"16px 10px",textAlign:"center",cursor:"pointer",position:"relative",animation:`fadeUp .3s ease ${i*.06}s both`}}>
-            {pk.hot&&<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:`linear-gradient(135deg,${C.indigo},${C.violet})`,color:"#fff",fontSize:7,fontWeight:800,padding:"2px 8px",borderRadius:8,letterSpacing:.8,whiteSpace:"nowrap",fontFamily:C.F}}>BEST VALUE</div>}
+            {pk.hot&&<div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",background:`#8b5cf6`,color:"#fff",fontSize:7,fontWeight:800,padding:"2px 8px",borderRadius:8,letterSpacing:.8,whiteSpace:"nowrap",fontFamily:C.F}}>BEST VALUE</div>}
             <div style={{fontFamily:C.F,fontWeight:800,fontSize:26,color:C.indigo}}>{pk.credits}</div>
             <div style={{fontSize:8,color:C.textDim,letterSpacing:2,fontFamily:C.F,marginBottom:6}}>CREDITS</div>
             <div style={{fontFamily:C.F,fontWeight:700,fontSize:18}}>${pk.price}</div>
@@ -3203,7 +3202,7 @@ function GoogleIntegration({ user }){
             {connected&&googleEmail?(
               <div style={{display:"flex",alignItems:"center",gap:5}}>
                 <div style={{width:5,height:5,borderRadius:"50%",
-                  background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+                  background:C.emerald,boxShadow: "none"}}/>
                 <span style={{fontFamily:C.F,fontSize:11,color:C.emerald}}>
                   Connected · {googleEmail}
                 </span>
@@ -3228,7 +3227,7 @@ function GoogleIntegration({ user }){
             style={{background:"linear-gradient(135deg,#4285f4,#34a853)",
               border:"none",color:"#fff",borderRadius:8,padding:"8px 18px",
               cursor:"pointer",fontFamily:C.F,fontWeight:700,fontSize:12,
-              boxShadow:"0 4px 14px rgba(66,133,244,.28)",flexShrink:0}}>
+              boxShadow: "none",flexShrink:0}}>
             Connect Google →
           </button>
         )}
@@ -3318,13 +3317,13 @@ function InstallSparkCard(){
       border:`1px solid ${C.indigo}28`,borderRadius:16,padding:"18px 18px",
       marginBottom:16,display:"flex",alignItems:"center",gap:14}}>
       <div style={{width:44,height:44,borderRadius:12,flexShrink:0,
-        background:`linear-gradient(135deg,${BRAND.purple}33,${BRAND.purple}0f)`,
+        background:`#18181b`,
         border:`1px solid ${BRAND.purple}55`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        boxShadow:`0 4px 14px ${BRAND.purple}40`}}>
+        boxShadow: "none"}}>
         <Zap size={21} className="text-purple-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]"
           color={BRAND.purpleLt} fill={BRAND.purpleLt}
-          style={{filter:"drop-shadow(0 0 10px rgba(168,85,247,0.6))"}}/>
+          style={{filter: "none"}}/>
       </div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontFamily:C.F,fontWeight:700,fontSize:13,color:C.text,marginBottom:3}}>
@@ -3340,10 +3339,10 @@ function InstallSparkCard(){
       </div>
       {!isIOS && deferredPrompt && (
         <button onClick={handleInstall} disabled={installing}
-          style={{background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+          style={{background:`#8b5cf6`,
             border:"none",color:"#fff",borderRadius:9,padding:"9px 18px",
             cursor:installing?"default":"pointer",fontFamily:C.F,fontWeight:700,
-            fontSize:12,flexShrink:0,boxShadow:`0 3px 12px ${C.indigo}30`}}>
+            fontSize:12,flexShrink:0,boxShadow: "none"}}>
           {installing?"...":"Install"}
         </button>
       )}
@@ -3488,7 +3487,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
 
       {/* ── HERO DASHBOARD CARD ── */}
       <div style={{
-        background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+        background:`${C.surface}`,
         border:`1px solid ${plan.accent}28`,
         borderRadius:16,padding:22,marginBottom:16,
         position:"relative",overflow:"hidden"}}>
@@ -3507,10 +3506,10 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
         <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:20,position:"relative"}}>
           <div style={{
             width:52,height:52,borderRadius:"50%",flexShrink:0,
-            background:`linear-gradient(135deg,${plan.accent},${C.violet})`,
+            background:`${plan.accent}`,
             display:"flex",alignItems:"center",justifyContent:"center",
             fontSize:22,fontWeight:800,color:"#fff",
-            boxShadow:`0 4px 16px ${plan.accent}40`}}>
+            boxShadow: "none"}}>
             {(user?.email||"?")[0].toUpperCase()}
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -3551,7 +3550,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
               width:`${Math.min(100,(currentCredits/Math.max(plan.credits,1))*100)}%`,
               background:`linear-gradient(90deg,${currentCredits<5?C.rose:plan.accent},${C.indigoLt})`,
               borderRadius:3,transition:"width .6s ease",
-              boxShadow:`0 0 8px ${currentCredits<5?C.rose:plan.accent}60`}}/>
+              boxShadow: "none"}}/>
           </div>
         </div>
 
@@ -3582,7 +3581,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
 
         {/* Most used tool + achievement */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
-          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+          <div style={{background:"#18181b",border:`1px solid ${C.border}`,
             borderRadius:9,padding:"11px 13px"}}>
             <div style={{fontSize:8,color:C.textDim,letterSpacing:1.8,fontFamily:C.F,
               fontWeight:700,marginBottom:6}}>FAVORITE TOOL</div>
@@ -3599,7 +3598,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
               <div style={{fontSize:12,color:C.textDim,fontFamily:C.F}}>Generate to track</div>
             )}
           </div>
-          <div style={{background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,
+          <div style={{background:"#18181b",border:`1px solid ${C.border}`,
             borderRadius:9,padding:"11px 13px"}}>
             <div style={{fontSize:8,color:C.textDim,letterSpacing:1.8,fontFamily:C.F,
               fontWeight:700,marginBottom:6}}>ACHIEVEMENT</div>
@@ -3671,7 +3670,7 @@ function SettingsPanel({user,planKey,onLogout,apiKeys,setApiKeys,voice,setVoice}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
               <div style={{width:6,height:6,borderRadius:"50%",
-                background:s.color,boxShadow:`0 0 6px ${s.color}`}}/>
+                background:s.color,boxShadow: "none"}}/>
               <span style={{fontSize:11,color:s.color,fontFamily:C.F,fontWeight:600}}>{s.status}</span>
             </div>
           </div>
@@ -3852,7 +3851,7 @@ function AffiliatePanel({ user, planKey }){
             {refLink}
           </div>
           <button className="btn-g" onClick={copyLink}
-            style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
+            style={{background:"#8b5cf6",border:"none",color:"#fff",padding:"10px 20px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
             Copy Link
           </button>
         </div>
@@ -3941,7 +3940,7 @@ function AffiliatePanel({ user, planKey }){
         </div>
         <div style={{display:"flex",gap:9}}>
           <button className="btn-g" onClick={copyScript}
-            style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"10px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F}}>
+            style={{background:"#8b5cf6",border:"none",color:"#fff",padding:"10px 22px",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:C.F}}>
             Copy {SOCIAL_SCRIPTS[activeScript].platform} Script
           </button>
           <button className="btn-o" onClick={copyLink}
@@ -3960,7 +3959,7 @@ function AffiliatePanel({ user, planKey }){
             {n:"02",icon:"👤",title:"Agent Signs Up",body:"When they click your link and subscribe to any paid plan, they're tracked to your account automatically."},
             {n:"03",icon:"💰",title:"You Get Paid",body:"You earn 20% of their monthly subscription every single month they stay subscribed. Forever, with no cap."},
           ].map((s,i)=>(
-            <div key={i} style={{padding:"16px 14px",background:"rgba(255,255,255,.02)",border:`1px solid ${C.border}`,borderRadius:10}}>
+            <div key={i} style={{padding:"16px 14px",background:"#18181b",border:`1px solid ${C.border}`,borderRadius:10}}>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                 <div style={{width:22,height:22,borderRadius:6,background:"rgba(79, 107, 255,.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.indigoLt,fontFamily:C.F,fontWeight:800}}>{s.n}</div>
                 <span style={{fontSize:18}}>{s.icon}</span>
@@ -4001,7 +4000,7 @@ function AffiliatePanel({ user, planKey }){
             <input className="ifield" type="email" value={payoutEmail} onChange={e=>setPayoutEmail(e.target.value)} placeholder="your@paypal.com or @venmo"
               style={{flex:1,minWidth:220,background:"rgba(255,255,255,.03)",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 13px",color:C.text,fontSize:13,fontFamily:C.F}}/>
             <button className="btn-g" onClick={requestPayout} disabled={stats.pendingPayout<25}
-              style={{background:stats.pendingPayout>=25?"linear-gradient(135deg,#4F6BFF,#4257DB)":C.surface,border:stats.pendingPayout>=25?"none":`1px solid ${C.border}`,color:stats.pendingPayout>=25?"#fff":C.textDim,padding:"10px 22px",borderRadius:8,cursor:stats.pendingPayout>=25?"pointer":"not-allowed",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
+              style={{background:stats.pendingPayout>=25?"#8b5cf6":C.surface,border:stats.pendingPayout>=25?"none":`1px solid ${C.border}`,color:stats.pendingPayout>=25?"#fff":C.textDim,padding:"10px 22px",borderRadius:8,cursor:stats.pendingPayout>=25?"pointer":"not-allowed",fontWeight:700,fontSize:12,fontFamily:C.F,flexShrink:0}}>
               {stats.pendingPayout>=25?`Request $${stats.pendingPayout.toFixed(2)} Payout`:"Min. $25 Required"}
             </button>
           </div>
@@ -4146,7 +4145,7 @@ function CommissionCalculator({user, planKey}){
           ))}
         </div>
         <button onClick={calculate}
-          style={{width:"100%",marginTop:16,background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
+          style={{width:"100%",marginTop:16,background:"#8b5cf6",border:"none",color:"#fff",padding:"13px 0",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14,fontFamily:C.F}}>
           🧮 Calculate
         </button>
       </div>
@@ -4165,7 +4164,7 @@ function CommissionCalculator({user, planKey}){
                 ["E&O / Fees",`-${fmt(calc.eAndO)}`,C.rose,false],
                 ["Net Before Tax",fmt(calc.netBeforeTax),C.cyan,true],
                 [`Tax (${calc.taxRate}%)`,`-${fmt(calc.taxAmt)}`,C.rose,false],
-                ["🏦 NET TAKE-HOME",fmt(calc.netAfterTax),"#22C55E",true],
+                ["🏦 NET TAKE-HOME",fmt(calc.netAfterTax),"#10b981",true],
               ].map(([label,val,color,bold])=>(
                 <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
                   <span style={{fontFamily:C.F,fontSize:bold?14:13,color:bold?C.text:C.textMd,fontWeight:bold?700:400}}>{label}</span>
@@ -4185,7 +4184,7 @@ function CommissionCalculator({user, planKey}){
                 ["Property Tax",`${fmt(calc.monthlyTax)}/mo`,C.textMd,false],
                 ["Homeowners Insurance",`${fmt(calc.monthlyIns)}/mo`,C.textMd,false],
                 ["HOA",`${fmt(calc.monthlyHoa)}/mo`,C.textMd,false],
-                ["💰 TOTAL MONTHLY",`${fmt(calc.totalMonthly)}/mo`,"#22C55E",true],
+                ["💰 TOTAL MONTHLY",`${fmt(calc.totalMonthly)}/mo`,"#10b981",true],
                 ["Income Needed (28% rule)",`${fmt(calc.incomeNeeded)}/yr`,C.violet,true],
               ].map(([label,val,color,bold])=>(
                 <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:`1px solid ${C.border}`}}>
@@ -4199,7 +4198,7 @@ function CommissionCalculator({user, planKey}){
           {/* AI Explainer */}
           {!aiExplain&&(
             <button onClick={generateAiExplainer} disabled={loadingAi}
-              style={{width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:loadingAi?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:loadingAi?.7:1,marginBottom:16}}>
+              style={{width:"100%",background:"#8b5cf6",border:"none",color:"#fff",padding:"12px 0",borderRadius:9,cursor:loadingAi?"default":"pointer",fontWeight:700,fontSize:13,fontFamily:C.F,opacity:loadingAi?.7:1,marginBottom:16}}>
               {loadingAi?"✨ Generating AI Explainer...":"✨ Generate AI Client Explainer"}
             </button>
           )}
@@ -4367,7 +4366,7 @@ function useNotifications({ credits, planKey, onNavigate }){
             id,
             type:"warning",
             icon:"🤖",
-            color:"#4257DB",
+            color:"#7c3aed",
             title:`Autopilot: ${critRisks[0].deal} at risk`,
             body:critRisks[0].risk?.slice(0,80)||"Open Autopilot for details",
             action:"Open Situation Room",
@@ -4497,8 +4496,8 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
     <div style={{position:"fixed",inset:0,
       background:"rgba(4,4,10,.94)",
       display:"flex",alignItems:"center",justifyContent:"center",
-      zIndex:1000,backdropFilter:"blur(20px)",
-      WebkitBackdropFilter:"blur(20px)",
+      zIndex:1000,backdropFilter: "none",
+      WebkitBackdropFilter: "none",
       animation:"fadeIn .22s ease"}}
       onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
 
@@ -4507,7 +4506,7 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
         border:`1px solid ${C.borderMd}`,
         borderRadius:22,padding:"36px 28px",
         maxWidth:460,width:"92%",
-        boxShadow:"0 48px 96px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.04)",
+        boxShadow: "none",
         animation:"scaleIn .28s cubic-bezier(.34,1.56,.64,1)",
         position:"relative",overflow:"hidden",maxHeight:"92vh",overflowY:"auto"}}>
 
@@ -4600,11 +4599,11 @@ function UpgradeModal({ planKey, credits, usage, onClose, onUpgrade }){
         {/* CTA */}
         <button onClick={onUpgrade}
           style={{width:"100%",
-            background:"linear-gradient(135deg,#4F6BFF,#4257DB)",
+            background:"#8b5cf6",
             border:"none",color:"#fff",padding:"15px 0",borderRadius:12,
             cursor:"pointer",fontWeight:800,fontSize:15,fontFamily:C.F,
             letterSpacing:.3,marginBottom:10,
-            boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 8px 28px rgba(79, 107, 255,.35)",
+            boxShadow: "none",
             transition:"all .2s ease"}}>
           Upgrade to Pro — ${plan.price}/month ⚡
         </button>
@@ -4845,8 +4844,8 @@ function MainApp({user,onLogout}){
       position:"fixed",bottom:0,left:0,right:0,
       background:"rgba(4,4,10,.96)",
       borderTop:`1px solid ${C.border}`,
-      backdropFilter:"blur(28px)",
-      WebkitBackdropFilter:"blur(28px)",
+      backdropFilter: "none",
+      WebkitBackdropFilter: "none",
       display:"flex",alignItems:"stretch",
       zIndex:200,
       paddingBottom:"env(safe-area-inset-bottom)",
@@ -4861,7 +4860,7 @@ function MainApp({user,onLogout}){
               position:"relative",minHeight:58}}>
             {/* Active background pill */}
             {active&&<div style={{position:"absolute",inset:"6px 4px",borderRadius:10,
-              background:`linear-gradient(135deg,${C.indigo}18,${C.violet}0e)`,
+              background:`#18181b`,
               border:`1px solid ${C.indigo}28`}}/>}
             <span style={{
               color:active?BRAND.purpleLt:"rgba(255,255,255,.32)",
@@ -4885,7 +4884,7 @@ function MainApp({user,onLogout}){
             {item.id==="autopilot"&&planKey==="premium"&&(()=>{ try{ return localStorage.getItem("spark_autopilot_last_run"); }catch(e){ return null; } })()&&(
               <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
                 width:5,height:5,borderRadius:"50%",
-                background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+                background:C.emerald,boxShadow: "none"}}/>
             )}
           </button>
         );
@@ -4902,7 +4901,7 @@ function MainApp({user,onLogout}){
           background:"transparent",border:"none",cursor:"pointer",
           position:"relative",minHeight:58}}>
         {(moreTabActive||showMoreMenu)&&<div style={{position:"absolute",inset:"6px 4px",borderRadius:10,
-          background:`linear-gradient(135deg,${C.indigo}18,${C.violet}0e)`,
+          background:`#18181b`,
           border:`1px solid ${C.indigo}28`}}/>}
         <span style={{color:(moreTabActive||showMoreMenu)?C.indigoLt:"rgba(255,255,255,.32)",
           transition:"all .16s ease",position:"relative",zIndex:1}}>
@@ -4916,7 +4915,7 @@ function MainApp({user,onLogout}){
         {(credits<5&&planKey!=="premium")&&(
           <div style={{position:"absolute",top:7,right:"calc(50% - 12px)",
             width:6,height:6,borderRadius:"50%",
-            background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
+            background:C.rose,boxShadow: "none"}}/>
         )}
       </button>
     </div>
@@ -4931,7 +4930,7 @@ function MainApp({user,onLogout}){
         <div style={{
           position:"fixed",bottom:"calc(58px + env(safe-area-inset-bottom))",left:0,right:0,zIndex:200,
           background:"rgba(10,10,16,.98)",borderTop:`1px solid ${C.border}`,
-          borderRadius:"16px 16px 0 0",backdropFilter:"blur(28px)",WebkitBackdropFilter:"blur(28px)",
+          borderRadius:"16px 16px 0 0",backdropFilter: "none",WebkitBackdropFilter: "none",
           padding:"8px 8px calc(8px + env(safe-area-inset-bottom))",
           display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,
         }}>
@@ -4946,11 +4945,11 @@ function MainApp({user,onLogout}){
                 <span style={{fontFamily:C.F,fontSize:13,fontWeight:600,color:active?BRAND.purpleLt:C.text}}>{item.label}</span>
                 {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
                   <div style={{position:"absolute",top:8,right:8,width:6,height:6,borderRadius:"50%",
-                    background:C.rose,boxShadow:`0 0 6px ${C.rose}`}}/>
+                    background:C.rose,boxShadow: "none"}}/>
                 )}
                 {item.id==="affiliate"&&(
                   <div style={{position:"absolute",top:8,right:8,width:5,height:5,borderRadius:"50%",
-                    background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+                    background:C.emerald,boxShadow: "none"}}/>
                 )}
               </button>
             );
@@ -4966,8 +4965,8 @@ function MainApp({user,onLogout}){
     <div style={{position:"sticky",top:0,zIndex:100,
       background:"rgba(4,4,10,.92)",
       borderBottom:`1px solid ${C.border}`,
-      backdropFilter:"blur(28px)",
-      WebkitBackdropFilter:"blur(28px)",
+      backdropFilter: "none",
+      WebkitBackdropFilter: "none",
       padding:"10px 16px",
       paddingTop:"calc(10px + env(safe-area-inset-top))"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -4978,11 +4977,11 @@ function MainApp({user,onLogout}){
             credits pill, so removing the dedicated button here just gives
             the header its space back without losing the action anywhere. */}
         <div onClick={()=>setTab("settings")} style={{display:"flex",alignItems:"center",gap:6,
-          background:`linear-gradient(135deg,${plan.accent}14,${C.violet}0a)`,
+          background:`#18181b`,
           border:`1px solid ${plan.accent}30`,
           borderRadius:10,padding:"6px 11px",cursor:"pointer",
-          boxShadow:`0 0 12px ${plan.accent}18`}}>
-          <div style={{width:5,height:5,borderRadius:"50%",background:plan.accent,boxShadow:`0 0 6px ${plan.accent}`}}/>
+          boxShadow: "none"}}>
+          <div style={{width:5,height:5,borderRadius:"50%",background:plan.accent,boxShadow: "none"}}/>
           <span style={{fontSize:13,color:C.text,fontFamily:C.F,fontWeight:800,letterSpacing:-.3}}>{displayCredits(credits)}</span>
           <span style={{fontSize:9,color:plan.accent,fontFamily:C.F,fontWeight:700,letterSpacing:.5}}>CR</span>
         </div>
@@ -4996,8 +4995,8 @@ function MainApp({user,onLogout}){
       background:"rgba(4,4,10,.95)",
       borderRight:`1px solid ${C.border}`,
       display:"flex",flexDirection:"column",flexShrink:0,
-      backdropFilter:"blur(28px)",
-      WebkitBackdropFilter:"blur(28px)",
+      backdropFilter: "none",
+      WebkitBackdropFilter: "none",
       position:"relative",zIndex:10}}>
       {/* Logo area */}
       <div style={{padding:"22px 18px 18px",borderBottom:`1px solid ${C.border}`}}>
@@ -5036,7 +5035,7 @@ function MainApp({user,onLogout}){
               )}
               {item.id==="autopilot"&&planKey==="premium"&&(
                 <span style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",flexShrink:0,
-                  background:C.emerald,boxShadow:`0 0 5px ${C.emerald}`}}/>
+                  background:C.emerald,boxShadow: "none"}}/>
               )}
               {item.id==="settings"&&credits<5&&planKey!=="premium"&&(
                 <span style={{marginLeft:"auto",fontSize:7,color:C.rose,
@@ -5062,9 +5061,9 @@ function MainApp({user,onLogout}){
         <div style={{height:4,background:"rgba(255,255,255,.05)",borderRadius:2,overflow:"hidden",marginBottom:8}}>
           <div style={{height:"100%",
             width:plan.credits>=999?"100%":`${Math.min(100,(credits/Math.max(plan.credits,1))*100)}%`,
-            background:plan.credits>=999?`linear-gradient(90deg,${C.violet},${C.indigoLt})`:`linear-gradient(90deg,${credits<5?C.rose:plan.accent},${C.indigoLt})`,
+            background:plan.credits>=999?`${C.violet}`:`linear-gradient(90deg,${credits<5?C.rose:plan.accent},${C.indigoLt})`,
             borderRadius:2,transition:"width .6s ease",
-            boxShadow:plan.credits>=999?`0 0 6px ${C.violet}60`:`0 0 6px ${credits<5?C.rose:plan.accent}60`}}/>
+            boxShadow: "none"}}/>
         </div>
         <button className="btn-o" onClick={()=>setTab("settings")}
           style={{width:"100%",background:"rgba(79, 107, 255,.05)",
@@ -5079,10 +5078,10 @@ function MainApp({user,onLogout}){
       <div style={{padding:"14px 12px",borderTop:`1px solid ${C.border}`}}>
         <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
           <div style={{width:30,height:30,borderRadius:"50%",
-            background:`linear-gradient(135deg,${plan.accent},${C.violet})`,
+            background:`${plan.accent}`,
             display:"flex",alignItems:"center",justifyContent:"center",
             fontSize:12,fontWeight:800,color:"#fff",flexShrink:0,
-            boxShadow:`0 2px 8px ${plan.accent}40`}}>
+            boxShadow: "none"}}>
             {(user?.email||"?")[0].toUpperCase()}
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -5249,7 +5248,7 @@ function FoundingMemberBanner({onStart}){
 
   return(
     <div style={{maxWidth:720,margin:"0 auto 64px",padding:"0 24px"}}>
-      <div style={{background:`linear-gradient(135deg,${C.amber}10,${C.rose}08)`,
+      <div style={{background:`#18181b`,
         border:`1.5px solid ${C.amber}35`,borderRadius:18,padding:"28px 28px 24px",
         position:"relative",overflow:"hidden",textAlign:"center"}}>
         <div style={{position:"absolute",top:"-40%",right:"-10%",width:220,height:220,
@@ -5285,17 +5284,17 @@ function FoundingMemberBanner({onStart}){
           </div>
           <div style={{height:8,borderRadius:5,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
             <div style={{height:"100%",width:`${pctFilled}%`,borderRadius:5,
-              background:`linear-gradient(90deg,${C.amber},${C.rose})`,
+              background:`${C.amber}`,
               transition:"width .5s ease"}}/>
           </div>
         </div>
 
         <button onClick={()=>{ window.history.replaceState(null,"","?founding=true"); onStart("signup"); }} disabled={soldOut}
-          style={{marginTop:14,background:soldOut?"rgba(255,255,255,.08)":`linear-gradient(135deg,${C.amber},${C.rose})`,
+          style={{marginTop:14,background:soldOut?"rgba(255,255,255,.08)":`${C.amber}`,
             border:"none",color:soldOut?C.textDim:"#fff",
             padding:"14px 32px",borderRadius:11,cursor:soldOut?"default":"pointer",
             fontWeight:800,fontSize:14,fontFamily:C.F,letterSpacing:.2,
-            boxShadow:soldOut?"none":`0 8px 28px ${C.amber}30`,position:"relative"}}>
+            boxShadow: "none",position:"relative"}}>
           {soldOut ? "Cohort full — join the waitlist" : "Claim your Founding Member spot →"}
         </button>
       </div>
@@ -5423,7 +5422,7 @@ function LandingPage({onStart}){
         {/* NAV */}
         <nav style={{padding:"0 24px",height:60,display:"flex",justifyContent:"space-between",
           alignItems:"center",borderBottom:`1px solid ${C.border}`,
-          backdropFilter:"blur(24px)",background:"rgba(4,4,10,.88)",
+          backdropFilter: "none",background:"rgba(4,4,10,.88)",
           position:"sticky",top:0,zIndex:100}}>
           <Logo/>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -5432,10 +5431,10 @@ function LandingPage({onStart}){
                 padding:"7px 14px",borderRadius:8,cursor:"pointer",
                 fontSize:13,fontWeight:500,fontFamily:C.F}}>Sign in</button>
             <button onClick={()=>onStart("signup")}
-              style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
+              style={{background:"#8b5cf6",border:"none",
                 color:"#fff",padding:"8px 20px",borderRadius:8,cursor:"pointer",
                 fontSize:13,fontWeight:700,fontFamily:C.F,
-                boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 4px 16px rgba(79, 107, 255,.25)"}}>
+                boxShadow: "none"}}>
               Start free ⚡
             </button>
           </div>
@@ -5462,10 +5461,10 @@ function LandingPage({onStart}){
           </p>
           <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:16,animation:anim(.2)}}>
             <button onClick={()=>onStart("signup")}
-              style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
+              style={{background:"#8b5cf6",border:"none",
                 color:"#fff",padding:"16px 36px",borderRadius:12,cursor:"pointer",
                 fontWeight:800,fontSize:16,fontFamily:C.F,letterSpacing:.2,
-                boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 10px 36px rgba(79, 107, 255,.3)"}}>
+                boxShadow: "none"}}>
               Start free — no card required ⚡
             </button>
           </div>
@@ -5496,7 +5495,7 @@ function LandingPage({onStart}){
                 </div>
               ))}
               <div style={{display:"flex",alignItems:"center",gap:8,
-                background:`linear-gradient(135deg,${C.indigo}14,${C.violet}0a)`,
+                background:`#18181b`,
                 border:`1px solid ${C.indigo}30`,borderRadius:10,padding:"8px 18px"}}>
                 <span style={{fontFamily:C.F,fontWeight:800,fontSize:13,color:C.indigoLt}}>SPARK</span>
                 <div>
@@ -5557,23 +5556,23 @@ function LandingPage({onStart}){
                 </div>
                 {section.premium&&(
                   <button onClick={()=>onStart("signup")}
-                    style={{marginTop:22,background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                    style={{marginTop:22,background:`#8b5cf6`,
                       border:"none",color:"#fff",padding:"12px 28px",borderRadius:10,
                       cursor:"pointer",fontWeight:800,fontSize:13,fontFamily:C.F,
-                      boxShadow:`0 0 0 1px ${C.violet}40,0 6px 22px ${C.violet}28`}}>
+                      boxShadow: "none"}}>
                     Try Autopilot free
                   </button>
                 )}
               </div>
               <div style={{order:i%2===0?1:0}}>
-                <div style={{background:`linear-gradient(135deg,${C.surface},${C.surfaceUp})`,
+                <div style={{background:`${C.surface}`,
                   border:`1px solid ${section.color}28`,borderRadius:16,padding:"28px 24px",
-                  boxShadow:`0 8px 32px ${section.color}12,0 0 0 1px ${section.color}08`}}>
+                  boxShadow: "none"}}>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
                     <div style={{width:36,height:36,borderRadius:10,flexShrink:0,
                       background:`linear-gradient(135deg,${section.color},${section.color}88)`,
                       display:"flex",alignItems:"center",justifyContent:"center",
-                      boxShadow:`0 4px 12px ${section.color}30`}}>
+                      boxShadow: "none"}}>
                       {Icon[section.icon] && (()=>{ const SI=Icon[section.icon]; return <SI size={17} color="#fff"/>; })()}
                     </div>
                     <div>
@@ -5583,8 +5582,8 @@ function LandingPage({onStart}){
                       <div style={{display:"flex",gap:4,marginTop:4}}>
                         <div style={{width:5,height:5,borderRadius:"50%",
                           background:section.premium?C.violet:C.emerald,
-                          boxShadow:`0 0 4px ${section.premium?C.violet:C.emerald}`,
-                          animation:section.premium?"pulse 2s ease infinite":"none"}}/>
+                          boxShadow: "none",
+                          animation:section.premium?"none":"none"}}/>
                         <span style={{fontFamily:C.F,fontSize:9,color:section.premium?C.violet:C.emerald}}>
                           {section.premium?"Premium · Always on":"Active"}
                         </span>
@@ -5624,7 +5623,7 @@ function LandingPage({onStart}){
                 <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,lineHeight:1.75,margin:"0 0 18px",fontStyle:"italic"}}>"{t.quote}"</p>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <div style={{width:32,height:32,borderRadius:"50%",flexShrink:0,
-                    background:`linear-gradient(135deg,${C.indigo},${C.violet})`,
+                    background:`#8b5cf6`,
                     display:"flex",alignItems:"center",justifyContent:"center",
                     fontSize:13,fontWeight:800,color:"#fff"}}>{t.name[0]}</div>
                   <div>
@@ -5720,10 +5719,10 @@ function LandingPage({onStart}){
                 10 free credits. No card. No commitment. In 30 seconds you'll see why agents call SPARK the last real estate tool they'll ever need.
               </p>
               <button onClick={()=>onStart("signup")}
-                style={{background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",
+                style={{background:"#8b5cf6",border:"none",
                   color:"#fff",padding:"16px 40px",borderRadius:12,cursor:"pointer",
                   fontWeight:800,fontSize:16,fontFamily:C.F,letterSpacing:.2,
-                  boxShadow:"0 0 0 1px rgba(79, 107, 255,.4),0 10px 36px rgba(79, 107, 255,.3)",
+                  boxShadow: "none",
                   marginBottom:16}}>
                 Start for free ⚡
               </button>
@@ -6038,7 +6037,7 @@ function AuthPage({mode,onAuth,onSwitch}){
               <h2 style={{fontFamily:C.F,fontWeight:800,fontSize:20,marginBottom:8,color:C.text}}>Reset your password</h2>
               <p style={{fontFamily:C.F,fontSize:13,color:C.textMd,margin:0}}>Enter your email and we will send a reset link.</p>
             </div>
-            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"28px 24px",boxShadow:"0 40px 80px rgba(0,0,0,.5)"}}>
+            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"28px 24px",boxShadow: "none"}}>
               <div style={{marginBottom:16}}>
                 <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>EMAIL</div>
                 <input type="email" value={resetEmail} onChange={e=>setResetEmail(e.target.value)}
@@ -6047,7 +6046,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                   onBlur={e=>e.target.style.borderColor="rgba(255,255,255,.06)"}/>
               </div>
               <button onClick={sendReset} disabled={resetSending}
-                style={{width:"100%",background:"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:resetSending?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:resetSending?.7:1}}>
+                style={{width:"100%",background:"#8b5cf6",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:resetSending?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:resetSending?.7:1}}>
                 {resetSending?<><div style={{width:16,height:16,borderRadius:"50%",border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",animation:"spin .7s linear infinite"}}/>Sending...</>:"Send Reset Link"}
               </button>
               <div style={{textAlign:"center",marginTop:16}}>
@@ -6075,7 +6074,7 @@ function AuthPage({mode,onAuth,onSwitch}){
                 borderRadius:10,padding:"12px 16px",marginBottom:16,
                 display:"flex",alignItems:"center",gap:10}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:C.emerald,
-                  boxShadow:`0 0 6px ${C.emerald}`,flexShrink:0}}/>
+                  boxShadow: "none",flexShrink:0}}/>
                 <div>
                   <div style={{fontFamily:C.F,fontWeight:700,fontSize:12,color:C.emerald}}>
                     Google connected successfully ✓
@@ -6090,7 +6089,7 @@ function AuthPage({mode,onAuth,onSwitch}){
               </div>
             )}
 
-            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"28px 24px",boxShadow:"0 40px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04)"}}>
+            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:16,padding:"28px 24px",boxShadow: "none"}}>
 
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:10,color:C.textDim,letterSpacing:1.5,fontFamily:C.F,fontWeight:700,marginBottom:6}}>EMAIL</div>
@@ -6160,7 +6159,7 @@ function AuthPage({mode,onAuth,onSwitch}){
               )}
 
               <button onClick={submit} disabled={loading}
-                style={{width:"100%",background:loading?"rgba(79, 107, 255,.5)":"linear-gradient(135deg,#4F6BFF,#4257DB)",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow:"0 4px 18px rgba(79, 107, 255,.24)",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxSizing:"border-box"}}>
+                style={{width:"100%",background:loading?"rgba(79, 107, 255,.5)":"#8b5cf6",border:"none",color:"#fff",padding:"13px 0",borderRadius:10,cursor:loading?"not-allowed":"pointer",fontWeight:700,fontSize:14,fontFamily:C.F,boxShadow: "none",display:"flex",alignItems:"center",justifyContent:"center",gap:8,boxSizing:"border-box"}}>
                 {loading?(
                   <><div style={{width:16,height:16,borderRadius:"50%",border:"2px solid rgba(255,255,255,.3)",borderTopColor:"#fff",animation:"spin .7s linear infinite"}}/>{mode==="login"?"Signing in...":"Creating account..."}</>
                 ):(
@@ -6259,7 +6258,7 @@ function PublicLeadCapture({ agentEmail }){
       <div style={{width:"100%",maxWidth:440}}>
         <div style={{display:"flex",alignItems:"center",gap:9,justifyContent:"center",marginBottom:28}}>
           <div style={{width:30,height:30,borderRadius:8,
-            background:"linear-gradient(135deg,#4F6BFF,#4257DB)",
+            background:"#8b5cf6",
             display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>⚡</div>
           <span style={{fontFamily:C.F,fontWeight:800,fontSize:15,color:"#fff",letterSpacing:-0.3}}>SPARK</span>
         </div>
@@ -6325,10 +6324,10 @@ function PublicLeadCapture({ agentEmail }){
               )}
 
               <button type="submit" disabled={submitting}
-                style={{width:"100%",background:submitting?"rgba(255,255,255,.06)":"linear-gradient(135deg,#4F6BFF,#4257DB)",
+                style={{width:"100%",background:submitting?"rgba(255,255,255,.06)":"#8b5cf6",
                   border:"none",color:"#fff",borderRadius:11,padding:"13px 0",
                   cursor:submitting?"default":"pointer",fontFamily:C.F,fontWeight:800,fontSize:14,
-                  boxShadow:submitting?"none":"0 4px 16px rgba(79, 107, 255,.3)",marginTop:4}}>
+                  boxShadow: "none",marginTop:4}}>
                 {submitting?"Sending...":"Send"}
               </button>
             </form>

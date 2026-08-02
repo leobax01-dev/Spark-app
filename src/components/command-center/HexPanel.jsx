@@ -35,7 +35,7 @@ export default function HexPanel({ children, accent = C.cyan, pulse = 0, style =
           WebkitMaskComposite: "xor",
           maskComposite: "exclude",
           pointerEvents: "none",
-          filter: `drop-shadow(0 0 ${6 + pulse * 10}px ${accent}55)`,
+          filter: "none",
           transition: "filter .3s ease",
         }}
       />

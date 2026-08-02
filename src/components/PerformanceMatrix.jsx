@@ -38,13 +38,13 @@ import SparkBoot from "./SparkBoot";
 const F = "'Plus Jakarta Sans',sans-serif";
 const MONO = "'JetBrains Mono','Courier New',monospace";
 
-const PURPLE = "#a855f7";
-const PURPLE_LT = "#c084fc";
-const CYAN = "#22d3ee";
-const GREEN = "#22C55E";
-const AMBER = "#ffb020";
-const RED = "#ff3b5c";
-const GOLD = "#fbbf24";
+const PURPLE = "#8b5cf6";
+const PURPLE_LT = "#a78bfa";
+const CYAN = "#38bdf8";
+const GREEN = "#10b981";
+const AMBER = "#f59e0b";
+const RED = "#ef4444";
+const GOLD = "#f59e0b";
 const SILVER = "#cbd5e1";
 const BRONZE = "#d97706";
 const SLATE = "rgba(226,232,240,0.9)";
@@ -114,9 +114,9 @@ function MetricCard({ icon: IconCmp, label, primary, value, format, accent, badg
       className="backdrop-blur-2xl bg-black/60 border border-white/10 rounded-xl p-4"
       style={{
         flex: 1, position: "relative", overflow: "hidden", minWidth: 0,
-        background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+        background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
         border: `1px solid ${accent}33`, borderRadius: 12, padding: 14,
-        boxShadow: `inset 0 0 30px ${accent}0d, 0 0 20px ${accent}12`,
+        boxShadow: "none",
         display: "flex", flexDirection: "column", gap: 5,
       }}
     >
@@ -126,7 +126,7 @@ function MetricCard({ icon: IconCmp, label, primary, value, format, accent, badg
             <AreaChart data={spark} margin={{ top: 26, right: 0, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={accent} stopOpacity={0.8} />
+                  <stop offset="0%" stopColor={accent} stopOpacity={0.4} />
                   <stop offset="100%" stopColor={accent} stopOpacity={0} />
                 </linearGradient>
               </defs>
@@ -142,11 +142,11 @@ function MetricCard({ icon: IconCmp, label, primary, value, format, accent, badg
       {primary && (
         <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: "#fff", position: "relative", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{primary}</div>
       )}
-      <div className="font-mono" style={{ fontFamily: MONO, fontSize: 20, fontWeight: 800, color: "#fff", textShadow: `0 0 14px ${accent}88`, letterSpacing: -0.4, position: "relative", whiteSpace: "nowrap" }}>
+      <div className="font-mono" style={{ fontFamily: MONO, fontSize: 20, fontWeight: 800, color: "#fff", textShadow: "none", letterSpacing: -0.4, position: "relative", whiteSpace: "nowrap" }}>
         <Ticker value={value} format={format} />
       </div>
       {badge && (
-        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 8, fontWeight: 800, letterSpacing: 0.8, color: badgeColor, textShadow: `0 0 9px ${badgeColor}77`, position: "relative" }}>
+        <div className="font-mono" style={{ fontFamily: MONO, fontSize: 8, fontWeight: 800, letterSpacing: 0.8, color: badgeColor, textShadow: "none", position: "relative" }}>
           {badge}
         </div>
       )}
@@ -166,9 +166,9 @@ function GlassTooltip({ active, payload }) {
   ];
   return (
     <div className="backdrop-blur-2xl bg-black/60 border border-white/10" style={{
-      background: "rgba(4,4,8,0.9)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+      background: "rgba(4,4,8,0.9)", backdropFilter: "none", WebkitBackdropFilter: "none",
       border: `1px solid ${PURPLE}55`, borderRadius: 10, padding: "10px 13px",
-      fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 205, boxShadow: `0 0 24px ${PURPLE}33`,
+      fontFamily: MONO, fontSize: 10.5, color: "#fff", minWidth: 205, boxShadow: "none",
     }}>
       <div style={{ fontWeight: 800, marginBottom: 6, letterSpacing: 1, color: PURPLE_LT }}>{a.name.toUpperCase()}</div>
       {rows.map(([k, v]) => (
@@ -432,15 +432,15 @@ export default function PerformanceMatrix({ user, onNavigate }) {
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }}
           style={{
             position: "fixed", top: 20, left: "50%", transform: "translateX(-50%)", zIndex: 60,
-            background: "rgba(6,6,12,0.94)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+            background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
             border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "11px 20px", color: "#fff",
-            fontFamily: F, fontSize: 12, fontWeight: 700, boxShadow: `0 0 26px ${PURPLE}55`, whiteSpace: "nowrap",
+            fontFamily: F, fontSize: 12, fontWeight: 700, boxShadow: "none", whiteSpace: "nowrap",
           }}>{toast}</motion.div>
       )}
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <TrendingUp size={20} color={PURPLE_LT} style={{ filter: `drop-shadow(0 0 8px ${PURPLE}aa)` }} />
+        <TrendingUp size={20} color={PURPLE_LT} style={{ filter: "none"}} />
         <div>
           <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, letterSpacing: 1.4, color: "#fff" }}>PERFORMANCE MATRIX</div>
           <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, color: SLATE_DIM, letterSpacing: 2 }}>
@@ -451,7 +451,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
           <span className="font-mono" style={{
             marginLeft: "auto", fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.2,
             color: AMBER, background: `${AMBER}14`, border: `1px solid ${AMBER}66`, borderRadius: 999,
-            padding: "5px 12px", boxShadow: `0 0 12px ${AMBER}33`,
+            padding: "5px 12px", boxShadow: "none",
           }}>
             ⚠ SIMULATED DESK · SPARSE LIVE DATA
           </span>
@@ -490,8 +490,8 @@ export default function PerformanceMatrix({ user, onNavigate }) {
       <div
         className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16, height: 300, flexShrink: 0,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 14, padding: 16, height: 300, flexShrink: 0,
           display: "flex", flexDirection: "column",
         }}
       >
@@ -507,9 +507,9 @@ export default function PerformanceMatrix({ user, onNavigate }) {
                   fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 0.8, padding: "6px 11px",
                   borderRadius: 7, cursor: "pointer", textTransform: "uppercase",
                   background: view === v.id ? `${PURPLE}22` : "transparent",
-                  border: `1px solid ${view === v.id ? PURPLE : "rgba(255,255,255,0.12)"}`,
+                  border: `1px solid ${view === v.id ? PURPLE : "#27272a"}`,
                   color: view === v.id ? PURPLE_LT : SLATE_DIM,
-                  boxShadow: view === v.id ? `0 0 12px ${PURPLE}44` : "none",
+                  boxShadow: "none",
                 }}>{v.label}</button>
             ))}
           </div>
@@ -525,32 +525,32 @@ export default function PerformanceMatrix({ user, onNavigate }) {
               <ComposedChart data={chartData} margin={{ top: 8, right: 14, bottom: 0, left: 0 }}>
                 <defs>
                   <linearGradient id="pmBar" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={PURPLE} stopOpacity={0.95} />
-                    <stop offset="100%" stopColor={CYAN} stopOpacity={0.35} />
+                    <stop offset="0%" stopColor={PURPLE} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={CYAN} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid stroke="rgba(148,163,184,0.1)" vertical={false} />
-                <XAxis dataKey="name" stroke="rgba(255,255,255,0.22)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: F }} />
-                <YAxis yAxisId="l" stroke="rgba(255,255,255,0.22)" tick={{ fill: SLATE_DIM, fontSize: 9.5, fontFamily: MONO }}
+                <CartesianGrid stroke="#27272a" vertical={false} strokeDasharray="3 3" />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: F }} />
+                <YAxis yAxisId="l" stroke="rgba(255,255,255,0.22)" tick={{ fill: "#71717a", fontSize: 9.5, fontFamily: MONO }}
                   tickFormatter={view === "volume" ? fmtMoney : view === "velocity" ? (v) => `${Math.round(v)}d` : (v) => `${Math.round(v)}%`} />
-                <YAxis yAxisId="r" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "rgba(148,163,184,0.45)", fontSize: 9, fontFamily: MONO }}
+                <YAxis yAxisId="r" orientation="right" stroke="rgba(255,255,255,0.14)" tick={{ fill: "#71717a", fontSize: 9, fontFamily: MONO }}
                   tickFormatter={view === "volume" ? fmtMoney : (v) => `${Math.round(v)}`} />
-                <Tooltip content={<GlassTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Tooltip content={<GlassTooltip />} cursor={{ fill: "#18181b" }} />
                 {view === "volume" && <>
                   <Bar yAxisId="l" dataKey="activeVolume" name="Active Volume" isAnimationActive={false} radius={[4, 4, 0, 0]}
-                    shape={(p) => <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="url(#pmBar)" style={{ filter: `drop-shadow(0 0 6px ${PURPLE}55)` }} />} />
+                    shape={(p) => <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="url(#pmBar)" style={{ filter: "none"}} />} />
                   <Line yAxisId="r" type="monotone" dataKey="gciYield" name="GCI / Deal" stroke={PURPLE_LT} strokeWidth={2}
                     isAnimationActive={false} dot={{ r: 3, fill: PURPLE_LT, strokeWidth: 0 }} />
                 </>}
                 {view === "velocity" && <>
                   <Bar yAxisId="l" dataKey="domValue" name="Avg DOM" isAnimationActive={false} radius={[4, 4, 0, 0]}
-                    shape={(p) => <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="url(#pmBar)" style={{ filter: `drop-shadow(0 0 6px ${CYAN}55)` }} />} />
+                    shape={(p) => <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="url(#pmBar)" style={{ filter: "none"}} />} />
                   <Line yAxisId="r" type="monotone" dataKey="activeDeals" name="Active Files" stroke={CYAN} strokeWidth={2}
                     isAnimationActive={false} dot={{ r: 3, fill: CYAN, strokeWidth: 0 }} />
                 </>}
                 {view === "conversion" && <>
                   <Bar yAxisId="l" dataKey="closeRate" name="Close Rate" isAnimationActive={false} radius={[4, 4, 0, 0]}
-                    shape={(p) => <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="url(#pmBar)" style={{ filter: `drop-shadow(0 0 6px ${GREEN}55)` }} />} />
+                    shape={(p) => <rect x={p.x} y={p.y} width={p.width} height={p.height} rx={4} fill="url(#pmBar)" style={{ filter: "none"}} />} />
                   <Line yAxisId="r" type="monotone" dataKey="total" name="Total Files" stroke={GREEN} strokeWidth={2}
                     isAnimationActive={false} dot={{ r: 3, fill: GREEN, strokeWidth: 0 }} />
                 </>}
@@ -564,8 +564,8 @@ export default function PerformanceMatrix({ user, onNavigate }) {
       <div
         className="backdrop-blur-2xl bg-black/60 border border-white/10"
         style={{
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-          border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16, flexShrink: 0,
+          background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+          border: "1px solid #27272a", borderRadius: 14, padding: 16, flexShrink: 0,
         }}
       >
         <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 12 }}>
@@ -576,12 +576,12 @@ export default function PerformanceMatrix({ user, onNavigate }) {
             <div key={n.k} style={{ flex: 1, display: "flex", alignItems: "center", minWidth: 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="tracking-wider" style={{ fontFamily: F, fontSize: 8, fontWeight: 800, letterSpacing: 1.2, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 6 }}>{n.k}</div>
-                <div className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: "#fff", textShadow: `0 0 14px ${PURPLE}66`, marginBottom: 7 }}>{n.v}</div>
-                <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                <div className="font-mono" style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: "#fff", textShadow: "none", marginBottom: 7 }}>{n.v}</div>
+                <div style={{ height: 6, borderRadius: 999, background: "#27272a", overflow: "hidden" }}>
                   {/* CSS width transition rather than a staggered motion
                       animation — a frozen bar would understate conversion. */}
                   <div style={{ height: "100%", width: `${n.pct}%`, transition: `width .7s ease ${i * 0.1}s`,
-                    background: `linear-gradient(90deg,${PURPLE},${CYAN})`, boxShadow: `0 0 10px ${PURPLE}88` }} />
+                    background: `${PURPLE}`, boxShadow: "none"}} />
                 </div>
               </div>
               {i < funnel.length - 1 && (
@@ -603,9 +603,9 @@ export default function PerformanceMatrix({ user, onNavigate }) {
         <div
           className="backdrop-blur-2xl bg-black/60 border border-white/10"
           style={{
-            flex: selected ? "1 1 62%" : "1 1 100%", background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-            border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+            flex: selected ? "1 1 62%" : "1 1 100%", background: "#111111",
+            backdropFilter: "none", WebkitBackdropFilter: "none",
+            border: "1px solid #27272a", borderRadius: 14, padding: 16,
             display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden",
             transition: "flex .28s ease",
           }}
@@ -613,7 +613,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
           <div className="tracking-wider text-slate-400" style={{ fontFamily: F, fontSize: 9, fontWeight: 800, letterSpacing: 1.8, color: SLATE_DIM, textTransform: "uppercase", marginBottom: 10 }}>
             Tactical Agent Leaderboard
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "0.5fr 1.5fr 1.1fr 1fr 0.9fr 0.8fr 0.7fr 0.8fr", gap: 8, padding: "0 8px 8px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "0.5fr 1.5fr 1.1fr 1fr 0.9fr 0.8fr 0.7fr 0.8fr", gap: 8, padding: "0 8px 8px", borderBottom: "1px solid #27272a" }}>
             {["Rank", "Agent", "Status", "Active Volume", "Pending GCI", "Close %", "Avg DOM", "Action"].map((h) => (
               <span key={h} className="tracking-wider" style={{ fontFamily: F, fontSize: 8, fontWeight: 800, letterSpacing: 1.1, color: SLATE_DIM, textTransform: "uppercase" }}>{h}</span>
             ))}
@@ -634,10 +634,10 @@ export default function PerformanceMatrix({ user, onNavigate }) {
                     cursor: "pointer", background: isSel ? `${PURPLE}14` : "transparent",
                     borderLeft: `2px solid ${isSel ? PURPLE : "transparent"}`, transition: "background .15s ease",
                   }}
-                  onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "rgba(255,255,255,0.035)"; }}
+                  onMouseEnter={(e) => { if (!isSel) e.currentTarget.style.background = "#18181b"; }}
                   onMouseLeave={(e) => { if (!isSel) e.currentTarget.style.background = "transparent"; }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                    {medal && <span style={{ width: 6, height: 6, borderRadius: "50%", background: medal, boxShadow: `0 0 8px ${medal}`, animation: "pmBlink 1.9s ease-in-out infinite", flexShrink: 0 }} />}
+                    {medal && <span style={{ width: 6, height: 6, borderRadius: "50%", background: medal, boxShadow: "none", animation: "none", flexShrink: 0 }} />}
                     <span className="font-mono" style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: medal || SLATE_DIM }}>#{a.rank}</span>
                   </span>
                   <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
@@ -648,7 +648,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
                   <span style={{
                     fontFamily: MONO, fontSize: 8, fontWeight: 800, letterSpacing: 0.6, color: st.color,
                     background: `${st.color}14`, border: `1px solid ${st.color}55`, borderRadius: 999,
-                    padding: "3px 8px", textAlign: "center", whiteSpace: "nowrap", boxShadow: `0 0 8px ${st.color}30`,
+                    padding: "3px 8px", textAlign: "center", whiteSpace: "nowrap", boxShadow: "none",
                   }}>{st.label.toUpperCase()}</span>
                   <span className="font-mono" style={{ fontFamily: MONO, fontSize: 11, color: "#fff" }}>{fmtMoney(a.activeVolume)}</span>
                   <span className="font-mono" style={{ fontFamily: MONO, fontSize: 11, color: PURPLE_LT }}>{fmtMoney(a.gci)}</span>
@@ -667,8 +667,8 @@ export default function PerformanceMatrix({ user, onNavigate }) {
           <div key={selected.id}
             className="backdrop-blur-2xl bg-black/60 border border-white/10"
             style={{
-              flex: "1 1 38%", background: "rgba(0,0,0,0.6)", backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
-              border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 16,
+              flex: "1 1 38%", background: "#111111", backdropFilter: "none", WebkitBackdropFilter: "none",
+              border: "1px solid #27272a", borderRadius: 14, padding: 16,
               display: "flex", flexDirection: "column", minWidth: 0, overflowY: "auto",
             }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -679,7 +679,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
               <button onClick={() => setSelected(null)} style={{ marginLeft: "auto", background: "transparent", border: "none", color: SLATE_DIM, cursor: "pointer", padding: 0 }}><X size={15} /></button>
             </div>
 
-            <div style={{ border: `1px solid ${STATUS[selected.status].color}44`, borderRadius: 11, padding: 13, marginBottom: 12, background: "rgba(255,255,255,0.02)" }}>
+            <div style={{ border: `1px solid ${STATUS[selected.status].color}44`, borderRadius: 11, padding: 13, marginBottom: 12, background: "#18181b" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
                 <span style={{ fontFamily: F, fontSize: 15, fontWeight: 800, color: "#fff" }}>{selected.name}</span>
                 <span className="font-mono" style={{ fontFamily: MONO, fontSize: 9, color: SLATE_DIM }}>#{selected.rank}</span>
@@ -713,7 +713,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
 
             {/* Retention alert */}
             {selected.status === "FLIGHT" && (
-              <div style={{ border: `1px solid ${RED}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, background: `linear-gradient(135deg,${RED}12,rgba(0,0,0,0.3))`, boxShadow: `inset 0 0 20px ${RED}0d` }}>
+              <div style={{ border: `1px solid ${RED}55`, borderRadius: 10, padding: "10px 12px", marginBottom: 12, background: `#111111`, boxShadow: "none"}}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                   <ShieldAlert size={11} color={RED} />
                   <span className="font-mono" style={{ fontFamily: MONO, fontSize: 8.5, fontWeight: 800, letterSpacing: 1.5, color: RED }}>FLIGHT RISK / RETENTION ALERT</span>
@@ -726,11 +726,11 @@ export default function PerformanceMatrix({ user, onNavigate }) {
 
             <button onClick={generateCoaching} disabled={decrypting}
               style={{
-                width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "linear-gradient(135deg,#7c3aed,#a855f7)",
+                width: "100%", background: decrypting ? "rgba(168,85,247,0.15)" : "#8b5cf6",
                 border: `1px solid ${PURPLE}88`, borderRadius: 10, padding: "11px 14px",
                 fontFamily: F, fontSize: 10.5, fontWeight: 800, letterSpacing: 1, textTransform: "uppercase",
                 color: "#fff", cursor: decrypting ? "default" : "pointer",
-                boxShadow: decrypting ? "none" : `0 0 15px ${PURPLE}88`,
+                boxShadow: "none",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 11,
               }}>
               {decrypting ? <Loader2 size={13} style={{ animation: "pmSpin 1s linear infinite" }} /> : <Zap size={13} />}
@@ -745,13 +745,13 @@ export default function PerformanceMatrix({ user, onNavigate }) {
               }}>{coach}</pre>
             )}
 
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ borderTop: "1px solid #27272a", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
               <button onClick={dispatchCoaching} disabled={!selected.email}
                 style={{
                   width: "100%", background: "rgba(34,211,238,0.16)", border: `1px solid ${CYAN}77`, borderRadius: 10,
                   padding: "10px 14px", fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 1,
                   textTransform: "uppercase", color: CYAN, cursor: selected.email ? "pointer" : "default",
-                  boxShadow: `0 0 14px ${CYAN}44`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  boxShadow: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   opacity: selected.email ? 1 : 0.45,
                 }}>
                 <Send size={12} /> [ Dispatch Coaching Script ]
@@ -761,7 +761,7 @@ export default function PerformanceMatrix({ user, onNavigate }) {
                   width: "100%", background: "rgba(255,59,92,0.14)", border: `1px solid ${RED}77`, borderRadius: 10,
                   padding: "10px 14px", fontFamily: F, fontSize: 10, fontWeight: 800, letterSpacing: 1,
                   textTransform: "uppercase", color: RED, cursor: onNavigate ? "pointer" : "default",
-                  boxShadow: `0 0 14px ${RED}33`, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  boxShadow: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   opacity: onNavigate ? 1 : 0.45,
                 }}>
                 <ShieldAlert size={12} /> [ View Flagged Deals ] <ArrowRight size={11} />
